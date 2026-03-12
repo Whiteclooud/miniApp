@@ -1,0 +1,11 @@
+{
+  "appid": "touristappid",
+  "projectname": "miniapp-nail-booking",
+  "compileType": "miniprogram",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "minified": false,
+    "urlCheck": false
+  }
+}

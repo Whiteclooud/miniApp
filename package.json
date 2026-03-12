@@ -1,0 +1,12 @@
+{
+  "name": "miniapp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OpenClaw mini app workspace",
+  "scripts": {
+    "dev:server": "node apps/server/src/server.mjs",
+    "start:server": "node apps/server/src/server.mjs",
+    "test:server": "node apps/server/src/server.mjs --self-test",
+    "check:docs": "node tools/check-docs.mjs"
+  }
+}

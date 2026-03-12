@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/booking/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "美甲预约",
+    "navigationBarBackgroundColor": "#fff6f2",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fffaf8",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

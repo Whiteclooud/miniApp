@@ -1,0 +1,25 @@
+<view class="container">
+  <view class="card form-card">
+    <view class="field-label">姓名</view>
+    <input class="field-input" data-field="customerName" bindinput="onInput" placeholder="请输入姓名" />
+
+    <view class="field-label">手机号</view>
+    <input class="field-input" data-field="phone" bindinput="onInput" type="number" placeholder="请输入手机号" />
+
+    <view class="field-label">服务项目</view>
+    <picker mode="selector" range="{{services}}" range-key="name" bindchange="onServiceChange">
+      <view class="field-picker">{{services[serviceIndex] ? services[serviceIndex].name : '请选择服务项目'}}</view>
+    </picker>
+
+    <view class="field-label">日期</view>
+    <input class="field-input" data-field="date" bindinput="onInput" placeholder="如 2026-03-12" />
+
+    <view class="field-label">时间段</view>
+    <input class="field-input" data-field="timeSlot" bindinput="onInput" placeholder="如 14:00-15:00" />
+
+    <view class="field-label">备注</view>
+    <textarea class="field-textarea" data-field="note" bindinput="onInput" placeholder="请输入备注" />
+
+    <button class="button-primary" bindtap="submit">提交预约</button>
+  </view>
+</view>

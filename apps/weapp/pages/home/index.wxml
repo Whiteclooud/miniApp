@@ -1,0 +1,28 @@
+<view class="container">
+  <view class="card">
+    <view class="hero-title">美甲预约</view>
+    <view class="hero-subtitle">快速查看服务项目并提交预约</view>
+    <button class="button-primary" bindtap="goBooking">立即预约</button>
+  </view>
+
+  <view class="section-title">服务项目</view>
+  <block wx:for="{{services}}" wx:key="id">
+    <view class="card service-card">
+      <view class="service-name">{{item.name}}</view>
+      <view class="service-meta">约 {{item.durationMinutes}} 分钟 · {{item.price}} 元</view>
+      <view class="service-desc">{{item.description}}</view>
+    </view>
+  </block>
+
+  <view class="section-title">最近预约</view>
+  <block wx:if="{{appointments.length}}">
+    <block wx:for="{{appointments}}" wx:key="id">
+      <view class="card service-card">
+        <view class="service-name">{{item.customerName}} · {{item.serviceName}}</view>
+        <view class="service-meta">{{item.date}} {{item.timeSlot}}</view>
+        <view class="service-desc">状态：{{item.status}}</view>
+      </view>
+    </block>
+  </block>
+  <view wx:else class="card empty-card">当前还没有预约记录</view>
+</view>
