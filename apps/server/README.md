@@ -1,13 +1,46 @@
 # Server
 
-当前是一个零依赖的后端骨架，便于快速打通联调。
+当前后端为一个零依赖 Node.js HTTP API，服务于“单店、单员工、审批制预约”微信小程序场景。
 
-## 已提供接口
+## 当前能力
 
 - `GET /health`
-- `GET /api/v1/services`
-- `GET /api/v1/appointments`
+- `GET /api/v1/gallery`
+- `GET /api/v1/availability`
 - `POST /api/v1/appointments`
+- `GET /api/v1/my/appointments`
+- `GET /api/v1/staff/booking-rules`
+- `PUT /api/v1/staff/booking-rules`
+- `GET /api/v1/staff/appointments`
+- `POST /api/v1/staff/appointments/:id/review`
+
+## 存储
+
+后端已接入 SQLite，默认数据库路径：
+
+```text
+apps/server/data/miniapp.sqlite
+```
+
+可通过环境变量覆盖：
+
+```bash
+SQLITE_PATH=/absolute/path/miniapp.sqlite npm run dev:server
+```
+
+## 店员鉴权
+
+所有 `/api/v1/staff/*` 接口都要求请求头：
+
+```text
+X-Staff-OpenId
+```
+
+白名单通过环境变量配置：
+
+```bash
+STAFF_OPEN_IDS=staff-openid-demo,staff-openid-lan
+```
 
 ## 启动
 
@@ -15,4 +48,24 @@
 npm run dev:server
 ```
 
-后续如需更强工程化，可迁移到 `NestJS + Prisma + MySQL`。
+## 自测
+
+```bash
+npm run test:server
+```
+
+自测会覆盖：
+- gallery / booking rules 默认种子读取
+- booking rules 更新
+- 顾客创建预约
+- 店员审核通过
+- 服务重启后规则 / 预约 / availability 状态保留
+
+## 说明
+
+当前实现优先保证：
+- 数据口径与 `docs/API.md` 一致
+- SQLite 持久化稳定
+- 审批制预约主链路可闭环
+
+后续如复杂度上升，再考虑迁移到更强工程化方案。
