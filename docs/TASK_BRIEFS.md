@@ -184,6 +184,56 @@
 
 ---
 
+## FE-006 首页入口分流与接口异常提示收口
+
+- Owner: frontend
+- 背景：当前联调风险不在于“页面打不开”，而在于“页面能打开但数据链路没跑通”，同时首页需要清晰区分顾客端与店员端入口。
+- 相关页面：`apps/weapp/pages/home/index.*`、`apps/weapp/pages/booking/index.*`、`apps/weapp/pages/my-bookings/index.*`、`apps/weapp/pages/staff/*`
+- 依赖接口：`GET /api/v1/gallery`、`GET /api/v1/availability`、`POST /api/v1/appointments`、`GET /api/v1/my/appointments`、`/api/v1/staff/*`
+
+### 必须完成
+- 首页提供清晰的“顾客入口 / 店员入口”分流，不让普通顾客误入店员流程。
+- 首页、预约页、我的预约页、店员页的接口失败场景都要显性提示，不能只在控制台报错。
+- 错误提示要能区分：无权限、网络失败、数据为空、提交失败、冲突失败。
+- 保证首页返图区在 loading / empty / error 三种状态下都可理解。
+
+### 完成标准
+- 用户能从首页清楚进入顾客或店员路径。
+- 任一关键接口失败时，页面有可见反馈，不会被误判为“功能正常”。
+- 微信开发者工具 Network 面板联调时，页面报错能和实际接口异常一一对应。
+
+### 明确禁止
+- 不新增与 V1 无关的页面入口。
+- 不用临时假数据掩盖真实接口失败。
+- 不擅自恢复旧的服务列表首页结构。
+
+---
+
+## FE-007 顾客身份切换到 OpenID 主键
+
+- Owner: frontend
+- 背景：顾客侧身份主键已从手机号切换为 OpenID；手机号与姓名仅为补充联系信息。
+- 相关页面：`apps/weapp/pages/booking/index.*`、`apps/weapp/pages/my-bookings/index.*`
+- 依赖接口：`POST /api/v1/appointments`、`GET /api/v1/my/appointments`
+
+### 必须完成
+- 顾客预约提交时通过请求头传 `X-Customer-OpenId`，不再把手机号当主身份键。
+- “我的预约”改为按当前顾客 OpenID 自动查询，不再要求用户手输手机号作为主查询条件。
+- 开发环境支持模拟 OpenID 值，便于微信开发者工具联调。
+- 页面文案明确：姓名/手机号用于联系，不影响“我的预约”归属。
+
+### 完成标准
+- 提交预约后，使用同一 OpenID 能在“我的预约”稳定查到记录。
+- 页面不再把“输入手机号查询”作为主流程。
+- 若缺少顾客 OpenID，页面给出明确提示，不静默失败。
+
+### 明确禁止
+- 不引入完整账号体系。
+- 不保留“手机号主查 + OpenID 备用”的双主键混乱逻辑。
+- 不修改接口路径与字段契约。
+
+---
+
 # Backend Brief
 
 ## BE-001 返图展示接口
@@ -321,6 +371,55 @@
 ### 明确禁止
 - 不引入超出项目骨架承受力的重 ORM 复杂方案（如无必要）
 - 不为了接 SQLite 而顺手改动既有 API 字段或路径
+
+---
+
+## BE-006 顾客身份主键切换为 customerOpenId
+
+- Owner: backend
+- 背景：顾客身份主键已从手机号切换为 OpenID；前后端需要统一到同一身份口径，避免“创建成功但我的预约查不到”。
+- 相关模块：`apps/server/src/server.mjs`、SQLite 初始化/迁移逻辑、appointments 数据访问层
+- 目标接口：`POST /api/v1/appointments`、`GET /api/v1/my/appointments`、`GET /api/v1/staff/appointments`
+
+### 必须完成
+- `appointments` 数据模型包含 `customer_open_id` / `customerOpenId` 并作为顾客身份主键。
+- `POST /api/v1/appointments` 从 `X-Customer-OpenId` 读取顾客身份，缺失时返回 `CUSTOMER_UNAUTHORIZED`。
+- `GET /api/v1/my/appointments` 改为按 `X-Customer-OpenId` 查询，不再依赖手机号参数。
+- staff 侧预约列表继续保留姓名/手机号展示，便于店员识别顾客。
+- 如已有旧测试数据或旧表结构，补最小迁移/兼容处理，避免本地联调直接报废。
+
+### 完成标准
+- 创建预约、我的预约查询、店员审核列表三处数据都能看到一致的 `customerOpenId` 归属。
+- 缺少顾客 OpenID 时统一返回 401 + `CUSTOMER_UNAUTHORIZED`。
+- 现有自动化测试补齐 OpenID 场景并通过。
+
+### 明确禁止
+- 不继续使用手机号作为“我的预约”主查询键。
+- 不把顾客身份透传为 body 字段。
+- 不改动既定 staff 鉴权口径。
+
+---
+
+## QA-001 首页返图与预约主链路回归
+
+- Owner: frontend / backend
+- 背景：当前风险点是接口口径回退、首页返图误判与顾客身份链路切换，需要一轮更贴近真实使用的回归验证。
+- 相关范围：首页、预约页、我的预约、店员规则、店员审核、后端自测脚本、`docs/UAT_GUIDE.md`
+
+### 必须完成
+- 补齐首页返图展示、预约提交、我的预约、店员审核、规则变更、接口口径防回退的测试覆盖。
+- 自动化至少覆盖：顾客 OpenID 创建预约 / 查询我的预约 / staff 审核后顾客回查。
+- 手测清单与 `docs/UAT_GUIDE.md` 保持一致，避免测试口径漂移。
+
+### 完成标准
+- 能证明不会再调用旧接口：`/api/v1/services`、旧版 `GET /api/v1/appointments`。
+- 能证明首页返图“可见”与预约主链路“可用”都被分别验证。
+- 回归结果可直接支撑第二轮 UAT。
+
+### 明确禁止
+- 不只测后端接口、不测页面链路。
+- 不把“打开页面没报错”当成测试通过。
+- 不跳过 OpenID 场景。
 
 ---
 
