@@ -1,0 +1,28 @@
+<view class="container">
+  <view class="card search-card">
+    <view class="title">我的预约</view>
+    <view class="desc">输入预约手机号，查看当前申请状态。</view>
+
+    <view class="field-label">手机号</view>
+    <input class="field-input" bindinput="onInput" value="{{phone}}" type="number" placeholder="请输入预约时填写的手机号" />
+    <button class="button-primary search-button" loading="{{loading}}" bindtap="search">查询预约</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="card state-card">正在查询预约记录...</view>
+  <view wx:elif="{{searched && !items.length}}" class="card state-card">暂无预约记录，你可以先去提交预约申请。</view>
+  <block wx:elif="{{items.length}}">
+    <block wx:for="{{items}}" wx:key="id">
+      <view class="card booking-card">
+        <view class="booking-top">
+          <view class="booking-date">{{item.appointmentDate}} {{item.timeSlot}}</view>
+          <view class="status-chip {{item.statusType}}">{{item.statusText}}</view>
+        </view>
+        <view class="booking-note">预约人：{{item.customerName}}</view>
+        <view wx:if="{{item.note}}" class="booking-note">备注：{{item.note}}</view>
+        <view wx:if="{{item.reviewNote}}" class="booking-note">审核备注：{{item.reviewNote}}</view>
+      </view>
+    </block>
+  </block>
+
+  <button wx:if="{{searched}}" class="button-plain" bindtap="goBooking">去提交新预约</button>
+</view>

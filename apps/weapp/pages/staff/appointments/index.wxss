@@ -1,0 +1,91 @@
+@import '../../../app.wxss';
+
+.title-card,
+.auth-card,
+.filter-card,
+.state-card,
+.appointment-card {
+  margin-bottom: 24rpx;
+}
+
+.title,
+.section-title {
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.desc,
+.section-desc,
+.helper-text,
+.appointment-meta {
+  margin-top: 12rpx;
+  color: #7d5b4c;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.nav-button {
+  margin-top: 20rpx;
+}
+
+.field-input,
+.field-picker,
+.field-textarea {
+  margin-top: 12rpx;
+  background: #fff6f2;
+  border-radius: 18rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+}
+
+.field-textarea {
+  min-height: 140rpx;
+}
+
+.appointment-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.appointment-date {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.status-chip {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+
+.status-chip.pending {
+  background: #fff3d9;
+  color: #a87500;
+}
+
+.status-chip.approved {
+  background: #e5f8eb;
+  color: #1f8a49;
+}
+
+.status-chip.rejected {
+  background: #fde8e8;
+  color: #b24444;
+}
+
+.review-box {
+  margin-top: 20rpx;
+}
+
+.review-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.review-button {
+  flex: 1;
+}

@@ -1,0 +1,90 @@
+@import '../../app.wxss';
+
+.search-card {
+  margin-bottom: 24rpx;
+}
+
+.title {
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.desc {
+  margin-top: 12rpx;
+  color: #7d5b4c;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.field-label {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.field-input {
+  margin-top: 10rpx;
+  background: #fff6f2;
+  border-radius: 18rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+}
+
+.search-button {
+  margin-top: 24rpx;
+}
+
+.state-card {
+  color: #8a6a5c;
+}
+
+.booking-card {
+  margin-bottom: 20rpx;
+}
+
+.booking-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.booking-date {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.status-chip {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+
+.status-chip.pending {
+  background: #fff3d9;
+  color: #a87500;
+}
+
+.status-chip.approved {
+  background: #e5f8eb;
+  color: #1f8a49;
+}
+
+.status-chip.rejected {
+  background: #fde8e8;
+  color: #b24444;
+}
+
+.booking-note {
+  margin-top: 12rpx;
+  color: #6f574b;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.button-plain {
+  margin-top: 12rpx;
+  background: transparent;
+  color: #b85d74;
+}

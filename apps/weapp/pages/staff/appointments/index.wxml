@@ -1,0 +1,53 @@
+<view class="container">
+  <view class="card title-card">
+    <view class="title">店员预约审核</view>
+    <view class="desc">查看预约申请并执行通过 / 拒绝操作。</view>
+    <button class="button-secondary nav-button" bindtap="goRules">去规则配置</button>
+  </view>
+
+  <view wx:if="{{!authorized}}" class="card auth-card">
+    <view class="section-title">店员验证</view>
+    <view class="section-desc">当前采用 OpenID 白名单联调方案，请先输入店员 OpenID。</view>
+    <input class="field-input" bindinput="onAuthInput" value="{{authInput}}" placeholder="请输入店员 OpenID" />
+    <button class="button-primary" bindtap="saveAuthInput">保存并加载审核列表</button>
+  </view>
+
+  <block wx:if="{{authorized}}">
+    <view class="card filter-card">
+      <view class="section-title">筛选状态</view>
+      <picker mode="selector" range="{{statusOptions}}" range-key="label" bindchange="onStatusChange">
+        <view class="field-picker">当前筛选：{{currentStatusLabel}}</view>
+      </picker>
+      <view class="helper-text">可查看待审核、已通过、已拒绝记录。</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="card state-card">正在加载预约列表...</view>
+    <view wx:elif="{{!items.length}}" class="card state-card">当前筛选下暂无预约记录。</view>
+    <block wx:else>
+      <block wx:for="{{items}}" wx:key="id">
+        <view class="card appointment-card">
+          <view class="appointment-top">
+            <view class="appointment-date">{{item.appointmentDate}} {{item.timeSlot}}</view>
+            <view class="status-chip {{item.status}}">{{item.statusText}}</view>
+          </view>
+          <view class="appointment-meta">顾客：{{item.customerName}} · {{item.phone}}</view>
+          <view wx:if="{{item.note}}" class="appointment-meta">备注：{{item.note}}</view>
+          <view wx:if="{{item.reviewNote}}" class="appointment-meta">审核备注：{{item.reviewNote}}</view>
+
+          <view wx:if="{{item.status === 'pending'}}" class="review-box">
+            <textarea
+              class="field-textarea"
+              data-id="{{item.id}}"
+              bindinput="onReviewNoteInput"
+              placeholder="可选填写审核备注"
+            />
+            <view class="review-actions">
+              <button class="button-secondary review-button" data-id="{{item.id}}" data-action="reject" loading="{{reviewingId === item.id}}" bindtap="review">拒绝</button>
+              <button class="button-primary review-button" data-id="{{item.id}}" data-action="approve" loading="{{reviewingId === item.id}}" bindtap="review">通过</button>
+            </view>
+          </view>
+        </view>
+      </block>
+    </block>
+  </block>
+</view>

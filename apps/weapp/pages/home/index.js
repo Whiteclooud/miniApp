@@ -1,9 +1,10 @@
-const { listServices, listAppointments } = require('../../services/appointment');
+const { listGallery } = require('../../services/appointment');
 
 Page({
   data: {
-    services: [],
-    appointments: []
+    galleryItems: [],
+    loading: true,
+    hasError: false
   },
 
   onLoad() {
@@ -16,18 +17,22 @@ Page({
   },
 
   async loadData() {
+    this.setData({ loading: true, hasError: false });
     try {
-      const [serviceRes, appointmentRes] = await Promise.all([
-        listServices(),
-        listAppointments()
-      ]);
+      const res = await listGallery();
       this.setData({
-        services: serviceRes.items || [],
-        appointments: appointmentRes.items || []
+        galleryItems: res.items || [],
+        loading: false,
+        hasError: false
       });
     } catch (error) {
+      this.setData({
+        galleryItems: [],
+        loading: false,
+        hasError: true
+      });
       wx.showToast({
-        title: '加载失败',
+        title: '首页加载失败',
         icon: 'none'
       });
     }
@@ -36,6 +41,18 @@ Page({
   goBooking() {
     wx.navigateTo({
       url: '/pages/booking/index'
+    });
+  },
+
+  goMyBookings() {
+    wx.navigateTo({
+      url: '/pages/my-bookings/index'
+    });
+  },
+
+  goStaffRules() {
+    wx.navigateTo({
+      url: '/pages/staff/rules/index'
     });
   }
 });

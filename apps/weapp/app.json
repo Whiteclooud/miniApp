@@ -1,7 +1,10 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/booking/index"
+    "pages/booking/index",
+    "pages/my-bookings/index",
+    "pages/staff/rules/index",
+    "pages/staff/appointments/index"
   ],
   "window": {
     "navigationBarTitleText": "美甲预约",

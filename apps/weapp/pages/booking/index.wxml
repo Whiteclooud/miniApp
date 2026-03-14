@@ -1,25 +1,61 @@
 <view class="container">
+  <view class="card intro-card">
+    <view class="intro-title">提交预约申请</view>
+    <view class="intro-desc">选择可预约日期和时间段后提交，预约需等待店员审核通过。</view>
+  </view>
+
+  <view class="card month-card">
+    <view class="month-header">
+      <button class="month-button" bindtap="prevMonth">上个月</button>
+      <view class="month-title">{{currentMonth}}</view>
+      <button class="month-button" bindtap="nextMonth">下个月</button>
+    </view>
+
+    <view wx:if="{{loadingAvailability}}" class="state-text">正在加载可预约日期...</view>
+    <view wx:elif="{{!days.length}}" class="state-text">当前月份暂无可预约日期</view>
+    <view wx:else class="date-grid">
+      <block wx:for="{{days}}" wx:key="date">
+        <view
+          class="date-chip {{item.bookable ? '' : 'disabled'}} {{selectedDate === item.date ? 'selected' : ''}}"
+          data-date="{{item.date}}"
+          bindtap="selectDate"
+        >
+          <view class="date-day">{{item.shortDay}}</view>
+          <view class="date-label">{{item.label}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card slot-card">
+    <view class="block-title">可预约时间段</view>
+    <view wx:if="{{selectedDate}}" class="selected-date">已选日期：{{selectedDate}}</view>
+    <view wx:if="{{selectedSlots.length}}" class="slot-list">
+      <block wx:for="{{selectedSlots}}" wx:key="value">
+        <view
+          class="slot-chip {{item.bookable ? '' : 'disabled'}} {{selectedSlot === item.value ? 'selected' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="selectSlot"
+        >
+          {{item.label}}
+        </view>
+      </block>
+    </view>
+    <view wx:else class="state-text">请先选择一个可预约日期</view>
+  </view>
+
   <view class="card form-card">
+    <view class="block-title">联系信息</view>
+
     <view class="field-label">姓名</view>
-    <input class="field-input" data-field="customerName" bindinput="onInput" placeholder="请输入姓名" />
+    <input class="field-input" data-field="customerName" bindinput="onInput" value="{{form.customerName}}" placeholder="请输入姓名" />
 
     <view class="field-label">手机号</view>
-    <input class="field-input" data-field="phone" bindinput="onInput" type="number" placeholder="请输入手机号" />
-
-    <view class="field-label">服务项目</view>
-    <picker mode="selector" range="{{services}}" range-key="name" bindchange="onServiceChange">
-      <view class="field-picker">{{services[serviceIndex] ? services[serviceIndex].name : '请选择服务项目'}}</view>
-    </picker>
-
-    <view class="field-label">日期</view>
-    <input class="field-input" data-field="date" bindinput="onInput" placeholder="如 2026-03-12" />
-
-    <view class="field-label">时间段</view>
-    <input class="field-input" data-field="timeSlot" bindinput="onInput" placeholder="如 14:00-15:00" />
+    <input class="field-input" data-field="phone" bindinput="onInput" value="{{form.phone}}" type="number" placeholder="请输入手机号" />
 
     <view class="field-label">备注</view>
-    <textarea class="field-textarea" data-field="note" bindinput="onInput" placeholder="请输入备注" />
+    <textarea class="field-textarea" data-field="note" bindinput="onInput" value="{{form.note}}" placeholder="如：想做温柔通勤款" />
 
-    <button class="button-primary" bindtap="submit">提交预约</button>
+    <button class="button-primary submit-button" loading="{{isSubmitting}}" bindtap="submit">提交预约申请</button>
   </view>
 </view>

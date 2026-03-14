@@ -1,6 +1,110 @@
+@import '../../app.wxss';
+
+.intro-card,
+.month-card,
+.slot-card,
 .form-card {
+  margin-bottom: 24rpx;
+}
+
+.intro-title,
+.block-title {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.intro-desc {
+  margin-top: 12rpx;
+  color: #7d5b4c;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.month-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.month-button {
+  margin: 0;
+  padding: 0 24rpx;
+  min-width: 0;
+  height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 999rpx;
+  background: #fff3ef;
+  color: #b56b76;
+  font-size: 24rpx;
+}
+
+.date-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.date-chip,
+.slot-chip {
+  border-radius: 20rpx;
+  background: #fff5f1;
+  color: #5c463b;
+}
+
+.date-chip {
+  width: calc(25% - 12rpx);
+  padding: 18rpx 10rpx;
+  text-align: center;
+}
+
+.date-day {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.date-label {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+}
+
+.slot-card .selected-date {
+  margin-top: 16rpx;
+  color: #7d5b4c;
+  font-size: 24rpx;
+}
+
+.slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.slot-chip {
+  padding: 18rpx 22rpx;
+  font-size: 24rpx;
+}
+
+.selected {
+  background: linear-gradient(135deg, #ffb1a0, #ff7c9f);
+  color: #ffffff;
+}
+
+.disabled {
+  background: #f3ece8;
+  color: #b7a49a;
+}
+
+.state-text {
+  margin-top: 24rpx;
+  color: #8a6a5c;
+  font-size: 24rpx;
 }
 
 .field-label {
@@ -10,7 +114,6 @@
 }
 
 .field-input,
-.field-picker,
 .field-textarea {
   margin-top: 10rpx;
   background: #fff6f2;
@@ -21,4 +124,8 @@
 
 .field-textarea {
   min-height: 180rpx;
+}
+
+.submit-button {
+  margin-top: 30rpx;
 }

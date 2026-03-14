@@ -1,41 +1,124 @@
+@import '../../app.wxss';
+
+.hero-card {
+  padding: 36rpx;
+  background: linear-gradient(180deg, #fff8f5, #ffffff);
+}
+
+.eyebrow {
+  color: #c06a78;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+
 .hero-title {
-  font-size: 44rpx;
+  margin-top: 18rpx;
+  font-size: 46rpx;
+  line-height: 1.3;
   font-weight: 700;
 }
 
 .hero-subtitle {
-  margin-top: 12rpx;
+  margin-top: 16rpx;
   color: #7d5b4c;
   font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.hero-actions {
+  margin-top: 28rpx;
+}
+
+.hero-button {
+  margin-top: 16rpx;
+}
+
+.secondary {
+  background: #fff3ef;
+  color: #c05d76;
+}
+
+.section-header {
+  margin: 36rpx 0 18rpx;
 }
 
 .section-title {
-  margin: 32rpx 0 16rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  margin-top: 8rpx;
+  color: #927466;
+  font-size: 24rpx;
+}
+
+.gallery-card {
+  overflow: hidden;
+  margin-bottom: 22rpx;
+  padding: 0;
+}
+
+.gallery-image {
+  width: 100%;
+  height: 320rpx;
+  background: #f6ebe6;
+}
+
+.gallery-body {
+  padding: 24rpx 24rpx 28rpx;
+}
+
+.gallery-title {
   font-size: 32rpx;
   font-weight: 600;
 }
 
-.service-card {
-  margin-bottom: 20rpx;
+.gallery-tags {
+  margin-top: 16rpx;
 }
 
-.service-name {
-  font-size: 30rpx;
+.tag {
+  display: inline-block;
+  margin-right: 12rpx;
+  margin-bottom: 12rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: #fff1ee;
+  color: #a45f67;
+  font-size: 22rpx;
+}
+
+.gallery-desc {
+  color: #5c463b;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.note-card {
+  margin-top: 8rpx;
+}
+
+.note-title {
+  font-size: 28rpx;
   font-weight: 600;
 }
 
-.service-meta {
-  margin-top: 8rpx;
+.note-text {
+  margin-top: 12rpx;
+  color: #7d5b4c;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.state-card {
   color: #8a6a5c;
+}
+
+.staff-entry {
+  margin-top: 12rpx;
+  padding-left: 0;
+  text-align: left;
   font-size: 24rpx;
-}
-
-.service-desc {
-  margin-top: 8rpx;
-  color: #5c463b;
-  font-size: 26rpx;
-}
-
-.empty-card {
-  color: #8a6a5c;
 }

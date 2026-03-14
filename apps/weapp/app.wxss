@@ -15,9 +15,25 @@ page {
   box-shadow: 0 12rpx 36rpx rgba(140, 78, 58, 0.08);
 }
 
+.button-primary,
+.button-secondary,
+.button-plain {
+  border-radius: 999rpx;
+}
+
 .button-primary {
   margin-top: 24rpx;
   background: linear-gradient(135deg, #ff9b7b, #ff6f91);
   color: #ffffff;
-  border-radius: 999rpx;
+}
+
+.button-secondary {
+  margin-top: 24rpx;
+  background: #fff3ef;
+  color: #c05d76;
+}
+
+.button-plain {
+  background: transparent;
+  color: #c05d76;
 }

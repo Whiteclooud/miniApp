@@ -1,28 +1,47 @@
 <view class="container">
-  <view class="card">
-    <view class="hero-title">美甲预约</view>
-    <view class="hero-subtitle">快速查看服务项目并提交预约</view>
-    <button class="button-primary" bindtap="goBooking">立即预约</button>
+  <view class="hero-card card">
+    <view class="eyebrow">单店预约 · 审批制</view>
+    <view class="hero-title">把喜欢的款式，提前预约下来</view>
+    <view class="hero-subtitle">
+      查看返图灵感、选择可预约日期与时间段，提交后由店员审核确认。
+    </view>
+    <view class="hero-actions">
+      <button class="button-primary hero-button" bindtap="goBooking">立即预约</button>
+      <button class="button-secondary hero-button secondary" bindtap="goMyBookings">查看我的预约</button>
+    </view>
   </view>
 
-  <view class="section-title">服务项目</view>
-  <block wx:for="{{services}}" wx:key="id">
-    <view class="card service-card">
-      <view class="service-name">{{item.name}}</view>
-      <view class="service-meta">约 {{item.durationMinutes}} 分钟 · {{item.price}} 元</view>
-      <view class="service-desc">{{item.description}}</view>
-    </view>
-  </block>
+  <view class="section-header">
+    <view class="section-title">返图灵感</view>
+    <view class="section-subtitle">先看看近期受欢迎的风格</view>
+  </view>
 
-  <view class="section-title">最近预约</view>
-  <block wx:if="{{appointments.length}}">
-    <block wx:for="{{appointments}}" wx:key="id">
-      <view class="card service-card">
-        <view class="service-name">{{item.customerName}} · {{item.serviceName}}</view>
-        <view class="service-meta">{{item.date}} {{item.timeSlot}}</view>
-        <view class="service-desc">状态：{{item.status}}</view>
+  <view wx:if="{{loading}}" class="card state-card">正在加载返图内容...</view>
+  <view wx:elif="{{hasError}}" class="card state-card">返图内容暂时不可用，你也可以先直接去预约。</view>
+  <view wx:elif="{{galleryItems.length === 0}}" class="card state-card">返图内容整理中，稍后再来看看。</view>
+  <block wx:else>
+    <block wx:for="{{galleryItems}}" wx:key="id">
+      <view class="card gallery-card">
+        <image
+          wx:if="{{item.imageUrl}}"
+          class="gallery-image"
+          mode="aspectFill"
+          src="{{item.imageUrl}}"
+        />
+        <view class="gallery-body">
+          <view class="gallery-title">{{item.title}}</view>
+          <view class="gallery-tags">
+            <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+          </view>
+          <view class="gallery-desc">{{item.description}}</view>
+        </view>
       </view>
     </block>
   </block>
-  <view wx:else class="card empty-card">当前还没有预约记录</view>
+
+  <view class="note-card card">
+    <view class="note-title">预约说明</view>
+    <view class="note-text">当前为提交申请模式，预约提交后需等待店员审核通过。</view>
+    <button class="button-plain staff-entry" bindtap="goStaffRules">店员入口</button>
+  </view>
 </view>
