@@ -4,17 +4,31 @@
 
 开发环境：`http://127.0.0.1:3000`
 
-## 接口冻结说明（2026-03-14）
+## 当前冻结契约（2026-03-14）
 
-- 前端联调口径仅允许：`/api/v1/gallery`、`/api/v1/availability`、`POST /api/v1/appointments`、`GET /api/v1/my/appointments`、`/api/v1/staff/*`
-- `/api/v1/services` 与旧版 `GET /api/v1/appointments` 不在当前版本契约内，视为废弃
-- “页面能打开”不等于“接口已跑通”，必须以本文件接口响应为验收依据
+V1 当前只允许以下接口对外使用：
 
----
+- `GET /health`
+- `GET /api/v1/gallery`
+- `GET /api/v1/availability`
+- `POST /api/v1/appointments`
+- `GET /api/v1/my/appointments`
+- `GET /api/v1/staff/appointments`
+- `GET /api/v1/staff/appointments/:id`
+- `POST /api/v1/staff/appointments/:id/review`
+- `PATCH /api/v1/staff/appointments/:id/review`
+
+以下旧接口不再属于当前契约，前后端都禁止继续依赖：
+
+- `GET /api/v1/services`
+- `GET /api/v1/hot-styles`
+- `GET /api/v1/artists`
+- 旧版 `GET /api/v1/appointments`
 
 ## 1. 健康检查
 
 ### Request
+
 - `GET /health`
 
 ### Response
@@ -23,15 +37,14 @@
 {
   "ok": true,
   "service": "miniapp-server",
-  "timestamp": "2026-03-12T00:00:00.000Z"
+  "timestamp": "2026-03-14T00:00:00.000Z"
 }
 ```
 
----
-
-## 2. 获取返图展示列表
+## 2. 获取首页图库
 
 ### Request
+
 - `GET /api/v1/gallery`
 
 ### Response
@@ -40,68 +53,104 @@
 {
   "items": [
     {
-      "id": "gallery-001",
-      "imageUrl": "https://example.com/nails/rose-cat-eye.jpg",
-      "title": "玫瑰猫眼",
-      "tags": ["猫眼", "温柔", "春日"],
-      "description": "适合日常和约会场景的温柔风格",
+      "id": "gallery-aurora",
+      "title": "极光猫眼",
+      "imageUrl": "https://example.com/images/aurora-cat-eye.jpg",
+      "tags": ["猫眼", "通勤", "热门"],
+      "priceFrom": 198,
+      "serviceId": "svc-design",
+      "serviceName": "轻奢款式设计",
+      "ctaText": "预约同款",
       "sortOrder": 1,
-      "status": "active",
-      "createdAt": "2026-03-12T00:00:00.000Z"
+      "status": "active"
+    }
+  ]
+}
+```
+
+## 3. 获取可预约时段
+
+### Request
+
+- `GET /api/v1/availability?date=2026-03-16`
+
+### Response
+
+```json
+{
+  "items": [
+    {
+      "date": "2026-03-16",
+      "timeSlot": "10:00-11:00",
+      "status": "active"
     }
   ]
 }
 ```
 
 ### Notes
-- 仅返回 `status=active` 数据
-- 用于首页返图 / 案例展示
 
----
+- 仅返回当前仍可预约的时段。
+- `date` 为可选；传值时必须为 `YYYY-MM-DD`。
 
-## Staff 鉴权约定（V1）
+## 4. 创建预约
 
-适用于所有 `/api/v1/staff/*` 接口。
+### Request
 
-### Request Header
-- `X-Staff-OpenId`: 店员在小程序登录后取得的 OpenID
+- `POST /api/v1/appointments`
+- Header：`X-Customer-OpenId: <customer-openid>`
 
-### Rules
-- 请求 staff 接口时必须携带该请求头
-- 后端以白名单方式校验是否允许访问
-- 顾客端接口不依赖该请求头
-
-### Unauthorized Response
-
-HTTP Status: `401`
+### Body
 
 ```json
 {
-  "error": "Staff unauthorized",
-  "code": "STAFF_UNAUTHORIZED"
+  "customerName": "Lan",
+  "phone": "13800000000",
+  "serviceId": "svc-classic",
+  "serviceName": "经典纯色美甲",
+  "artistId": "artist-luna",
+  "artistName": "Luna",
+  "appointmentDate": "2026-03-16",
+  "timeSlot": "10:00-11:00",
+  "note": "希望偏自然风"
 }
 ```
 
-说明：
-- 这是 V1 最小落地约定，用于支撑“同一小程序承载顾客端与店员端”。
-- 后续若升级为更正式的登录态，可替换鉴权实现，但保持 staff 接口语义不变。
-- 所有 `/api/v1/staff/*` 接口未授权时统一返回该状态码与结构，不在单个接口各自发明错误格式。
+### Field Rules
 
----
+- 顾客身份只从请求头 `X-Customer-OpenId` 读取。
+- `customerOpenId` 不允许作为 body 主身份字段；即使 body 中出现，也以后端读取到的 header 为准。
+- 必填：`serviceId`, `serviceName`, `appointmentDate`, `timeSlot`
+- 选填联系字段：`customerName`, `phone`, `note`
+- 选填偏好字段：`artistId`, `artistName`
+- 当前服务端兼容读取历史请求里的 `date` 字段，并统一落库到预约日期字段。
 
-## 顾客身份约定（V1）
+### Success Response
 
-### Request Header
-- `X-Customer-OpenId`: 顾客在小程序登录后取得的 OpenID（开发环境可先用模拟值）
-
-### Rules
-- `POST /api/v1/appointments`、`GET /api/v1/my/appointments` 必须携带该请求头
-- 后端以 OpenID 作为“我的预约”唯一身份查询条件
-- 手机号、姓名仅作为联系补充信息，不再作为主身份键
+```json
+{
+  "item": {
+    "id": "apt-001",
+    "customerOpenId": "openid-customer-001",
+    "customerName": "Lan",
+    "phone": "13800000000",
+    "serviceId": "svc-classic",
+    "serviceName": "经典纯色美甲",
+    "artistId": "artist-luna",
+    "artistName": "Luna",
+    "date": "2026-03-16",
+    "timeSlot": "10:00-11:00",
+    "note": "希望偏自然风",
+    "status": "pending",
+    "createdAt": "2026-03-14T10:00:00.000Z",
+    "reviewedAt": null,
+    "reviewedBy": null,
+    "reviewNote": ""
+  }
+}
+```
 
 ### Unauthorized Response
-
-HTTP Status: `401`
 
 ```json
 {
@@ -110,181 +159,12 @@ HTTP Status: `401`
 }
 ```
 
----
-
-## 3. 获取当前预约规则
+## 5. 获取我的预约
 
 ### Request
-- `GET /api/v1/staff/booking-rules`
 
-### Response
-
-```json
-{
-  "item": {
-    "id": "rule-default",
-    "advanceOpenDays": 2,
-    "closedDates": ["2026-03-18", "2026-03-25"],
-    "dailySlots": [
-      { "start": "10:00", "end": "11:30" },
-      { "start": "14:00", "end": "15:30" },
-      { "start": "16:00", "end": "17:30" }
-    ],
-    "updatedAt": "2026-03-12T00:00:00.000Z"
-  }
-}
-```
-
----
-
-## 4. 更新预约规则
-
-### Request
-- `PUT /api/v1/staff/booking-rules`
-
-### Body
-
-```json
-{
-  "advanceOpenDays": 2,
-  "closedDates": ["2026-03-18", "2026-03-25"],
-  "dailySlots": [
-    { "start": "10:00", "end": "11:30" },
-    { "start": "14:00", "end": "15:30" },
-    { "start": "16:00", "end": "17:30" }
-  ]
-}
-```
-
-### Field Rules
-- `advanceOpenDays`: 必填，整数，`>= 0`
-- `closedDates`: 必填，数组，元素格式 `YYYY-MM-DD`
-- `dailySlots`: 必填，数组，至少 1 项
-- `dailySlots[*].start` / `end`: 必填，格式 `HH:mm`
-- 单个时间段的 `start` 必须早于 `end`
-- 时间段之间不得重叠
-
-### Success Response
-
-```json
-{
-  "item": {
-    "id": "rule-default",
-    "advanceOpenDays": 2,
-    "closedDates": ["2026-03-18", "2026-03-25"],
-    "dailySlots": [
-      { "start": "10:00", "end": "11:30" },
-      { "start": "14:00", "end": "15:30" },
-      { "start": "16:00", "end": "17:30" }
-    ],
-    "updatedAt": "2026-03-12T01:00:00.000Z"
-  }
-}
-```
-
----
-
-## 5. 获取顾客可预约日期与时间段
-
-### Request
-- `GET /api/v1/availability?month=2026-03`
-
-### Response
-
-```json
-{
-  "month": "2026-03",
-  "advanceOpenDays": 2,
-  "closedDates": ["2026-03-18", "2026-03-25"],
-  "days": [
-    {
-      "date": "2026-03-16",
-      "bookable": true,
-      "slots": [
-        { "label": "10:00-11:30", "value": "10:00-11:30", "bookable": true },
-        { "label": "14:00-15:30", "value": "14:00-15:30", "bookable": true }
-      ]
-    },
-    {
-      "date": "2026-03-18",
-      "bookable": false,
-      "slots": []
-    }
-  ]
-}
-```
-
-### Notes
-- 后端负责根据规则和已批准预约计算 `bookable`
-- 顾客端不能自行拼接业务规则
-
----
-
-## 6. 创建预约申请
-
-### Request
-- `POST /api/v1/appointments`
-
-### Body
-
-```json
-{
-  "customerName": "Lan",
-  "phone": "13800000000",
-  "appointmentDate": "2026-03-16",
-  "timeSlot": "14:00-15:30",
-  "note": "想做温柔通勤款"
-}
-```
-
-> 身份字段 `customerOpenId` 不放在 body 中，由请求头 `X-Customer-OpenId` 传入并由后端写入。
-
-### Field Rules
-- 请求头必填：`X-Customer-OpenId`
-- Body 必填：`appointmentDate`, `timeSlot`
-- Body 选填：`customerName`, `phone`, `note`
-- `appointmentDate` 必须为当前可预约日期
-- `timeSlot` 必须为该日期当前可申请时间段
-- 创建成功后状态默认写入 `pending`
-
-### Success Response
-
-```json
-{
-  "item": {
-    "id": "apt-001",
-    "customerOpenId": "oAbCdEf123456",
-    "customerName": "Lan",
-    "phone": "13800000000",
-    "appointmentDate": "2026-03-16",
-    "timeSlot": "14:00-15:30",
-    "note": "想做温柔通勤款",
-    "status": "pending",
-    "reviewNote": "",
-    "createdAt": "2026-03-12T02:00:00.000Z",
-    "reviewedAt": null
-  }
-}
-```
-
-### Error Response
-
-HTTP Status: `400`
-
-```json
-{
-  "error": "Invalid appointment slot",
-  "code": "INVALID_SLOT"
-}
-```
-
----
-
-## 7. 获取顾客自己的预约记录
-
-### Request
 - `GET /api/v1/my/appointments`
-- Header: `X-Customer-OpenId: oAbCdEf123456`
+- Header：`X-Customer-OpenId: <customer-openid>`
 
 ### Response
 
@@ -293,31 +173,37 @@ HTTP Status: `400`
   "items": [
     {
       "id": "apt-001",
-      "customerOpenId": "oAbCdEf123456",
+      "customerOpenId": "openid-customer-001",
       "customerName": "Lan",
       "phone": "13800000000",
-      "appointmentDate": "2026-03-16",
-      "timeSlot": "14:00-15:30",
-      "note": "想做温柔通勤款",
-      "status": "pending",
-      "reviewNote": "",
-      "createdAt": "2026-03-12T02:00:00.000Z",
-      "reviewedAt": null
+      "serviceId": "svc-classic",
+      "serviceName": "经典纯色美甲",
+      "artistId": "artist-luna",
+      "artistName": "Luna",
+      "date": "2026-03-16",
+      "timeSlot": "10:00-11:00",
+      "note": "希望偏自然风",
+      "status": "approved",
+      "createdAt": "2026-03-14T10:00:00.000Z",
+      "reviewedAt": "2026-03-14T10:30:00.000Z",
+      "reviewedBy": "staff-openid-v1",
+      "reviewNote": "已确认档期"
     }
   ]
 }
 ```
 
 ### Notes
-- V1 以 OpenID 作为“我的预约”唯一查询条件
-- 手机号仅用于联系，不承担身份主键职责
 
----
+- 不再支持手机号参数查询“我的预约”。
+- 缺少 `X-Customer-OpenId` 时统一返回 `401 + CUSTOMER_UNAUTHORIZED`。
 
-## 8. 获取店员侧预约列表
+## 6. 店员查看预约列表
 
 ### Request
-- `GET /api/v1/staff/appointments?status=pending`
+
+- `GET /api/v1/staff/appointments`
+- Header：`X-Staff-OpenId: <staff-openid>`
 
 ### Response
 
@@ -326,122 +212,48 @@ HTTP Status: `400`
   "items": [
     {
       "id": "apt-001",
-      "customerOpenId": "oAbCdEf123456",
+      "customerOpenId": "openid-customer-001",
       "customerName": "Lan",
       "phone": "13800000000",
-      "appointmentDate": "2026-03-16",
-      "timeSlot": "14:00-15:30",
-      "note": "想做温柔通勤款",
+      "serviceId": "svc-classic",
+      "serviceName": "经典纯色美甲",
+      "artistId": "artist-luna",
+      "artistName": "Luna",
+      "date": "2026-03-16",
+      "timeSlot": "10:00-11:00",
+      "note": "希望偏自然风",
       "status": "pending",
-      "reviewNote": "",
-      "createdAt": "2026-03-12T02:00:00.000Z",
-      "reviewedAt": null
+      "createdAt": "2026-03-14T10:00:00.000Z",
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "reviewNote": ""
     }
   ]
 }
 ```
 
----
+### Notes
 
-## 9. 审核预约申请
+- 店员侧继续保留 `customerName` / `phone` 字段，便于识别顾客。
+
+## 7. 店员审核预约
 
 ### Request
+
 - `POST /api/v1/staff/appointments/:id/review`
+- Header：`X-Staff-OpenId: <staff-openid>`
 
 ### Body
 
 ```json
 {
-  "action": "approve",
-  "reviewNote": "请准时到店"
+  "status": "approved",
+  "reviewNote": "已确认档期"
 }
 ```
 
-### Field Rules
-- `action`: 必填，枚举：`approve` / `reject`
-- `reviewNote`: 选填，字符串
-- 若 `action=approve`，需再次校验该时间段是否仍可被批准
-- 同一预约不可重复审核
+### Rules
 
-### Success Response
-
-```json
-{
-  "item": {
-    "id": "apt-001",
-    "status": "approved",
-    "reviewNote": "请准时到店",
-    "reviewedAt": "2026-03-12T03:00:00.000Z"
-  }
-}
-```
-
-### Conflict Response
-
-HTTP Status: `409`
-
-```json
-{
-  "error": "Slot already occupied",
-  "code": "SLOT_OCCUPIED"
-}
-```
-
-### Repeat Review Response
-
-HTTP Status: `409`
-
-```json
-{
-  "error": "Appointment already reviewed",
-  "code": "ALREADY_REVIEWED"
-}
-```
-
----
-
-## 数据对象总结
-
-### GalleryItem
-- `id`
-- `imageUrl`
-- `title`
-- `tags`
-- `description`
-- `sortOrder`
-- `status`
-- `createdAt`
-
-### BookingRule
-- `id`
-- `advanceOpenDays`
-- `closedDates`
-- `dailySlots`
-- `updatedAt`
-
-### Appointment
-- `id`
-- `customerOpenId`
-- `customerName`
-- `phone`
-- `appointmentDate`
-- `timeSlot`
-- `note`
-- `status`
-- `reviewNote`
-- `createdAt`
-- `reviewedAt`
-
----
-
-## 接口影响总结
-
-- 保留：`GET /health`
-- 新增：`GET /api/v1/gallery`
-- 新增：`GET /api/v1/availability`
-- 新增：`POST /api/v1/appointments`
-- 新增：`GET /api/v1/my/appointments`
-- 新增：`GET /api/v1/staff/booking-rules`
-- 新增：`PUT /api/v1/staff/booking-rules`
-- 新增：`GET /api/v1/staff/appointments`
-- 新增：`POST /api/v1/staff/appointments/:id/review`
+- `status` 仅允许：`approved` / `rejected`
+- 兼容 `action=approve|reject` 到相同审核结果
+- 店员身份口径固定为 `X-Staff-OpenId`

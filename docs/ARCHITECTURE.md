@@ -2,260 +2,155 @@
 
 ## 当前架构决策
 
-V1 围绕“单门店、单员工、预约审批制”设计，优先保证规则可配置、状态可持久化、流程可闭环。
+V0 采用低依赖架构，优先打通业务闭环：
 
 - 前端：原生微信小程序
 - 后端：Node.js 模块化 HTTP API
-- 数据存储：SQLite（V1 推荐落地），避免预约规则和审核数据因重启丢失
+- 数据：当前以内存数据为主，后续切换 SQLite / MySQL
 
-## 为什么这次不再只靠内存数据
+## 为什么先这样做
 
-本轮需求新增了：
-- 预约规则配置
-- 每月不可预约日期
-- 预约申请审核
-- 预约状态持久化
-
-如果继续只用内存：
-- 服务重启后规则丢失
-- 已审核预约无法稳定保存
-- 单员工时间冲突控制不可靠
-
-因此建议 V1 直接使用 SQLite，控制复杂度同时满足稳定性。
+- 微信单端项目中，原生小程序是最直接、调试成本最低的方案
+- 当前团队通过飞书 + agent 协作，先减少脚手架和依赖问题
+- 待需求稳定后，可演进为：
+  - 前端：`Taro + React + TypeScript`
+  - 后端：`NestJS + Prisma + MySQL`
 
 ## 目录说明
 
 - `apps/weapp`: 微信小程序前端
 - `apps/server`: 后端 API
-- `docs`: 产品、架构、接口、任务文档
+- `docs`: 需求、架构、接口、任务、环境配置
 
-## 前端模块
+## 逻辑模块
 
-### 顾客端
+### 前端模块
+
 - 首页 `pages/home`
-  - 门店介绍
-  - 返图展示
-  - 顾客预约入口 + 店员管理入口（角色分流）
 - 预约页 `pages/booking`
-  - 日期选择
-  - 时间段选择
-  - 联系信息填写
-  - 预约申请提交
-- 我的预约页 `pages/my-bookings`
-  - 展示预约状态：`pending` / `approved` / `rejected`
+- 服务调用 `services/appointment.js`
+- 请求封装 `utils/request.js`
 
-### 店员端
-- 规则配置页 `pages/staff/rules`
-  - 提前开放预约天数
-  - 每月不可预约日期
-  - 每日时间段配置
-- 预约审核页 `pages/staff/appointments`
-  - 待审核列表
-  - 通过 / 拒绝操作
+### 本次需求新增前端模块职责
 
-### 通用模块
-- `services/*`：接口调用封装
-- `utils/request.js`：请求封装
-- 可选组件：日期格子、时间段选择器、案例卡片、状态标签
+- 首页新增热门款式推荐区块展示
+- 预约页新增美甲师选择器
+- 预约提交时携带美甲师字段
+- 最近预约展示中补充美甲师信息（如已选择）
 
-## 后端模块
+### 后端模块
 
 - 健康检查 `/health`
-- 首页返图接口 `/api/v1/gallery`
-- 顾客可预约日历/时间段接口 `/api/v1/availability`
-- 顾客预约创建接口 `/api/v1/appointments`
-- 顾客预约查询接口 `/api/v1/my/appointments`
-- 店员规则读取/更新接口 `/api/v1/staff/booking-rules`
-- 店员预约审核列表接口 `/api/v1/staff/appointments`
-- 店员审核操作接口 `/api/v1/staff/appointments/:id/review`
+- 首页图库 `/api/v1/gallery`
+- 可预约时段 `/api/v1/availability`
+- 顾客创建预约 `POST /api/v1/appointments`
+- 顾客查询我的预约 `GET /api/v1/my/appointments`
+- 店员预约列表 `/api/v1/staff/appointments`
+- 店员预约审核 `/api/v1/staff/appointments/:id/review`
 
-## 核心数据对象
+### 接口冻结说明（2026-03-14）
 
-### GalleryItem
+- 当前顾客身份主键从 `phone` 切换为 `customerOpenId`
+- 顾客侧身份统一从请求头 `X-Customer-OpenId` 读取
+- 店员侧身份统一从请求头 `X-Staff-OpenId` 读取
+- 旧接口 `GET /api/v1/services`、`GET /api/v1/hot-styles`、`GET /api/v1/artists`、旧版 `GET /api/v1/appointments` 不再属于当前对外契约
+
+## 数据模型
+
+### Service
+
 - `id`
-- `imageUrl`
-- `title`
-- `tags`
+- `name`
+- `durationMinutes`
+- `price`
 - `description`
+
+### HotStyle
+
+- `id`
+- `title`
+- `imageUrl`
+- `tags`
+- `priceFrom`
+- `serviceId`
+- `serviceName`
+- `ctaText`
 - `sortOrder`
 - `status`
-- `createdAt`
 
 说明：
-- 用于顾客返图 / 案例展示。
-- V1 可先由后台静态数据或轻量管理维护，不强制做完整 CMS。
+- `HotStyle` 是首页内容实体，用于承载热门款式推荐，不等价于服务项目。
+- `serviceId` / `serviceName` 用于和预约流程联动。
 
-### BookingRule
+### NailArtist
+
 - `id`
-- `advanceOpenDays`
-- `closedDates`
-- `dailySlots`
-- `updatedAt`
+- `name`
+- `avatarUrl`
+- `title`
+- `specialties`
+- `status`
+- `sortOrder`
 
-字段说明：
-- `advanceOpenDays`：提前多少天开放预约
-- `closedDates`：当月不可预约日期数组，格式 `YYYY-MM-DD`
-- `dailySlots`：每日可预约时间段数组，例如 `[{"start":"10:00","end":"11:30"}]`
+说明：
+- V1 仅维护“可预约 / 不可预约”基础状态，不做排班和产能管理。
 
 ### Appointment
+
 - `id`
 - `customerOpenId`
 - `customerName`
 - `phone`
-- `appointmentDate`
+- `serviceId`
+- `serviceName`
+- `artistId`
+- `artistName`
+- `date`
 - `timeSlot`
 - `note`
 - `status`
-- `reviewNote`
 - `createdAt`
 - `reviewedAt`
-
-字段说明：
-- `customerOpenId` 为顾客身份主键（来自微信登录态）。
-- `customerName`、`phone` 为联系补充信息，V1 可选。
-
-状态说明：
-- `pending`：待审核
-- `approved`：已通过
-- `rejected`：已拒绝
-
-## 规则与业务约束
-
-### 1. 日期可预约判断
-某日期可预约，需同时满足：
-- 不早于“今天 + advanceOpenDays”
-- 不在 `closedDates` 内
-- 存在可预约时间段
-
-### 2. 时间段可预约判断
-某时间段可展示给顾客，需同时满足：
-- 属于 `dailySlots`
-- 当前尚未存在同日期同时间段的 `approved` 预约
-
-### 3. 审核约束
-- 顾客提交申请后状态固定为 `pending`
-- 只有店员可将其变为 `approved` 或 `rejected`
-- 审核通过前，不视为正式预约
-- 同一时间段若已有 `approved` 记录，后续待审核申请不得再审批通过
-
-## 接口边界
-
-- 顾客端只感知：返图展示、可预约日期/时间段、预约申请、我的预约状态（按当前微信身份）
-- 店员端只感知：规则维护、待审核列表、审核动作
-- “是否可选”由后端统一计算，前端不自行拼业务规则，避免口径不一致
-
-## 权限边界（V1 暂定）
-
-V1 采用“同一小程序承载顾客端与店员端”的结构，但保留清晰边界：
-- 顾客端接口无需复杂角色体系
-- 店员端接口统一走 `/api/v1/staff/*`
-- 小程序页面层统一使用 `pages/staff/*` 承载店员功能
-- V1 店员身份采用 OpenID 白名单校验，作为最小可行鉴权方案
+- `reviewedBy`
+- `reviewNote`
 
 说明：
-- 当前不把完整登录体系作为阻塞项，但前后端结构要预留 staff / customer 边界。
-- 为了降低 V1 落地复杂度，店员请求链路先约定由前端在 staff 请求中附带 `X-Staff-OpenId` 请求头；后端按白名单校验。
-- 顾客请求链路约定携带 `X-Customer-OpenId`（开发环境可先用本地模拟值），后端按该身份关联预约数据。
-- 该约定仅作为 V1 最小实现，后续若接入正式登录态，可平滑替换为 session / token 方案，而不改变 `/api/v1/staff/*` 及 `/api/v1/my/*` 接口语义。
+- `id` 是预约主键；`customerOpenId` 是顾客身份键，一个顾客可有多条预约记录。
+- `artistId` / `artistName` 在 V1 表示用户偏好选择，可为空，代表“无偏好/到店安排”。
+- 顾客侧“我的预约”仅按 `customerOpenId` 查询，不再按手机号主查。
+- 当前不根据 `artistId` 动态过滤 `timeSlot`，后续如接入排班需扩展预约能力模型。
 
-## 同一小程序承载店员与顾客的架构影响
+## 接口边界与兼容策略
 
-### 为什么 V1 推荐这样做
-- 当前只有 1 名员工，管理端能力很轻
-- 店员功能仅包含“规则配置 + 预约审核”，尚不足以支撑独立后台成本
-- 同端实现能更快打通 MVP，并降低前端工程拆分成本
-
-### 架构约束
-- 页面目录分离：顾客页与店员页不能混放
-- 接口前缀分离：staff 能力必须独立前缀
-- 状态与文案分离：顾客视角不展示管理术语，店员视角不复用顾客动作文案
-- 后续若拆后台，前端页面与后端接口命名仍可平滑迁移
-
-### V1 最小身份方案建议
-- 小程序内提供固定店员入口（例如隐藏入口、指定页面入口或受控跳转）
-- 店员进入后需经过最小身份校验
-- 即使前端页面被访问，后端 staff 接口也必须再次校验，不能只靠前端隐藏页面
-
-## SQLite 落地建议（V1）
-
-为降低后端实现歧义，V1 推荐直接按以下三类表落地：
-
-运行时约定：
-- 默认 SQLite 文件路径：`apps/server/data/miniapp.sqlite`
-- 可通过环境变量 `SQLITE_PATH` 覆盖默认路径
-- 存储实现可放在 `apps/server/src/storage/*`，但 `apps/server/src/server.mjs` 继续作为 HTTP 入口
-
-### 1. `gallery_items`
-- `id` TEXT PRIMARY KEY
-- `image_url` TEXT NOT NULL
-- `title` TEXT NOT NULL
-- `tags_json` TEXT NOT NULL
-- `description` TEXT DEFAULT ''
-- `sort_order` INTEGER NOT NULL DEFAULT 0
-- `status` TEXT NOT NULL DEFAULT 'active'
-- `created_at` TEXT NOT NULL
-
-说明：
-- `tags` 允许以 JSON 字符串存储，先满足轻量实现。
-- 查询首页返图时按 `status='active'` 且 `sort_order ASC, created_at DESC` 返回。
-
-### 2. `booking_rules`
-- `id` TEXT PRIMARY KEY
-- `advance_open_days` INTEGER NOT NULL DEFAULT 0
-- `closed_dates_json` TEXT NOT NULL
-- `daily_slots_json` TEXT NOT NULL
-- `updated_at` TEXT NOT NULL
-
-说明：
-- V1 可固定只维护一条 `rule-default` 记录。
-- `closedDates`、`dailySlots` 先用 JSON 字符串存储，减少拆表复杂度。
-
-### 3. `appointments`
-- `id` TEXT PRIMARY KEY
-- `customer_open_id` TEXT NOT NULL
-- `customer_name` TEXT DEFAULT ''
-- `phone` TEXT DEFAULT ''
-- `appointment_date` TEXT NOT NULL
-- `time_slot` TEXT NOT NULL
-- `note` TEXT DEFAULT ''
-- `status` TEXT NOT NULL
-- `review_note` TEXT DEFAULT ''
-- `created_at` TEXT NOT NULL
-- `reviewed_at` TEXT DEFAULT NULL
-
-建议索引：
-- `idx_appointments_customer_open_id`：`(customer_open_id)`
-- `idx_appointments_date_status`：`(appointment_date, status)`
-- `idx_appointments_pending`：`(status, created_at)`
-
-说明：
-- 业务唯一性不要仅靠数据库唯一索引硬编码死锁定，V1 先以审核通过时的业务校验为主。
-- 若后续并发冲突增多，可再补“同日期同时间段 approved 唯一约束”策略。
-
-## 后端实现建议顺序
-
-1. 先抽出 SQLite 初始化模块，负责建表、默认种子数据、基础查询封装。
-2. 优先让 `booking_rules` 与 `gallery_items` 能被稳定读取，确保首页与规则页有数据来源。
-3. 再实现 `availability` 计算逻辑，统一复用在“顾客查看”和“预约创建校验”两个入口。
-4. `approve` 审核动作必须复用同一套 slot 占用校验，避免顾客端和店员端口径分裂。
-5. 所有时间字段继续使用字符串（`YYYY-MM-DD` / `HH:mm-HH:mm` / ISO 时间）即可，不必在 V1 提前引入复杂时区库。
+- 顾客侧只保留 `POST /api/v1/appointments` 与 `GET /api/v1/my/appointments` 两个预约相关接口。
+- 顾客身份只从请求头 `X-Customer-OpenId` 读取并持久化为 `customerOpenId`。
+- `customerOpenId` 不放入 body，也不再使用手机号作为“我的预约”主查询键。
+- 店员侧维持 `/api/v1/staff/*` 口径，并继续返回 `customerName` / `phone` 便于识别。
+- 对历史 SQLite 数据做最小迁移：补齐 `customer_open_id` 等字段，并把旧的“无预约 id”表结构迁移到新表，避免启动即失败。
+- 历史记录若原本已持久化 `customer_open_id`，迁移后可继续被顾客侧按 OpenID 回查；若历史记录缺失该字段值，则仅保留店员侧可见，不再回退到手机号主查。
+- 对旧路由不做兼容回退，防止前端继续依赖冻结前契约。
 
 ## 演进路线
 
 ### V1
-- 打通返图展示
-- 打通规则配置
-- 打通预约申请与审批
-- 确保状态持久化
+
+- 打通预约闭环
+- 定义稳定 API
+- 支持首页热门款式展示
+- 支持预约时记录美甲师偏好
+- 确立任务拆解与协作规范
 
 ### V2
-- 增加返图可视化上传/管理
-- 增加顾客消息提醒
-- 增加更细的营业日/特殊节假日规则
-- 增加简单数据统计
+
+- 接入持久化数据库
+- 增加登录与身份体系
+- 支持商家侧预约管理
+- 支持热门款式后台配置
+- 支持美甲师上下架与基础资料维护
 
 ### V3
-- 增加商品售卖（手串、咖啡等）
-- 增加支付能力
-- 增加会员与营销功能
-- 如门店扩张，再升级为多员工 / 多门店调度模型
+
+- 迁移到更强工程化框架
+- 接入支付、订阅消息、后台管理台
+- 增加技师排班、时间段库存与冲突校验
+- 支持更细粒度推荐与转化分析
