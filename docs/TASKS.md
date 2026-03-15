@@ -144,6 +144,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 执行推进（2026-03-15）：已按当前审计结论向 `miniapp-frontend` / `miniapp-backend` 派发本轮收口任务，frontend 聚焦 FE-007 + FE-006 防回退，backend 聚焦 BE-006 + QA-001 后端回归覆盖；architect 后续按“代码结果 -> 自测结果 -> UAT 主链路”顺序审阅，不在门槛满足前建议 pull 或 push 验收基线。
 - Heartbeat 推进（2026-03-15 09:19 Asia/Shanghai）：确认当前无活跃 worker 在跑，已重新派发 frontend / backend 收口 run；前端目标为“首页入口分流 + 错误态显性化 + 顾客 OpenID 主键查询”，后端目标为“customerOpenId 数据模型收口 + CORS/header 修正 + OpenID 回归测试补齐”。
 - Worker 回报（2026-03-15 09:34 Asia/Shanghai）：frontend 已在其 workspace 完成 FE-006 / FE-007 收口，包含首页顾客/店员入口分流、关键页面错误态显性化、`X-Customer-OpenId` 主链路、开发环境 mock OpenID 与“我的预约”按 OpenID 自动查询；backend 已在其 workspace 完成 BE-006 / QA-001（后端侧）收口，包含 `customerOpenId` 数据模型、`X-Customer-OpenId` 鉴权与查询、CORS 放行、历史表最小迁移兼容与 OpenID 回归用例补强。两侧当前共同剩余门槛：尚未由 architect 在统一验收基线完成代码审阅、实际自测执行与 commit/pull 收口，因此暂不下“可推远程 / 可最终验收”结论。
+- Heartbeat 推进（2026-03-15 09:35 Asia/Shanghai）：为进入统一验收基线审阅，architect 已追加派发两条短任务，要求 frontend/backend 分别补交 review handoff（改动位置、口径变更点、复核清单、残余风险）；待 handoff 回收后，再决定是否进入合入审阅或继续补充验证。
 - 状态跟进（2026-03-15 09:24 Asia/Shanghai）：backend 收口 run 已结束，frontend 收口 run 仍在执行；architect 下一步按“backend 结果核验 -> frontend 结果核验 -> 当前仓库验收基线复核”顺序继续收口，在两侧结果都确认前暂不对外给出可验收结论。
 
 ## 推荐实施顺序
