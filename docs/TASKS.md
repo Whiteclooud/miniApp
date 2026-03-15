@@ -142,6 +142,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - QA-001：文档侧验收用例已补齐（首页返图、OpenID 主链路、接口口径防回退）；因当前验收基线仍存在 phone 旧口径，真实跑测暂不能判定通过，待代码口径修正后再形成最终验收结论。
 - 状态审计更新（2026-03-15）：本次以 architect repo 为验收基线抽查，发现 `docs/API.md` 与当前代码实现仍存在显著偏差；在 FE-007 / BE-006 合并到当前仓库并完成 self-test + UAT 之前，不建议给出“可验收 / 可推远程”结论。
 - 执行推进（2026-03-15）：已按当前审计结论向 `miniapp-frontend` / `miniapp-backend` 派发本轮收口任务，frontend 聚焦 FE-007 + FE-006 防回退，backend 聚焦 BE-006 + QA-001 后端回归覆盖；architect 后续按“代码结果 -> 自测结果 -> UAT 主链路”顺序审阅，不在门槛满足前建议 pull 或 push 验收基线。
+- Heartbeat 推进（2026-03-15 09:19 Asia/Shanghai）：确认当前无活跃 worker 在跑，已重新派发 frontend / backend 收口 run；前端目标为“首页入口分流 + 错误态显性化 + 顾客 OpenID 主键查询”，后端目标为“customerOpenId 数据模型收口 + CORS/header 修正 + OpenID 回归测试补齐”。
 
 ## 推荐实施顺序
 
