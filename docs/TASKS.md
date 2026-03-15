@@ -146,6 +146,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - Worker 回报（2026-03-15 09:34 Asia/Shanghai）：frontend 已在其 workspace 完成 FE-006 / FE-007 收口，包含首页顾客/店员入口分流、关键页面错误态显性化、`X-Customer-OpenId` 主链路、开发环境 mock OpenID 与“我的预约”按 OpenID 自动查询；backend 已在其 workspace 完成 BE-006 / QA-001（后端侧）收口，包含 `customerOpenId` 数据模型、`X-Customer-OpenId` 鉴权与查询、CORS 放行、历史表最小迁移兼容与 OpenID 回归用例补强。两侧当前共同剩余门槛：尚未由 architect 在统一验收基线完成代码审阅、实际自测执行与 commit/pull 收口，因此暂不下“可推远程 / 可最终验收”结论。
 - Heartbeat 推进（2026-03-15 09:35 Asia/Shanghai）：为进入统一验收基线审阅，architect 已追加派发两条短任务，要求 frontend/backend 分别补交 review handoff（改动位置、口径变更点、复核清单、残余风险）；待 handoff 回收后，再决定是否进入合入审阅或继续补充验证。
 - 状态跟进（2026-03-15 09:24 Asia/Shanghai）：backend 收口 run 已结束，frontend 收口 run 仍在执行；architect 下一步按“backend 结果核验 -> frontend 结果核验 -> 当前仓库验收基线复核”顺序继续收口，在两侧结果都确认前暂不对外给出可验收结论。
+- Heartbeat 跟进（2026-03-15 15:35 Asia/Shanghai）：backend 已补交极短 review handoff，指出当前统一验收基线应优先抽查 `apps/server/src/server.mjs` 中的迁移逻辑（旧 appointments 表补 `id` / `customer_open_id`）与顾客身份入口逻辑（header 鉴权 + payload 忽略 body 伪造身份）；frontend 极短 handoff 仍在运行，architect 继续等待其回收后再做统一审阅，不提前给出 milestone / release 结论。
 - 审阅风险记录（2026-03-15 12:48 Asia/Shanghai）：frontend/backend 两条 review handoff 回收尝试均未形成可用结论，返回内容分别出现旧页面片段与过期骨架说明，不能作为统一验收基线审阅依据；architect 已将该现象视为“handoff 质量失真”风险，后续改用更短约束任务重新回收关键信息，并在获得稳定 handoff 或完成其他等效复核前，继续维持“不建议 push / 不建议最终验收”的状态判断。
 - Heartbeat 推进（2026-03-15 12:32 Asia/Shanghai）：当前无活跃 worker，但统一验收基线审阅仍有明确可执行工作；architect 已追加向 frontend/backend 派发纯文本 review handoff 任务，用于收集“改动文件 -> 风险点 -> 抽查重点 -> 已知联调边界”复核清单，收齐后进入统一验收基线审阅与下一轮验收结论判断。
 
