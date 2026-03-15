@@ -136,10 +136,11 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - ARCH-003：已完成首轮后端联调验收。`npm run test:server` 已通过，覆盖健康检查、规则读写、预约创建、审核通过、重启后数据保留、availability 占用回放等关键链路。
 - 状态更新（2026-03-14）：根据 Lan 的最新反馈，联调进入“收口修正”阶段，重点处理接口口径误判、顾客身份主键切换（phone -> OpenID）与首页返图相关测试补齐。ARCH-004 / FE-006 / FE-007 / BE-006 / QA-001 已加入执行清单。
 - ARCH-004：已完成，`docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md` 已冻结 OpenID 新口径，并明确废弃旧接口与回归验收基准。
-- FE-006：代码已完成，首页已补“顾客入口 / 店员入口”分流，首页 / 预约页 / 我的预约 / 店员页均已补显性错误态；待前端执行校验与 commit 固化。
-- FE-007：代码已完成，顾客预约与“我的预约”已切到 `X-Customer-OpenId`，手机号降级为联系信息；开发环境已补 mock OpenID 兜底；待前后端联调回归。
-- BE-006：代码已完成，appointments 已切到 `customerOpenId` 主键口径，并补旧 SQLite 结构最小迁移；待执行 `--self-test` 与 git 提交确认。
-- QA-001：文档侧验收用例已补齐（首页返图、OpenID 主链路、接口口径防回退）；待执行层放行后补齐真实跑测结果并形成最终验收结论。
+- FE-006：文档口径已明确，但 2026-03-15 在 architect repo 抽查时，需以实际代码是否已出现“顾客入口 / 店员入口”分流与页面显性错误态为准；在完成基线核对、提交与联调前，暂不按“已完成可验收”计。
+- FE-007：当前 architect repo 抽查发现顾客链路仍可见手机号主查询/跳转口径（如 `apps/weapp/pages/booking/index.js`、`apps/weapp/pages/my-bookings/index.js`），说明 OpenID 主键改造尚未在当前验收基线上闭环；状态下调为待合入 / 待回归。
+- BE-006：当前 architect repo 抽查发现 `apps/server/src/server.mjs` 仍是旧口径：CORS 未放行 `X-Customer-OpenId`、创建预约仍要求 `customerName`/`phone`、`GET /api/v1/my/appointments` 仍按 `phone` 查询；状态下调为待合入 / 待自测 / 待联调。
+- QA-001：文档侧验收用例已补齐（首页返图、OpenID 主链路、接口口径防回退）；因当前验收基线仍存在 phone 旧口径，真实跑测暂不能判定通过，待代码口径修正后再形成最终验收结论。
+- 状态审计更新（2026-03-15）：本次以 architect repo 为验收基线抽查，发现 `docs/API.md` 与当前代码实现仍存在显著偏差；在 FE-007 / BE-006 合并到当前仓库并完成 self-test + UAT 之前，不建议给出“可验收 / 可推远程”结论。
 
 ## 推荐实施顺序
 
