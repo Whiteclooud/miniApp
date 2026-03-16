@@ -175,6 +175,8 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - Frontend 纠偏回收（2026-03-16 09:37 Asia/Shanghai）：frontend 已追加本地 commit `67dc857 fix(weapp): align staff booking rules endpoint`，明确把店员规则请求统一为 `GET/PUT /api/v1/staff/booking-rules`，并更新 `apps/weapp/scripts/contract-selfcheck.mjs` 拦截旧 `/api/v1/staff/rules`；前端当前主要剩余工作已转为“导出 patch / 文件快照供 architect 合入审阅”。
 - 风险复核（2026-03-16 09:39 Asia/Shanghai）：architect 读取 backend 导出物 `.integration/backend-ae4bc90/` 后，确认 backend commit `ae4bc90` 虽已修正 OpenID、旧接口 404 与 SQLite 迁移，但又把 `booking-rules` 对外契约改成了 `items[{date,timeSlot,status}]` 全量替换模型；这与当前冻结 PRD / TASKS / UAT 中的 `advanceOpenDays + closedDates + dailySlots + updatedAt` 模型不一致，属于新的实质偏航，当前 backend patch 不可直接并入统一验收基线。
 - 补救动作（2026-03-16 09:39 Asia/Shanghai）：architect 已向 backend 重新派发 `be-rules-model-fix-20260316`，只纠正规则数据模型偏差并要求保留已修好的 OpenID 主链路、旧接口 404、自测与 SQLite 最小迁移能力；在该轮结果回收前，仍不下“可联调验收 / 可 push / 可 release”结论。
+- 前端抽查更新（2026-03-16 10:xx Asia/Shanghai）：architect 抽查 `.integration/frontend-67dc857/5a5f31f.patch` 后，确认前端除已修复的 `/api/v1/staff/booking-rules` 路径外，仍存在两处冻结契约偏差：`pages/staff/rules/*` 还按 `bookingEnabled / bookingNotice / timeSlots / closedDates` 模型实现，而非 `advanceOpenDays / closedDates / dailySlots / updatedAt`；`services/appointment.js` 的 `getAvailability()` query key 仍写成 `appointmentDate`，而非当前契约要求的 `date`。判定：frontend `5a5f31f + 67dc857` 当前同样不可直接并入统一验收基线。
+- 补救动作（2026-03-16 10:xx Asia/Shanghai）：architect 已继续派发 `fe-rules-model-fix-20260316`，要求前端仅修正 staff rules 数据模型与 availability query 参数，同时保留已完成的首页分流、OpenID 主链路、我的预约按 OpenID 查询与旧接口静态自检能力。
 
 ## 推荐实施顺序
 
