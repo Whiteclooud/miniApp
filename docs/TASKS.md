@@ -179,6 +179,9 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 补救动作（2026-03-16 10:xx Asia/Shanghai）：architect 已继续派发 `fe-rules-model-fix-20260316`，要求前端仅修正 staff rules 数据模型与 availability query 参数，同时保留已完成的首页分流、OpenID 主链路、我的预约按 OpenID 查询与旧接口静态自检能力。
 - 前端纠偏回收（2026-03-16 11:17 Asia/Shanghai）：frontend 已新增本地 commit `327a1c6`，将店员规则页主模型收口为 `advanceOpenDays / closedDates / dailySlots / updatedAt`，并把 `getAvailability()` query key 从 `appointmentDate` 改为 `date`；前端契约自检已通过。当前前端剩余工作主要转为“补导出最新 commit 供 architect 统一审阅”，不再是已知字段模型偏差。
 - Heartbeat 跟进（2026-03-16 11:00 Asia/Shanghai）：`fe-rules-model-fix-20260316` 在执行自检阶段超时，`be-export-6a8fe8d-20260316` / `be-export-6a8fe8d-retry-20260316` 虽生成导出物但未能稳定落入 architect 工作区，说明当前剩余阻塞已从“代码偏差”转为“结果回收路径不稳”。architect 已改为两条更短路径继续推进：frontend 重试一次仅收口 commit 结果（`fe-rules-model-fix-retry-20260316`），backend 放弃 patch 交接、改收纯文本 review handoff（`be-6a8fe8d-text-handoff-20260316`），以便先完成统一审阅判断。
+- Backend 纠偏回收（2026-03-16 11:23 Asia/Shanghai）：backend 文本 handoff 已确认 `6a8fe8d fix(server): restore booking rules contract` 的关键结论：`GET/PUT /api/v1/staff/booking-rules` 已恢复为 `advanceOpenDays + closedDates + dailySlots + updatedAt`，`GET /api/v1/availability` query key 为 `date`，当前占用口径为 `pending + approved`，`npm run test:server` 已通过；因此 backend 当前主要剩余问题已从“实现偏差”转为“导出/合入材料路径不稳”。
+- Frontend 纠偏回收（2026-03-16 11:29 Asia/Shanghai）：frontend 已新增本地 commit `327a1c6`，将店员规则页主模型改回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，并把 `getAvailability()` query 参数从 `appointmentDate` 修正为 `date`；`node apps/weapp/scripts/contract-selfcheck.mjs` 已通过。当前 frontend 已重新进入“等待导出物供 architect 统一审阅”的状态。
+- Heartbeat 推进（2026-03-16 12:01 Asia/Shanghai）：frontend 最新导出任务 `fe-export-327a1c6-20260316` 正在执行；在导出回收前，architect 继续维持“未到可联调验收 / 可 push / 可 release 门槛”的判断，但当前无需 Lan 介入。
 
 ## 推荐实施顺序
 
