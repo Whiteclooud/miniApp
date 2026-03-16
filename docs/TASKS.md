@@ -11,7 +11,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 | ARCH-001 | architect | 重写 PRD / 架构 / API / TASKS 文档以匹配新业务目标 | 用户最新需求、现有 V0 文档 | `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md` | 无 | 文档可直接指导前后端开发 | 旧需求残留导致实现偏航 |
 | FE-001 | frontend | 实现顾客端首页与返图展示 | `docs/PRD.md`, UI 方向, `docs/API.md` gallery 接口 | `apps/weapp/pages/home/*`, 相关组件/服务 | ARCH-001, BE-001 | 首页具备品牌氛围、返图展示、明确预约 CTA；接口失败时有空态/兜底 | UI 风格与品牌预期偏差 |
 | FE-002 | frontend | 实现顾客端预约申请流程 | `docs/API.md` availability / appointments | `apps/weapp/pages/booking/*`, `services/*` | ARCH-001, BE-002 | 顾客只能选择可预约日期与时间段；可成功提交待审核申请；表单校验清晰 | 日期/时间规则与后端口径不一致 |
-| FE-003 | frontend | 实现“我的预约”状态查看页 | `docs/API.md` my appointments | `apps/weapp/pages/my-bookings/*`, `services/*` | ARCH-001, BE-002 | 顾客可按手机号查看预约记录，并清晰看到待审核/已通过/已拒绝状态 | 身份最小方案带来的体验限制 |
+| FE-003 | frontend | 实现“我的预约”状态查看页 | `docs/API.md` my appointments | `apps/weapp/pages/my-bookings/*`, `services/*` | ARCH-001, BE-002 | 顾客可按当前 OpenID 查看预约记录，并清晰看到待审核/已通过/已拒绝状态 | 开发环境 OpenID 获取方式不统一 |
 | FE-004 | frontend | 实现店员端规则配置页 | `docs/API.md` booking-rules | `apps/weapp/pages/staff/rules/*`, `services/*` | ARCH-001, BE-003 | 店员可配置提前开放天数、不可预约日期、每日时间段；前端校验时间段不重叠 | 日历/时间段交互复杂度较高 |
 | FE-005 | frontend | 实现店员端预约审核页 | `docs/API.md` staff appointments / review | `apps/weapp/pages/staff/appointments/*`, `services/*` | ARCH-001, BE-004 | 店员可查看待审核列表并执行通过/拒绝，结果即时反馈 | 审核状态与冲突处理提示不清晰 |
 | BE-001 | backend | 提供返图展示接口与数据结构 | `docs/API.md` gallery 定义 | `apps/server/src/*` | ARCH-001 | `GET /api/v1/gallery` 可用，仅返回 active 项，排序稳定 | 图片数据来源暂时简单 |
@@ -125,7 +125,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - ARCH-002：已完成第一版派工准备，`docs/IA.md`、`docs/TASK_BRIEFS.md`、`docs/STAFF_AUTH.md` 已生成；本轮已补充代码基线核对，可继续按文档推进。
 - FE-001：首版已落地，`pages/home/index.*` 已切到品牌区 + gallery 返图展示 + 预约 CTA 结构。
 - FE-002：首版已落地，`pages/booking/index.*` 已切到 `availability -> appointmentDate/timeSlot` 提交流程，并明确“待审核”语义。
-- FE-003：首版已落地，`pages/my-bookings/index.*` 已接入手机号查询与状态映射展示。
+- FE-003：首版旧基线曾按手机号查询与状态映射展示；在当前冻结契约下，已不再按“已完成可验收”计，需以后续 OpenID 收口结果合入与回归为准。
 - FE-004：首版已落地，`pages/staff/rules/index.*` 已支持店员 OpenID 输入、规则读取/保存、不可预约日期维护与时间段增删改。
 - FE-005：首版已落地，`pages/staff/appointments/index.*` 已支持店员 OpenID 输入、按状态查看预约、执行通过/拒绝并展示错误反馈。
 - BE-001：首版已落地，`GET /api/v1/gallery` 已提供默认种子数据并按 active + sortOrder 返回。
