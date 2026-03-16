@@ -171,6 +171,10 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 
 - 状态复核（2026-03-16 09:xx Asia/Shanghai）：architect 已将 `docs/ARCHITECTURE.md` 与 `docs/API.md` 按当前冻结范围重新对齐到 `gallery + booking-rules + appointments + customerOpenId` 口径，移除昨天偏航到 `services / hot-styles / artists` 的契约描述；后续代码审阅与验收以本次复核后的文档为准。
 - Heartbeat 推进（2026-03-16 09:xx Asia/Shanghai）：当前无活跃 worker，architect 已按重新冻结后的契约重新派发 frontend / backend 收口 run；frontend 聚焦 FE-006 + FE-007（入口分流、错误态显性化、顾客 OpenID 主链路），backend 聚焦 BE-006 + QA-001 后端侧（OpenID 主键、booking-rules / availability / appointments 冻结口径、自测补齐）。在两侧回收 commit 与自测结论前，仍不下“可验收 / 可 push / 可 release”结论。
+- Worker 回收（2026-03-16 09:31 Asia/Shanghai）：frontend 已交付本地 commit `5a5f31f`，覆盖首页分流、顾客 `X-Customer-OpenId` 主链路、我的预约按 OpenID 自动查询、关键页面错误态显性化与旧接口静态自检；architect 在结果审阅时发现店员规则接口口径疑似写成 `/api/v1/staff/rules`，与冻结契约 `/api/v1/staff/booking-rules` 不一致，因此已继续派发一次极短前端修正任务，优先消除这处前后端分歧后再进入统一基线合入。
+- Frontend 纠偏回收（2026-03-16 09:37 Asia/Shanghai）：frontend 已追加本地 commit `67dc857 fix(weapp): align staff booking rules endpoint`，明确把店员规则请求统一为 `GET/PUT /api/v1/staff/booking-rules`，并更新 `apps/weapp/scripts/contract-selfcheck.mjs` 拦截旧 `/api/v1/staff/rules`；前端当前主要剩余工作已转为“导出 patch / 文件快照供 architect 合入审阅”。
+- 风险复核（2026-03-16 09:39 Asia/Shanghai）：architect 读取 backend 导出物 `.integration/backend-ae4bc90/` 后，确认 backend commit `ae4bc90` 虽已修正 OpenID、旧接口 404 与 SQLite 迁移，但又把 `booking-rules` 对外契约改成了 `items[{date,timeSlot,status}]` 全量替换模型；这与当前冻结 PRD / TASKS / UAT 中的 `advanceOpenDays + closedDates + dailySlots + updatedAt` 模型不一致，属于新的实质偏航，当前 backend patch 不可直接并入统一验收基线。
+- 补救动作（2026-03-16 09:39 Asia/Shanghai）：architect 已向 backend 重新派发 `be-rules-model-fix-20260316`，只纠正规则数据模型偏差并要求保留已修好的 OpenID 主链路、旧接口 404、自测与 SQLite 最小迁移能力；在该轮结果回收前，仍不下“可联调验收 / 可 push / 可 release”结论。
 
 ## 推荐实施顺序
 
