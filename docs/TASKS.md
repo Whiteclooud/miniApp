@@ -177,6 +177,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 补救动作（2026-03-16 09:39 Asia/Shanghai）：architect 已向 backend 重新派发 `be-rules-model-fix-20260316`，只纠正规则数据模型偏差并要求保留已修好的 OpenID 主链路、旧接口 404、自测与 SQLite 最小迁移能力；在该轮结果回收前，仍不下“可联调验收 / 可 push / 可 release”结论。
 - 前端抽查更新（2026-03-16 10:xx Asia/Shanghai）：architect 抽查 `.integration/frontend-67dc857/5a5f31f.patch` 后，确认前端除已修复的 `/api/v1/staff/booking-rules` 路径外，仍存在两处冻结契约偏差：`pages/staff/rules/*` 还按 `bookingEnabled / bookingNotice / timeSlots / closedDates` 模型实现，而非 `advanceOpenDays / closedDates / dailySlots / updatedAt`；`services/appointment.js` 的 `getAvailability()` query key 仍写成 `appointmentDate`，而非当前契约要求的 `date`。判定：frontend `5a5f31f + 67dc857` 当前同样不可直接并入统一验收基线。
 - 补救动作（2026-03-16 10:xx Asia/Shanghai）：architect 已继续派发 `fe-rules-model-fix-20260316`，要求前端仅修正 staff rules 数据模型与 availability query 参数，同时保留已完成的首页分流、OpenID 主链路、我的预约按 OpenID 查询与旧接口静态自检能力。
+- Heartbeat 跟进（2026-03-16 11:00 Asia/Shanghai）：`fe-rules-model-fix-20260316` 在执行自检阶段超时，`be-export-6a8fe8d-20260316` / `be-export-6a8fe8d-retry-20260316` 虽生成导出物但未能稳定落入 architect 工作区，说明当前剩余阻塞已从“代码偏差”转为“结果回收路径不稳”。architect 已改为两条更短路径继续推进：frontend 重试一次仅收口 commit 结果（`fe-rules-model-fix-retry-20260316`），backend 放弃 patch 交接、改收纯文本 review handoff（`be-6a8fe8d-text-handoff-20260316`），以便先完成统一审阅判断。
 
 ## 推荐实施顺序
 
