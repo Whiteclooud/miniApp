@@ -32,6 +32,13 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 | BE-006 | backend | 预约数据模型升级为 customerOpenId 主键 | `docs/ARCHITECTURE.md`、`docs/API.md` | appointments 表结构与接口改造 | ARCH-004 | 创建预约与“我的预约”按 OpenID 关联，兼容 staff 审核列表展示 | 迁移已有测试数据需要一次性脚本 |
 | QA-001 | frontend/backend | 新增首页返图与主链路测试用例 | 用户反馈第 5 点 + `docs/UAT_GUIDE.md` | 自动化用例/手测清单更新 | ARCH-004 | 覆盖“首页返图展示”“availability->提交->审核->回查”关键路径 | 仅测接口不测页面导致回归遗漏 |
 
+## 联调 / UAT 收口任务（2026-03-16）
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FE-008 | frontend | 按冻结契约完成页面侧统一自测与联调收口 | `docs/API.md`、`docs/TASKS.md`、当前前端代码基线 | 前端自测结论、必要的窄范围修正 commit、残余风险清单 | FE-006, FE-007, QA-001 | 首页/预约/我的预约/店员规则/店员审核五段链路按冻结接口可跑通；`contract-selfcheck` 通过；不再调用旧接口 | 页面已有功能可见但链路仍有隐性失败，导致 UAT 误判 |
+| BE-007 | backend | 按冻结契约完成服务侧统一自测与联调收口 | `docs/API.md`、`docs/TASKS.md`、当前后端代码基线 | 后端自测结论、必要的窄范围修正 commit、残余风险清单 | BE-006, QA-001 | OpenID 主链路、booking-rules 模型、approved-only slot 占用、SQLite 持久化全部按冻结契约通过自测 | 实现局部修正后再次回退旧口径，导致联调结果不稳定 |
+
 ## 本轮前端 handoff 要点
 
 ### FE-001 顾客端首页与返图展示
