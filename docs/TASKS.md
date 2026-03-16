@@ -197,6 +197,9 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - Backend 纠偏回收（2026-03-16 11:23 Asia/Shanghai）：backend 文本 handoff 已确认 `6a8fe8d fix(server): restore booking rules contract` 的关键结论：`GET/PUT /api/v1/staff/booking-rules` 已恢复为 `advanceOpenDays + closedDates + dailySlots + updatedAt`，`GET /api/v1/availability` query key 为 `date`，当前占用口径为 `pending + approved`，`npm run test:server` 已通过；因此 backend 当前主要剩余问题已从“实现偏差”转为“导出/合入材料路径不稳”。
 - Frontend 纠偏回收（2026-03-16 11:29 Asia/Shanghai）：frontend 已新增本地 commit `327a1c6`，将店员规则页主模型改回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，并把 `getAvailability()` query 参数从 `appointmentDate` 修正为 `date`；`node apps/weapp/scripts/contract-selfcheck.mjs` 已通过。当前 frontend 已重新进入“等待导出物供 architect 统一审阅”的状态。
 - Heartbeat 推进（2026-03-16 12:01 Asia/Shanghai）：frontend 最新导出任务 `fe-export-327a1c6-20260316` 正在执行；在导出回收前，architect 继续维持“未到可联调验收 / 可 push / 可 release 门槛”的判断，但当前无需 Lan 介入。
+- UAT 门槛回收（2026-03-16 21:34 Asia/Shanghai）：backend 已完成 `BE-007` 统一自测与收口确认，基于 HEAD `8fdbec4` 执行 `node apps/server/src/server.mjs --self-test` 通过，并确认 approved-only slot 占用、booking-rules 模型、OpenID 鉴权边界、旧接口 404 与 SQLite 迁移均未回退；backend 判定已达到真实 UAT 门槛，无需新增代码改动。
+- UAT 门槛回收（2026-03-16 21:40 Asia/Shanghai）：frontend 已完成 `FE-008` 静态复核、自检与窄修收口，新增 commit `8de4f1b fix(weapp): close FE-008 uat contract gaps`，补齐预约页按 `date` 重拉 availability、预约提交字段收口、店员审核 review 链路与首页店员审核直达入口；`node apps/weapp/scripts/contract-selfcheck.mjs` 与关键 JS 语法检查通过。frontend 判定已达到真实 UAT 门槛。
+- 里程碑结论（2026-03-16 22:0x Asia/Shanghai）：`FE-008` 与 `BE-007` 均已回收且无活跃 worker，当前前后端已达到“可进入真实联调 / 可验收”的明确里程碑；下一阶段不再是继续代码收口，而是按既定 UAT 清单执行页面联调、记录结果，并在通过后进入 push / review / release 判断节点。
 
 ## 推荐实施顺序
 
