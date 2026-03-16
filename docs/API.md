@@ -4,7 +4,7 @@
 
 开发环境：`http://127.0.0.1:3000`
 
-## 当前冻结契约（2026-03-14）
+## 当前冻结契约（2026-03-16 复核）
 
 V1 当前只允许以下接口对外使用：
 
@@ -13,6 +13,8 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/availability`
 - `POST /api/v1/appointments`
 - `GET /api/v1/my/appointments`
+- `GET /api/v1/staff/booking-rules`
+- `PUT /api/v1/staff/booking-rules`
 - `GET /api/v1/staff/appointments`
 - `GET /api/v1/staff/appointments/:id`
 - `POST /api/v1/staff/appointments/:id/review`
@@ -37,7 +39,7 @@ V1 当前只允许以下接口对外使用：
 {
   "ok": true,
   "service": "miniapp-server",
-  "timestamp": "2026-03-14T00:00:00.000Z"
+  "timestamp": "2026-03-16T00:00:00.000Z"
 }
 ```
 
@@ -57,16 +59,17 @@ V1 当前只允许以下接口对外使用：
       "title": "极光猫眼",
       "imageUrl": "https://example.com/images/aurora-cat-eye.jpg",
       "tags": ["猫眼", "通勤", "热门"],
-      "priceFrom": 198,
-      "serviceId": "svc-design",
-      "serviceName": "轻奢款式设计",
-      "ctaText": "预约同款",
       "sortOrder": 1,
       "status": "active"
     }
   ]
 }
 ```
+
+### Notes
+
+- 仅返回 `active` 数据。
+- 前端按 `sortOrder` 稳定展示。
 
 ## 3. 获取可预约时段
 
@@ -92,6 +95,7 @@ V1 当前只允许以下接口对外使用：
 
 - 仅返回当前仍可预约的时段。
 - `date` 为可选；传值时必须为 `YYYY-MM-DD`。
+- 返回结果需同时受 `advanceOpenDays`、`closedDates`、`dailySlots`、已批准预约占用影响。
 
 ## 4. 创建预约
 
@@ -106,10 +110,6 @@ V1 当前只允许以下接口对外使用：
 {
   "customerName": "Lan",
   "phone": "13800000000",
-  "serviceId": "svc-classic",
-  "serviceName": "经典纯色美甲",
-  "artistId": "artist-luna",
-  "artistName": "Luna",
   "appointmentDate": "2026-03-16",
   "timeSlot": "10:00-11:00",
   "note": "希望偏自然风"
@@ -120,9 +120,9 @@ V1 当前只允许以下接口对外使用：
 
 - 顾客身份只从请求头 `X-Customer-OpenId` 读取。
 - `customerOpenId` 不允许作为 body 主身份字段；即使 body 中出现，也以后端读取到的 header 为准。
-- 必填：`serviceId`, `serviceName`, `appointmentDate`, `timeSlot`
+- 必填：`appointmentDate`, `timeSlot`
 - 选填联系字段：`customerName`, `phone`, `note`
-- 选填偏好字段：`artistId`, `artistName`
+- 不再要求 `serviceId`、`serviceName`、`artistId`、`artistName`。
 - 当前服务端兼容读取历史请求里的 `date` 字段，并统一落库到预约日期字段。
 
 ### Success Response
@@ -134,15 +134,11 @@ V1 当前只允许以下接口对外使用：
     "customerOpenId": "openid-customer-001",
     "customerName": "Lan",
     "phone": "13800000000",
-    "serviceId": "svc-classic",
-    "serviceName": "经典纯色美甲",
-    "artistId": "artist-luna",
-    "artistName": "Luna",
     "date": "2026-03-16",
     "timeSlot": "10:00-11:00",
     "note": "希望偏自然风",
     "status": "pending",
-    "createdAt": "2026-03-14T10:00:00.000Z",
+    "createdAt": "2026-03-16T10:00:00.000Z",
     "reviewedAt": null,
     "reviewedBy": null,
     "reviewNote": ""
@@ -156,6 +152,15 @@ V1 当前只允许以下接口对外使用：
 {
   "error": "Customer unauthorized",
   "code": "CUSTOMER_UNAUTHORIZED"
+}
+```
+
+### Validation Error Example
+
+```json
+{
+  "error": "Invalid slot",
+  "code": "INVALID_SLOT"
 }
 ```
 
@@ -176,16 +181,12 @@ V1 当前只允许以下接口对外使用：
       "customerOpenId": "openid-customer-001",
       "customerName": "Lan",
       "phone": "13800000000",
-      "serviceId": "svc-classic",
-      "serviceName": "经典纯色美甲",
-      "artistId": "artist-luna",
-      "artistName": "Luna",
       "date": "2026-03-16",
       "timeSlot": "10:00-11:00",
       "note": "希望偏自然风",
       "status": "approved",
-      "createdAt": "2026-03-14T10:00:00.000Z",
-      "reviewedAt": "2026-03-14T10:30:00.000Z",
+      "createdAt": "2026-03-16T10:00:00.000Z",
+      "reviewedAt": "2026-03-16T10:30:00.000Z",
       "reviewedBy": "staff-openid-v1",
       "reviewNote": "已确认档期"
     }
@@ -198,12 +199,86 @@ V1 当前只允许以下接口对外使用：
 - 不再支持手机号参数查询“我的预约”。
 - 缺少 `X-Customer-OpenId` 时统一返回 `401 + CUSTOMER_UNAUTHORIZED`。
 
-## 6. 店员查看预约列表
+## 6. 店员读取预约规则
+
+### Request
+
+- `GET /api/v1/staff/booking-rules`
+- Header：`X-Staff-OpenId: <staff-openid>`
+
+### Response
+
+```json
+{
+  "item": {
+    "advanceOpenDays": 7,
+    "closedDates": ["2026-03-20"],
+    "dailySlots": [
+      "10:00-11:00",
+      "14:00-15:00"
+    ],
+    "updatedAt": "2026-03-16T09:00:00.000Z"
+  }
+}
+```
+
+### Notes
+
+- 店员身份口径固定为 `X-Staff-OpenId`。
+- 白名单外身份统一返回 `401 + STAFF_UNAUTHORIZED`。
+
+## 7. 店员更新预约规则
+
+### Request
+
+- `PUT /api/v1/staff/booking-rules`
+- Header：`X-Staff-OpenId: <staff-openid>`
+
+### Body
+
+```json
+{
+  "advanceOpenDays": 1,
+  "closedDates": ["2026-03-20"],
+  "dailySlots": [
+    "09:30-10:30",
+    "11:00-12:00"
+  ]
+}
+```
+
+### Rules
+
+- `advanceOpenDays` 必须为非负整数。
+- `closedDates` 中的日期必须为 `YYYY-MM-DD`。
+- `dailySlots` 必须为合法时间段，且不允许重叠。
+
+### Success Response
+
+```json
+{
+  "item": {
+    "advanceOpenDays": 1,
+    "closedDates": ["2026-03-20"],
+    "dailySlots": [
+      "09:30-10:30",
+      "11:00-12:00"
+    ],
+    "updatedAt": "2026-03-16T09:05:00.000Z"
+  }
+}
+```
+
+## 8. 店员查看预约列表
 
 ### Request
 
 - `GET /api/v1/staff/appointments`
 - Header：`X-Staff-OpenId: <staff-openid>`
+
+### Query
+
+- `status`：可选，建议默认 `pending`
 
 ### Response
 
@@ -215,15 +290,11 @@ V1 当前只允许以下接口对外使用：
       "customerOpenId": "openid-customer-001",
       "customerName": "Lan",
       "phone": "13800000000",
-      "serviceId": "svc-classic",
-      "serviceName": "经典纯色美甲",
-      "artistId": "artist-luna",
-      "artistName": "Luna",
       "date": "2026-03-16",
       "timeSlot": "10:00-11:00",
       "note": "希望偏自然风",
       "status": "pending",
-      "createdAt": "2026-03-14T10:00:00.000Z",
+      "createdAt": "2026-03-16T10:00:00.000Z",
       "reviewedAt": null,
       "reviewedBy": null,
       "reviewNote": ""
@@ -236,7 +307,35 @@ V1 当前只允许以下接口对外使用：
 
 - 店员侧继续保留 `customerName` / `phone` 字段，便于识别顾客。
 
-## 7. 店员审核预约
+## 9. 店员查看预约详情
+
+### Request
+
+- `GET /api/v1/staff/appointments/:id`
+- Header：`X-Staff-OpenId: <staff-openid>`
+
+### Response
+
+```json
+{
+  "item": {
+    "id": "apt-001",
+    "customerOpenId": "openid-customer-001",
+    "customerName": "Lan",
+    "phone": "13800000000",
+    "date": "2026-03-16",
+    "timeSlot": "10:00-11:00",
+    "note": "希望偏自然风",
+    "status": "pending",
+    "createdAt": "2026-03-16T10:00:00.000Z",
+    "reviewedAt": null,
+    "reviewedBy": null,
+    "reviewNote": ""
+  }
+}
+```
+
+## 10. 店员审核预约
 
 ### Request
 
@@ -257,3 +356,57 @@ V1 当前只允许以下接口对外使用：
 - `status` 仅允许：`approved` / `rejected`
 - 兼容 `action=approve|reject` 到相同审核结果
 - 店员身份口径固定为 `X-Staff-OpenId`
+- 审核通过时需要再次校验 slot 是否已被占用
+- 已审核预约不得重复审核
+
+### Success Response
+
+```json
+{
+  "item": {
+    "id": "apt-001",
+    "status": "approved",
+    "reviewedAt": "2026-03-16T10:30:00.000Z",
+    "reviewedBy": "staff-openid-v1",
+    "reviewNote": "已确认档期"
+  }
+}
+```
+
+### Conflict Error Example
+
+```json
+{
+  "error": "Slot occupied",
+  "code": "SLOT_OCCUPIED"
+}
+```
+
+### Repeat Review Error Example
+
+```json
+{
+  "error": "Appointment already reviewed",
+  "code": "APPOINTMENT_ALREADY_REVIEWED"
+}
+```
+
+## 11. 通用未授权返回
+
+### Staff Unauthorized
+
+```json
+{
+  "error": "Staff unauthorized",
+  "code": "STAFF_UNAUTHORIZED"
+}
+```
+
+### Customer Unauthorized
+
+```json
+{
+  "error": "Customer unauthorized",
+  "code": "CUSTOMER_UNAUTHORIZED"
+}
+```

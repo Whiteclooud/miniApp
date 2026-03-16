@@ -169,6 +169,9 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 审阅风险记录（2026-03-15 12:48 Asia/Shanghai）：frontend/backend 两条 review handoff 回收尝试均未形成可用结论，返回内容分别出现旧页面片段与过期骨架说明，不能作为统一验收基线审阅依据；architect 已将该现象视为“handoff 质量失真”风险，后续改用更短约束任务重新回收关键信息，并在获得稳定 handoff 或完成其他等效复核前，继续维持“不建议 push / 不建议最终验收”的状态判断。
 - Heartbeat 推进（2026-03-15 12:32 Asia/Shanghai）：当前无活跃 worker，但统一验收基线审阅仍有明确可执行工作；architect 已追加向 frontend/backend 派发纯文本 review handoff 任务，用于收集“改动文件 -> 风险点 -> 抽查重点 -> 已知联调边界”复核清单，收齐后进入统一验收基线审阅与下一轮验收结论判断。
 
+- 状态复核（2026-03-16 09:xx Asia/Shanghai）：architect 已将 `docs/ARCHITECTURE.md` 与 `docs/API.md` 按当前冻结范围重新对齐到 `gallery + booking-rules + appointments + customerOpenId` 口径，移除昨天偏航到 `services / hot-styles / artists` 的契约描述；后续代码审阅与验收以本次复核后的文档为准。
+- Heartbeat 推进（2026-03-16 09:xx Asia/Shanghai）：当前无活跃 worker，architect 已按重新冻结后的契约重新派发 frontend / backend 收口 run；frontend 聚焦 FE-006 + FE-007（入口分流、错误态显性化、顾客 OpenID 主链路），backend 聚焦 BE-006 + QA-001 后端侧（OpenID 主键、booking-rules / availability / appointments 冻结口径、自测补齐）。在两侧回收 commit 与自测结论前，仍不下“可验收 / 可 push / 可 release”结论。
+
 ## 推荐实施顺序
 
 ### 当前阶段第一优先级：接口与身份口径收口
