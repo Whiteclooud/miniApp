@@ -200,6 +200,8 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - UAT 门槛回收（2026-03-16 21:34 Asia/Shanghai）：backend 已完成 `BE-007` 统一自测与收口确认，基于 HEAD `8fdbec4` 执行 `node apps/server/src/server.mjs --self-test` 通过，并确认 approved-only slot 占用、booking-rules 模型、OpenID 鉴权边界、旧接口 404 与 SQLite 迁移均未回退；backend 判定已达到真实 UAT 门槛，无需新增代码改动。
 - UAT 门槛回收（2026-03-16 21:40 Asia/Shanghai）：frontend 已完成 `FE-008` 静态复核、自检与窄修收口，新增 commit `8de4f1b fix(weapp): close FE-008 uat contract gaps`，补齐预约页按 `date` 重拉 availability、预约提交字段收口、店员审核 review 链路与首页店员审核直达入口；`node apps/weapp/scripts/contract-selfcheck.mjs` 与关键 JS 语法检查通过。frontend 判定已达到真实 UAT 门槛。
 - 里程碑结论（2026-03-16 22:0x Asia/Shanghai）：`FE-008` 与 `BE-007` 均已回收且无活跃 worker，当前前后端已达到“可进入真实联调 / 可验收”的明确里程碑；下一阶段不再是继续代码收口，而是按既定 UAT 清单执行页面联调、记录结果，并在通过后进入 push / review / release 判断节点。
+- 基线审计更新（2026-03-17 09:xx Asia/Shanghai）：architect 在当前统一验收基线直接复核并执行本地命令后，发现当前 repo 实际代码仍明显停留在旧口径：`apps/weapp/utils/request.js` 未注入 `X-Customer-OpenId`、`apps/weapp/services/appointment.js` 仍按 `month` 查询 availability 且“我的预约”仍按 `phone` 查询、`apps/weapp/pages/booking/index.js` 仍要求姓名+手机号并在提交后跳回手机号查询、`apps/server/src/server.mjs` 的 self-test 仍要求 `serviceId/serviceName` 等旧字段，且前端 `apps/weapp/scripts/contract-selfcheck.mjs` 在当前 repo 中不存在。判定：昨天记录的“可进入真实联调 / 可验收”里程碑并不成立于 architect 当前统一验收基线，属于高风险状态漂移，当前不得进入 UAT / push / release。
+- 纠偏动作（2026-03-17 09:xx Asia/Shanghai）：architect 已将项目阶段回退为“统一验收基线重新收口”，下一步重新向 frontend / backend 派发窄范围纠偏任务：frontend 聚焦顾客 OpenID 主链路、availability `date` 查询、staff rules 数据模型、`contract-selfcheck` 补齐；backend 聚焦去除 `service* / artist*` 旧依赖、恢复冻结预约/规则/审核契约、重写 self-test 覆盖 approved-only slot 语义。完成前，不再对外声称当前代码已达到真实联调 / 可验收门槛。
 
 ## 推荐实施顺序
 
