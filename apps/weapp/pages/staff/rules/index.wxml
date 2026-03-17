@@ -1,52 +1,67 @@
 <view class="container">
-  <view class="card title-card">
-    <view class="title">店员规则配置</view>
-    <view class="desc">维护预约开放天数、不可预约日期和每日时间段。</view>
-    <button class="button-secondary nav-button" bindtap="goAppointments">查看预约审核</button>
+  <view class="card identity-card">
+    <view class="identity-label">店员身份主键</view>
+    <view class="identity-value">{{staffIdentity.openId || staffIdentity.label}}</view>
+    <view class="helper-text">{{staffIdentity.sourceText}}</view>
   </view>
 
-  <view wx:if="{{!authorized}}" class="card auth-card">
-    <view class="section-title">店员验证</view>
-    <view class="section-desc">当前采用 OpenID 白名单联调方案，请先输入店员 OpenID。</view>
-    <input class="field-input" bindinput="onAuthInput" value="{{authInput}}" placeholder="请输入店员 OpenID" />
-    <button class="button-primary" bindtap="saveAuthInput">保存并加载规则</button>
-  </view>
-
-  <block wx:if="{{authorized}}">
-    <view class="card form-card">
-      <view class="section-title">预约开放规则</view>
-
-      <view class="field-label">提前开放预约天数</view>
-      <input class="field-input" type="number" bindinput="onAdvanceDaysInput" value="{{rule.advanceOpenDays}}" placeholder="例如 2" />
-
-      <view class="field-label">不可预约日期</view>
-      <picker mode="date" value="{{pickerClosedDate}}" bindchange="onClosedDatePick">
-        <view class="field-picker">选择日期：{{pickerClosedDate}}</view>
-      </picker>
-      <button class="button-secondary small-button" bindtap="addClosedDate">加入不可预约日期</button>
-      <view wx:if="{{rule.closedDates.length}}" class="tag-list">
-        <view wx:for="{{rule.closedDates}}" wx:key="*this" class="tag-item">
-          <text>{{item}}</text>
-          <text class="remove-text" data-date="{{item}}" bindtap="removeClosedDate">删除</text>
-        </view>
-      </view>
-      <view wx:else class="helper-text">当前未设置不可预约日期</view>
-
-      <view class="field-label">每日可预约时间段</view>
-      <block wx:for="{{rule.dailySlots}}" wx:key="index">
-        <view class="slot-row">
-          <picker mode="time" value="{{item.start}}" data-index="{{index}}" data-field="start" bindchange="onSlotChange">
-            <view class="field-picker slot-picker">开始：{{item.start}}</view>
-          </picker>
-          <picker mode="time" value="{{item.end}}" data-index="{{index}}" data-field="end" bindchange="onSlotChange">
-            <view class="field-picker slot-picker">结束：{{item.end}}</view>
-          </picker>
-          <text class="remove-text inline-remove" data-index="{{index}}" bindtap="removeSlot">删除</text>
-        </view>
-      </block>
-      <button class="button-secondary small-button" bindtap="addSlot">新增时间段</button>
-
-      <button class="button-primary submit-button" loading="{{saving}}" bindtap="submit">保存规则</button>
+  <view wx:if="{{staffIdentity.isDevelopEnv}}" class="card dev-card">
+    <view class="identity-label">开发环境模拟店员 OpenID</view>
+    <input class="field-input" value="{{staffOpenIdInput}}" bindinput="onStaffOpenIdInput" placeholder="填写店员 mock OpenID，便于联调 staff 接口" />
+    <view class="action-row">
+      <button class="button-primary compact-button" bindtap="applyStaffOpenId">保存并查询</button>
+      <button class="button-secondary compact-button" bindtap="generateStaffOpenId">生成模拟 OpenID</button>
     </view>
-  </block>
+    <button class="button-ghost compact-button button-row-spacer" bindtap="clearStaffOpenId">清空店员 OpenID</button>
+  </view>
+
+  <view class="card nav-card">
+    <view class="nav-title">店员工作台</view>
+    <view class="action-row">
+      <button class="button-primary compact-button">预约规则</button>
+      <button class="button-secondary compact-button" bindtap="goAppointments">预约列表</button>
+    </view>
+  </view>
+
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+    <view class="state-title">店员规则加载中</view>
+    <view class="state-desc">正在通过 X-Staff-OpenId 获取预约规则，请稍候。</view>
+  </view>
+
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">
+    <view class="state-title">店员规则页加载失败</view>
+    <view class="state-desc">{{stateMessage || '规则接口未跑通时，会在这里显式提示。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+    <view class="state-title">店员身份不可用</view>
+    <view class="state-desc">{{stateMessage || '缺少店员 OpenID，当前不能继续查询店员页。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新检查</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
+    <view class="state-title">暂无规则配置</view>
+    <view class="state-desc">{{stateMessage || '/api/v1/staff/booking-rules 接口已返回，但当前没有已保存的规则内容。'}}</view>
+    <button class="button-primary" bindtap="createDraft">新建规则</button>
+    <button class="button-ghost button-row-spacer" bindtap="loadData">重新加载</button>
+  </view>
+
+  <view wx:else class="card form-card">
+    <view class="field-label">提前开放天数</view>
+    <input class="field-input" data-field="advanceOpenDays" value="{{form.advanceOpenDays}}" bindinput="onInput" type="number" placeholder="填写顾客可提前预约的天数，例如：7" />
+    <view class="helper-text">使用冻结契约字段 advanceOpenDays；请填写大于等于 0 的整数。</view>
+
+    <view class="field-label">每日可预约时段</view>
+    <textarea class="field-textarea compact-textarea" data-field="dailySlots" value="{{dailySlotsText}}" bindinput="onInput" placeholder="每行一个时段，例如：10:00-11:30" />
+    <view class="helper-text">按行维护 dailySlots；主模型保持为 dailySlots 数组。</view>
+
+    <view class="field-label">闭店日期</view>
+    <textarea class="field-textarea compact-textarea" data-field="closedDates" value="{{closedDatesText}}" bindinput="onInput" placeholder="每行一个日期，例如：2026-03-18" />
+    <view class="helper-text">closedDates 使用 YYYY-MM-DD；主模型保持为 closedDates 数组。</view>
+
+    <view wx:if="{{updatedAtText}}" class="helper-text">最近更新时间（updatedAt）：{{updatedAtText}}</view>
+    <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>
+    <button class="button-primary" bindtap="submit" loading="{{submitState === 'submitting'}}">保存规则</button>
+  </view>
 </view>

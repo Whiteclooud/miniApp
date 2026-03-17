@@ -1,28 +1,73 @@
 <view class="container">
-  <view class="card search-card">
-    <view class="title">我的预约</view>
-    <view class="desc">输入预约手机号，查看当前申请状态。</view>
-
-    <view class="field-label">手机号</view>
-    <input class="field-input" bindinput="onInput" value="{{phone}}" type="number" placeholder="请输入预约时填写的手机号" />
-    <button class="button-primary search-button" loading="{{loading}}" bindtap="search">查询预约</button>
+  <view class="card identity-card">
+    <view class="identity-label">当前顾客 OpenID</view>
+    <view class="identity-value">{{customerIdentity.openId || customerIdentity.label}}</view>
+    <view class="helper-text">{{customerIdentity.sourceText}}</view>
   </view>
 
-  <view wx:if="{{loading}}" class="card state-card">正在查询预约记录...</view>
-  <view wx:elif="{{searched && !items.length}}" class="card state-card">暂无预约记录，你可以先去提交预约申请。</view>
-  <block wx:elif="{{items.length}}">
-    <block wx:for="{{items}}" wx:key="id">
+  <view wx:if="{{customerIdentity.isDevelopEnv}}" class="card dev-card">
+    <view class="identity-label">开发环境模拟顾客 OpenID</view>
+    <input class="field-input" value="{{customerOpenIdInput}}" bindinput="onCustomerOpenIdInput" placeholder="填写与提交预约时一致的 mock OpenID" />
+    <view class="action-row">
+      <button class="button-primary compact-button" bindtap="applyCustomerOpenId">保存并查询</button>
+      <button class="button-secondary compact-button" bindtap="generateCustomerOpenId">生成模拟 OpenID</button>
+    </view>
+    <button class="button-ghost compact-button button-row-spacer" bindtap="clearCustomerOpenId">清空顾客 OpenID</button>
+  </view>
+
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+    <view class="state-title">预约记录加载中</view>
+    <view class="state-desc">正在按当前顾客 OpenID 查询 /api/v1/my/appointments。</view>
+  </view>
+
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">
+    <view class="state-title">“我的预约”加载失败</view>
+    <view class="state-desc">{{stateMessage || '接口未跑通时，会在这里显式提示。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+    <view class="state-title">顾客身份不可用</view>
+    <view class="state-desc">{{stateMessage || '缺少顾客 OpenID，不能继续查询“我的预约”。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新检查</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
+    <view class="state-title">暂无预约记录</view>
+    <view class="state-desc">{{stateMessage || '当前顾客 OpenID 下还没有预约记录。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <block wx:else>
+    <view class="section-title">我的预约</view>
+    <view class="section-desc">系统会按当前顾客 OpenID 自动查询；姓名和手机号仅作展示与联系信息，不再作为主查询条件。</view>
+    <block wx:for="{{appointments}}" wx:key="id">
       <view class="card booking-card">
-        <view class="booking-top">
-          <view class="booking-date">{{item.appointmentDate}} {{item.timeSlot}}</view>
-          <view class="status-chip {{item.statusType}}">{{item.statusText}}</view>
+        <view class="booking-header">
+          <view class="booking-title">预约记录</view>
+          <view class="status-pill">{{item.statusText}}</view>
         </view>
-        <view class="booking-note">预约人：{{item.customerName}}</view>
-        <view wx:if="{{item.note}}" class="booking-note">备注：{{item.note}}</view>
-        <view wx:if="{{item.reviewNote}}" class="booking-note">审核备注：{{item.reviewNote}}</view>
+        <view class="info-row">
+          <view class="info-label">预约时间</view>
+          <view class="info-value">{{item.date}} {{item.timeSlot}}</view>
+        </view>
+        <view class="info-row">
+          <view class="info-label">联系人</view>
+          <view class="info-value">{{item.customerName}}</view>
+        </view>
+        <view class="info-row">
+          <view class="info-label">联系电话</view>
+          <view class="info-value">{{item.phone}}</view>
+        </view>
+        <view wx:if="{{item.note}}" class="info-row">
+          <view class="info-label">备注</view>
+          <view class="info-value">{{item.note}}</view>
+        </view>
+        <view wx:if="{{item.createdAtText}}" class="info-row">
+          <view class="info-label">提交时间</view>
+          <view class="info-value">{{item.createdAtText}}</view>
+        </view>
       </view>
     </block>
   </block>
-
-  <button wx:if="{{searched}}" class="button-plain" bindtap="goBooking">去提交新预约</button>
 </view>

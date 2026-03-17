@@ -1,146 +1,311 @@
 const {
   listStaffAppointments,
-  reviewAppointment
+  reviewStaffAppointment
 } = require('../../../services/appointment');
-const { STAFF_OPEN_ID_STORAGE_KEY } = require('../../../utils/request');
+const {
+  ensureStaffIdentity,
+  setStaffOpenId,
+  clearStaffOpenId,
+  createMockStaffOpenId
+} = require('../../../utils/staff');
+const { getErrorKind, getErrorMessage } = require('../../../utils/request');
+const { isDevelopEnv } = require('../../../utils/customer');
 
-const STATUS_OPTIONS = [
-  { label: '待审核', value: 'pending' },
-  { label: '已通过', value: 'approved' },
-  { label: '已拒绝', value: 'rejected' }
-];
+function formatStatus(status) {
+  const map = {
+    pending: '待审核',
+    approved: '已通过',
+    rejected: '已拒绝'
+  };
+  return map[status] || status || '待处理';
+}
 
-const STATUS_MAP = {
-  pending: '待审核',
-  approved: '已通过',
-  rejected: '已拒绝'
-};
+function formatTime(text) {
+  if (!text) {
+    return '';
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    return text;
+  }
+
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  const hour = `${date.getHours()}`.padStart(2, '0');
+  const minute = `${date.getMinutes()}`.padStart(2, '0');
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+function normalizeAppointments(items) {
+  return (items || []).map((item, index) => {
+    const status = item.status || 'pending';
+    return {
+      id: item.id || `staff-appointment-${index}`,
+      customerName: item.customerName || '未填写',
+      phone: item.phone || '未填写',
+      date: item.appointmentDate || item.date || '-',
+      timeSlot: item.timeSlot || '-',
+      note: item.note || '',
+      status,
+      statusText: formatStatus(status),
+      createdAtText: formatTime(item.createdAt),
+      canReview: status === 'pending'
+    };
+  });
+}
+
+function buildSummary(appointments) {
+  const total = appointments.length;
+  const pending = appointments.filter((item) => item.status === 'pending').length;
+  return {
+    total,
+    pending
+  };
+}
+
+function getStaffIdentityMeta() {
+  const identity = ensureStaffIdentity();
+  const develop = isDevelopEnv();
+  return {
+    openId: identity.openId,
+    label: identity.label,
+    canUse: identity.canUse,
+    isMock: identity.isMock,
+    isDevelopEnv: develop,
+    sourceText: identity.canUse
+      ? identity.isMock
+        ? '当前为开发环境模拟店员身份；店员接口将通过 X-Staff-OpenId 调用。'
+        : '当前为店员身份；店员接口将通过 X-Staff-OpenId 调用。'
+      : develop
+        ? '未设置店员 OpenID。开发环境请先填写或生成模拟 OpenID。'
+        : '未获取到店员 OpenID，当前无法查询店员页。'
+  };
+}
+
+function formatPageErrorMessage(error, fallback) {
+  const kind = getErrorKind(error);
+  if (kind === 'network') {
+    return '网络异常，店员预约列表暂时加载失败。请确认本地服务已启动并允许开发者工具访问。';
+  }
+
+  if (kind === 'unauthorized') {
+    return getErrorMessage(error, fallback || '当前身份无权查看店员预约列表。');
+  }
+
+  return getErrorMessage(error, fallback || '店员预约列表加载失败，请稍后重试。');
+}
+
+function formatReviewErrorMessage(error, actionText) {
+  const kind = getErrorKind(error);
+  if (kind === 'network') {
+    return `网络异常，本次${actionText}没有成功，请检查服务端或网络连接后重试。`;
+  }
+
+  if (kind === 'bad-request') {
+    return getErrorMessage(error, `本次${actionText}失败，请检查预约状态后重试。`);
+  }
+
+  if (kind === 'unauthorized') {
+    return getErrorMessage(error, `当前身份无权执行${actionText}。`);
+  }
+
+  return getErrorMessage(error, `${actionText}失败，请稍后重试。`);
+}
 
 Page({
   data: {
-    authInput: '',
-    authorized: false,
-    loading: false,
-    reviewingId: '',
-    statusFilter: 'pending',
-    currentStatusLabel: '待审核',
-    statusOptions: STATUS_OPTIONS,
-    items: [],
-    reviewNotes: {}
+    pageState: 'loading',
+    stateMessage: '',
+    reviewMessage: '',
+    reviewStateMap: {},
+    staffIdentity: {
+      openId: '',
+      label: '未设置店员 OpenID',
+      canUse: false,
+      isMock: false,
+      isDevelopEnv: false,
+      sourceText: ''
+    },
+    staffOpenIdInput: '',
+    appointments: [],
+    summary: {
+      total: 0,
+      pending: 0
+    }
   },
 
   onLoad() {
-    const authInput = wx.getStorageSync(STAFF_OPEN_ID_STORAGE_KEY) || '';
-    this.setData({ authInput });
-    if (authInput) {
-      this.loadAppointments();
-    }
+    this.refreshStaffIdentity();
   },
 
   onShow() {
-    if (this.data.authorized) {
-      this.loadAppointments();
-    }
+    this.refreshStaffIdentity();
+    this.loadData();
   },
 
   async onPullDownRefresh() {
-    if (this.data.authorized) {
-      await this.loadAppointments();
-    }
+    this.refreshStaffIdentity();
+    await this.loadData();
     wx.stopPullDownRefresh();
   },
 
-  onAuthInput(e) {
-    this.setData({ authInput: e.detail.value });
-  },
-
-  saveAuthInput() {
-    const { authInput } = this.data;
-    if (!authInput) {
-      wx.showToast({ title: '请输入店员 OpenID', icon: 'none' });
-      return;
-    }
-    wx.setStorageSync(STAFF_OPEN_ID_STORAGE_KEY, authInput.trim());
-    this.loadAppointments();
-  },
-
-  normalizeItems(items) {
-    return (items || []).map((item) => ({
-      ...item,
-      statusText: STATUS_MAP[item.status] || '待审核'
-    }));
-  },
-
-  async loadAppointments() {
-    this.setData({ loading: true });
-    try {
-      const res = await listStaffAppointments(this.data.statusFilter);
-      this.setData({
-        authorized: true,
-        items: this.normalizeItems(res.items || []),
-        loading: false
-      });
-    } catch (error) {
-      if (error.code === 'STAFF_UNAUTHORIZED') {
-        this.setData({ authorized: false, items: [], loading: false });
-        wx.showToast({ title: '当前账号无店员权限', icon: 'none' });
-        return;
-      }
-      this.setData({ loading: false });
-      wx.showToast({ title: '预约列表加载失败', icon: 'none' });
-    }
-  },
-
-  onStatusChange(e) {
-    const index = Number(e.detail.value);
-    this.setData(
-      {
-        statusFilter: STATUS_OPTIONS[index].value,
-        currentStatusLabel: STATUS_OPTIONS[index].label
-      },
-      () => this.loadAppointments()
-    );
-  },
-
-  onReviewNoteInput(e) {
-    const { id } = e.currentTarget.dataset;
+  refreshStaffIdentity() {
+    const staffIdentity = getStaffIdentityMeta();
     this.setData({
-      [`reviewNotes.${id}`]: e.detail.value
+      staffIdentity,
+      staffOpenIdInput: staffIdentity.openId || this.data.staffOpenIdInput || ''
     });
   },
 
-  async review(e) {
-    const { id, action } = e.currentTarget.dataset;
-    if (!id || !action || this.data.reviewingId) {
+  onStaffOpenIdInput(event) {
+    this.setData({
+      staffOpenIdInput: event.detail.value
+    });
+  },
+
+  applyStaffOpenId() {
+    const value = (this.data.staffOpenIdInput || '').trim();
+    if (!value) {
+      wx.showToast({ title: '请先输入店员 OpenID', icon: 'none' });
       return;
     }
 
-    this.setData({ reviewingId: id });
-    try {
-      await reviewAppointment(id, {
-        action,
-        reviewNote: this.data.reviewNotes[id] || ''
-      });
-      wx.showToast({ title: action === 'approve' ? '已通过' : '已拒绝', icon: 'success' });
-      this.loadAppointments();
-    } catch (error) {
-      let title = '操作失败';
-      if (error.code === 'SLOT_OCCUPIED') {
-        title = '该时间段已被占用';
-      } else if (error.code === 'ALREADY_REVIEWED') {
-        title = '该预约已审核';
-      } else if (error.code === 'STAFF_UNAUTHORIZED') {
-        title = '当前账号无店员权限';
-      }
-      wx.showToast({ title, icon: 'none' });
-    } finally {
-      this.setData({ reviewingId: '' });
-    }
+    setStaffOpenId(value);
+    this.refreshStaffIdentity();
+    this.loadData();
+    wx.showToast({ title: '店员 OpenID 已保存', icon: 'success' });
+  },
+
+  generateStaffOpenId() {
+    setStaffOpenId(createMockStaffOpenId());
+    this.refreshStaffIdentity();
+    this.loadData();
+    wx.showToast({ title: '已生成模拟店员 OpenID', icon: 'success' });
+  },
+
+  clearStaffOpenId() {
+    clearStaffOpenId();
+    this.refreshStaffIdentity();
+    this.setData({
+      staffOpenIdInput: '',
+      appointments: [],
+      reviewStateMap: {},
+      reviewMessage: '',
+      summary: { total: 0, pending: 0 },
+      pageState: 'unauthorized',
+      stateMessage: '店员 OpenID 已清空，店员页不会再静默请求 staff 接口。'
+    });
+    wx.showToast({ title: '已清空店员 OpenID', icon: 'none' });
   },
 
   goRules() {
-    wx.navigateTo({
+    wx.redirectTo({
       url: '/pages/staff/rules/index'
     });
+  },
+
+  async loadData() {
+    const staffIdentity = getStaffIdentityMeta();
+    if (!staffIdentity.canUse) {
+      this.setData({
+        staffIdentity,
+        appointments: [],
+        reviewStateMap: {},
+        reviewMessage: '',
+        summary: { total: 0, pending: 0 },
+        pageState: 'unauthorized',
+        stateMessage: staffIdentity.isDevelopEnv
+          ? '未获取到店员 OpenID。开发环境请先填写或生成模拟 OpenID，再查询店员预约列表。'
+          : '未获取到店员 OpenID，当前无法查询店员页。'
+      });
+      return;
+    }
+
+    this.setData({
+      staffIdentity,
+      pageState: 'loading',
+      stateMessage: '',
+      reviewMessage: '',
+      reviewStateMap: {}
+    });
+
+    try {
+      const response = await listStaffAppointments();
+      const appointments = normalizeAppointments(response.items || []);
+      const summary = buildSummary(appointments);
+      this.setData({
+        appointments,
+        summary,
+        pageState: appointments.length ? 'ready' : 'empty',
+        stateMessage: appointments.length ? '' : '当前暂无门店预约记录。'
+      });
+    } catch (error) {
+      this.setData({
+        appointments: [],
+        reviewStateMap: {},
+        summary: { total: 0, pending: 0 },
+        pageState: error.isUnauthorized ? 'unauthorized' : 'error',
+        stateMessage: formatPageErrorMessage(error, '店员预约列表加载失败，请稍后重试。')
+      });
+    }
+  },
+
+  async reviewAppointment(event) {
+    const { id, action } = event.currentTarget.dataset;
+    const { staffIdentity } = this.data;
+
+    if (!staffIdentity.canUse) {
+      this.setData({
+        pageState: 'unauthorized',
+        stateMessage: '缺少店员 OpenID，当前不能执行预约审核。'
+      });
+      wx.showToast({ title: '缺少店员 OpenID', icon: 'none' });
+      return;
+    }
+
+    if (!id || !action) {
+      return;
+    }
+
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    const actionText = action === 'approve' ? '通过预约' : '拒绝预约';
+    const stateKey = `reviewStateMap.${id}`;
+    const nextState = action === 'approve' ? 'approving' : 'rejecting';
+
+    this.setData({
+      reviewMessage: '',
+      [stateKey]: nextState
+    });
+
+    try {
+      await reviewStaffAppointment(id, { status });
+      wx.showToast({
+        title: action === 'approve' ? '已通过' : '已拒绝',
+        icon: 'success'
+      });
+      await this.loadData();
+    } catch (error) {
+      if (error.isUnauthorized) {
+        this.setData({
+          pageState: 'unauthorized',
+          stateMessage: formatPageErrorMessage(error, `当前身份无权执行${actionText}。`)
+        });
+        return;
+      }
+
+      this.setData({
+        reviewMessage: formatReviewErrorMessage(error, actionText),
+        [stateKey]: 'idle'
+      });
+      wx.showToast({ title: '审核失败', icon: 'none' });
+    } finally {
+      if (this.data.reviewStateMap[id]) {
+        this.setData({
+          [stateKey]: 'idle'
+        });
+      }
+    }
   }
 });

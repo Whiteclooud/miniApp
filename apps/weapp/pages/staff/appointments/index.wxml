@@ -1,53 +1,111 @@
 <view class="container">
-  <view class="card title-card">
-    <view class="title">店员预约审核</view>
-    <view class="desc">查看预约申请并执行通过 / 拒绝操作。</view>
-    <button class="button-secondary nav-button" bindtap="goRules">去规则配置</button>
+  <view class="card identity-card">
+    <view class="identity-label">店员身份主键</view>
+    <view class="identity-value">{{staffIdentity.openId || staffIdentity.label}}</view>
+    <view class="helper-text">{{staffIdentity.sourceText}}</view>
   </view>
 
-  <view wx:if="{{!authorized}}" class="card auth-card">
-    <view class="section-title">店员验证</view>
-    <view class="section-desc">当前采用 OpenID 白名单联调方案，请先输入店员 OpenID。</view>
-    <input class="field-input" bindinput="onAuthInput" value="{{authInput}}" placeholder="请输入店员 OpenID" />
-    <button class="button-primary" bindtap="saveAuthInput">保存并加载审核列表</button>
-  </view>
-
-  <block wx:if="{{authorized}}">
-    <view class="card filter-card">
-      <view class="section-title">筛选状态</view>
-      <picker mode="selector" range="{{statusOptions}}" range-key="label" bindchange="onStatusChange">
-        <view class="field-picker">当前筛选：{{currentStatusLabel}}</view>
-      </picker>
-      <view class="helper-text">可查看待审核、已通过、已拒绝记录。</view>
+  <view wx:if="{{staffIdentity.isDevelopEnv}}" class="card dev-card">
+    <view class="identity-label">开发环境模拟店员 OpenID</view>
+    <input class="field-input" value="{{staffOpenIdInput}}" bindinput="onStaffOpenIdInput" placeholder="填写店员 mock OpenID，便于联调 staff 接口" />
+    <view class="action-row">
+      <button class="button-primary compact-button" bindtap="applyStaffOpenId">保存并查询</button>
+      <button class="button-secondary compact-button" bindtap="generateStaffOpenId">生成模拟 OpenID</button>
     </view>
+    <button class="button-ghost compact-button button-row-spacer" bindtap="clearStaffOpenId">清空店员 OpenID</button>
+  </view>
 
-    <view wx:if="{{loading}}" class="card state-card">正在加载预约列表...</view>
-    <view wx:elif="{{!items.length}}" class="card state-card">当前筛选下暂无预约记录。</view>
-    <block wx:else>
-      <block wx:for="{{items}}" wx:key="id">
-        <view class="card appointment-card">
-          <view class="appointment-top">
-            <view class="appointment-date">{{item.appointmentDate}} {{item.timeSlot}}</view>
-            <view class="status-chip {{item.status}}">{{item.statusText}}</view>
-          </view>
-          <view class="appointment-meta">顾客：{{item.customerName}} · {{item.phone}}</view>
-          <view wx:if="{{item.note}}" class="appointment-meta">备注：{{item.note}}</view>
-          <view wx:if="{{item.reviewNote}}" class="appointment-meta">审核备注：{{item.reviewNote}}</view>
+  <view class="card nav-card">
+    <view class="nav-title">店员工作台</view>
+    <view class="action-row">
+      <button class="button-secondary compact-button" bindtap="goRules">预约规则</button>
+      <button class="button-primary compact-button">预约列表</button>
+    </view>
+  </view>
 
-          <view wx:if="{{item.status === 'pending'}}" class="review-box">
-            <textarea
-              class="field-textarea"
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+    <view class="state-title">店员预约列表加载中</view>
+    <view class="state-desc">正在通过 X-Staff-OpenId 获取预约列表，请稍候。</view>
+  </view>
+
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">
+    <view class="state-title">店员预约列表加载失败</view>
+    <view class="state-desc">{{stateMessage || '预约列表接口未跑通时，会在这里显式提示。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+    <view class="state-title">店员身份不可用</view>
+    <view class="state-desc">{{stateMessage || '缺少店员 OpenID，当前不能继续查询店员页。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新检查</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
+    <view class="state-title">暂无门店预约</view>
+    <view class="state-desc">{{stateMessage || 'staff/appointments 接口已返回，但当前没有预约数据。'}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <block wx:else>
+    <view class="section-title">店员预约总览</view>
+    <view class="section-desc">仅供店员查看；列表获取与 review 审核动作都会走固定 staff 契约，并对 unauthorized / error / empty 给出可见反馈。</view>
+    <view class="card summary-card">
+      <view class="summary-grid">
+        <view class="summary-item">
+          <view class="summary-label">预约总数</view>
+          <view class="summary-value">{{summary.total}}</view>
+        </view>
+        <view class="summary-item">
+          <view class="summary-label">待审核</view>
+          <view class="summary-value">{{summary.pending}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{reviewMessage}}" class="inline-error">{{reviewMessage}}</view>
+    <block wx:for="{{appointments}}" wx:key="id">
+      <view class="card booking-card">
+        <view class="booking-header">
+          <view class="booking-title">{{item.customerName}}</view>
+          <view class="status-pill">{{item.statusText}}</view>
+        </view>
+        <view class="info-row">
+          <view class="info-label">预约时间</view>
+          <view class="info-value">{{item.date}} {{item.timeSlot}}</view>
+        </view>
+        <view class="info-row">
+          <view class="info-label">联系电话</view>
+          <view class="info-value">{{item.phone}}</view>
+        </view>
+        <view wx:if="{{item.note}}" class="info-row">
+          <view class="info-label">备注</view>
+          <view class="info-value">{{item.note}}</view>
+        </view>
+        <view wx:if="{{item.createdAtText}}" class="info-row">
+          <view class="info-label">提交时间</view>
+          <view class="info-value">{{item.createdAtText}}</view>
+        </view>
+        <view wx:if="{{item.canReview}}" class="review-action-row">
+          <view class="helper-text">待审核预约可直接调用 `/api/v1/staff/appointments/:id/review` 完成审核。</view>
+          <view class="action-row">
+            <button
+              class="button-primary compact-button"
+              bindtap="reviewAppointment"
               data-id="{{item.id}}"
-              bindinput="onReviewNoteInput"
-              placeholder="可选填写审核备注"
-            />
-            <view class="review-actions">
-              <button class="button-secondary review-button" data-id="{{item.id}}" data-action="reject" loading="{{reviewingId === item.id}}" bindtap="review">拒绝</button>
-              <button class="button-primary review-button" data-id="{{item.id}}" data-action="approve" loading="{{reviewingId === item.id}}" bindtap="review">通过</button>
-            </view>
+              data-action="approve"
+              loading="{{reviewStateMap[item.id] === 'approving'}}"
+              disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}"
+            >通过预约</button>
+            <button
+              class="button-secondary compact-button"
+              bindtap="reviewAppointment"
+              data-id="{{item.id}}"
+              data-action="reject"
+              loading="{{reviewStateMap[item.id] === 'rejecting'}}"
+              disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}"
+            >驳回预约</button>
           </view>
         </view>
-      </block>
+      </view>
     </block>
   </block>
 </view>
