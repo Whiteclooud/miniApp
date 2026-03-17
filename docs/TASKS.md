@@ -202,6 +202,7 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 里程碑结论（2026-03-16 22:0x Asia/Shanghai）：`FE-008` 与 `BE-007` 均已回收且无活跃 worker，当前前后端已达到“可进入真实联调 / 可验收”的明确里程碑；下一阶段不再是继续代码收口，而是按既定 UAT 清单执行页面联调、记录结果，并在通过后进入 push / review / release 判断节点。
 - 基线审计更新（2026-03-17 09:xx Asia/Shanghai）：architect 在当前统一验收基线直接复核并执行本地命令后，发现当前 repo 实际代码仍明显停留在旧口径：`apps/weapp/utils/request.js` 未注入 `X-Customer-OpenId`、`apps/weapp/services/appointment.js` 仍按 `month` 查询 availability 且“我的预约”仍按 `phone` 查询、`apps/weapp/pages/booking/index.js` 仍要求姓名+手机号并在提交后跳回手机号查询、`apps/server/src/server.mjs` 的 self-test 仍要求 `serviceId/serviceName` 等旧字段，且前端 `apps/weapp/scripts/contract-selfcheck.mjs` 在当前 repo 中不存在。判定：昨天记录的“可进入真实联调 / 可验收”里程碑并不成立于 architect 当前统一验收基线，属于高风险状态漂移，当前不得进入 UAT / push / release。
 - 纠偏动作（2026-03-17 09:xx Asia/Shanghai）：architect 已将项目阶段回退为“统一验收基线重新收口”，下一步重新向 frontend / backend 派发窄范围纠偏任务：frontend 聚焦顾客 OpenID 主链路、availability `date` 查询、staff rules 数据模型、`contract-selfcheck` 补齐；backend 聚焦去除 `service* / artist*` 旧依赖、恢复冻结预约/规则/审核契约、重写 self-test 覆盖 approved-only slot 语义。完成前，不再对外声称当前代码已达到真实联调 / 可验收门槛。
+- Heartbeat 推进（2026-03-17 09:25 Asia/Shanghai）：前后端本轮纠偏结果已回收，但 architect 当前统一验收基线仍无法直接验证 worker workspace 中的实际代码；因此已继续派发两条“只导出交接产物、不改逻辑”的短任务：frontend 导出 `84b406b` patch + changed files 到 `.integration/frontend-84b406b-20260317/`，backend 导出当前 HEAD `8fdbec4` 的 `server.mjs` / patch / 契约断言材料到 `.integration/backend-head-8fdbec4-20260317/`。当前下一步是 architect 基于导出物做统一基线审阅；在审阅完成前，仍不进入 UAT / push / release 判断。
 
 ## 推荐实施顺序
 
