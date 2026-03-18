@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约规则 + 审批制预约）
+V1 统一验收基线已收口，进入真实页面 UAT 执行准备（返图展示 + 可配置预约规则 + 审批制预约）
 
 ## 任务列表
 
@@ -210,6 +210,8 @@ V1 需求重构：单店美甲预约小程序（返图展示 + 可配置预约�
 - 前端完整快照审阅更新（2026-03-17 09:4x Asia/Shanghai）：architect 已进一步审阅 `.integration/frontend-head-20260317/` 的完整前端快照。结论：前端当前 HEAD 虽已补齐 `request.js`、`app.js`、`utils/customer.js`、`utils/staff.js` 与 `contract-selfcheck`，但页面业务口径仍存在新的冻结契约偏差：`pages/my-bookings/index.js` 与 `pages/staff/appointments/index.js` 仍把状态映射为 `pending/confirmed/cancelled/completed`，而非当前 API 冻结的 `pending/approved/rejected`；`pages/staff/appointments/index.js` 仍以 `action=confirm` 发送 `{ status: 'confirmed' }` / `{ status: 'cancelled' }`，与后端审核契约 `approved/rejected` 不一致。判定：frontend 当前 HEAD 仍未达到可联调 / 可验收门槛，且现有 `contract-selfcheck` 未覆盖这类状态词汇与 review payload 回退，需继续派工做一次更窄的前端纠偏。
 - 统一基线复核更新（2026-03-17 10:5x Asia/Shanghai）：architect 已将 frontend 完整快照基线与后续状态口径窄修一起落入当前 repo：补齐 `app.js`、`utils/request.js`、`utils/customer.js`、`utils/staff.js`、顾客/店员页面主链路文件、`contract-selfcheck` 与 `check:weapp-contract` 脚本，并把 `my-bookings` / `staff/appointments` 的状态与 review payload 收口为 `pending/approved/rejected`。当前在 architect 统一验收基线上已再次通过 `npm run test:server` 与 `npm run check:weapp-contract`，说明前后端代码基线已恢复到“冻结契约一致、可重新进入真实联调 / UAT 判断”的门槛；下一步阻塞已从代码基线漂移转为真实页面联调 / 微信开发者工具 UAT 是否通过。
 - 当前验收门槛状态（2026-03-17 13:4x Asia/Shanghai）：统一验收基线当前包含后端集成 commit `bce6d82 chore: integrate backend contract baseline` 与前端集成 commit `ef986b4 feat: restore weapp contract baseline`；本地 `npm run test:server`、`npm run check:weapp-contract` 均已通过。当前没有新的代码口径阻塞，下一步唯一高价值动作是按 `docs/UAT_GUIDE.md` 在微信开发者工具执行真实页面 UAT；在该外部环境验收完成前，architect 不再重复派工改代码，也不下 push / release 结论。
+- 进度推进（2026-03-18 16:37 Asia/Shanghai）：architect 已在当前统一验收基线再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，两项均通过；说明后端自测与前端契约自检在当前 repo 中稳定成立，项目阶段正式维持在“真实页面 UAT 执行”而非“继续代码修偏”。
+- 下一步执行口径（2026-03-18 16:37 Asia/Shanghai）：按 `docs/UAT_GUIDE.md` 在微信开发者工具完成 Case 1~9，重点记录首页返图、顾客 OpenID 预约、店员规则保存、审核回写与服务重启后持久化结果；只有真实页面 UAT 通过后，才进入 push / review / release 判断。
 
 ## 推荐实施顺序
 
