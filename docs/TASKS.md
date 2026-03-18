@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 统一验收基线已收口，进入真实页面 UAT 执行准备（返图展示 + 可配置预约规则 + 审批制预约）
+V1 统一验收基线已收口，进入真实页面 UAT 执行阶段（返图展示 + 可配置预约规则 + 审批制预约）
 
 ## 任务列表
 
@@ -212,6 +212,9 @@ V1 统一验收基线已收口，进入真实页面 UAT 执行准备（返图展
 - 当前验收门槛状态（2026-03-17 13:4x Asia/Shanghai）：统一验收基线当前包含后端集成 commit `bce6d82 chore: integrate backend contract baseline` 与前端集成 commit `ef986b4 feat: restore weapp contract baseline`；本地 `npm run test:server`、`npm run check:weapp-contract` 均已通过。当前没有新的代码口径阻塞，下一步唯一高价值动作是按 `docs/UAT_GUIDE.md` 在微信开发者工具执行真实页面 UAT；在该外部环境验收完成前，architect 不再重复派工改代码，也不下 push / release 结论。
 - 进度推进（2026-03-18 16:37 Asia/Shanghai）：architect 已在当前统一验收基线再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，两项均通过；说明后端自测与前端契约自检在当前 repo 中稳定成立，项目阶段正式维持在“真实页面 UAT 执行”而非“继续代码修偏”。
 - 下一步执行口径（2026-03-18 16:37 Asia/Shanghai）：按 `docs/UAT_GUIDE.md` 在微信开发者工具完成 Case 1~9，重点记录首页返图、顾客 OpenID 预约、店员规则保存、审核回写与服务重启后持久化结果；只有真实页面 UAT 通过后，才进入 push / review / release 判断。
+- 状态落档（2026-03-18 17:12 Asia/Shanghai）：architect 已再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，结果均通过；并新增 `docs/UAT_RESULTS.md` 作为真实页面 UAT 执行面板，统一记录当前机器门槛结论、Case 1~9 状态与问题清单。
+- 执行复核（2026-03-18 17:29 Asia/Shanghai）：architect 在当前统一验收基线再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，两项继续通过；说明当前代码口径仍稳定停留在冻结契约，项目下一步仍应直接转入微信开发者工具真实页面 UAT 记录，而不是继续新增代码收口任务。
+- 当前收口结论（2026-03-18 17:29 Asia/Shanghai）：代码基线与文档基线当前一致，剩余动作已收敛为微信开发者工具中的真实页面 UAT；在该外部环境验收完成前，不再继续派生新的代码任务，也不进入 push / review / release。
 
 ## 推荐实施顺序
 
