@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 统一验收基线已进入真实页面 UAT 复盘与定向修复阶段（主链路顾客侧已通过，当前聚焦 staff 鉴权、旧 SQLite 迁移兼容、返图多图详情）
+V1 统一验收基线已进入二次 UAT 准备阶段（首轮真实页面 UAT 已拿到结果，前后端定向修复已回收，当前聚焦统一基线复核与 staff 链路重测）
 
 ## 任务列表
 
@@ -228,6 +228,9 @@ V1 统一验收基线已进入真实页面 UAT 复盘与定向修复阶段（主
 - 当前收口结论（2026-03-18 17:29 Asia/Shanghai）：代码基线与文档基线当前一致，剩余动作已收敛为微信开发者工具中的真实页面 UAT；在该外部环境验收完成前，不再继续派生新的代码任务，也不进入 push / review / release。
 - UAT 复盘更新（2026-03-19 18:xx Asia/Shanghai）：Lan 已完成一轮真实页面 UAT，Case 1/2/3/7 通过，Case 4/5/6 因 `/api/v1/staff/appointments` 返回 `401` 未通过。architect 当前直接复核统一验收基线后发现，后端默认店员白名单仍是 `staff-openid-v1`，与 UAT 指南中的 `staff-openid-demo` 不一致；同时 Lan 反馈本地历史 SQLite 仍可能保留 `appointment_date` 旧列，说明真实运行环境与 `npm run test:server` 的临时库结果仍有差异。当前已将问题冻结为 `BE-008`，并新增返图“首页封面 -> 详情多图”需求进入 `FE-009`。
 - 需求增补更新（2026-03-19 18:11 Asia/Shanghai）：Lan 新增预约页体验要求——时间段选择需改为更清晰的卡片/块状交互，不可预约时段需要显性灰显并提示原因。architect 已将其拆成 `BE-009`（availability 返回禁用时段与原因）与 `FE-010`（预约页卡片式时间段选择）两项，不与当前 staff 鉴权/旧库迁移修复混写。
+- Heartbeat 推进（2026-03-19 18:19 Asia/Shanghai）：当前无活跃 worker，architect 已按更新后的冻结范围重新派发 backend / frontend 两条定向 run；backend 聚焦 `BE-008 + BE-009 + QA-002(后端侧)`，frontend 聚焦 `FE-009 + FE-010 + QA-002(前端侧)`。在两侧回收 commit 与自检结论前，当前不进入 push / review / release 判断。
+- Backend 定向回收（2026-03-19 18:29 Asia/Shanghai）：backend 已回收本地 commit `abfdfe5b5c767a24878b3f486273c95d4cf402e0`，完成 `BE-008 + BE-009 + QA-002(后端侧)`：默认白名单固定包含 `staff-openid-demo`、旧 SQLite `appointment_date -> date` 启动迁移兼容、`GET /api/v1/availability?date=...` 返回 `active/disabled + reasonCode/reasonText`、`GET /api/v1/gallery` 补 `imageUrls`。`npm run test:server` 已通过，backend 当前回报“无阻塞风险”；下一步转为 architect 统一基线复核，不直接跳过审阅进入发布判断。
+- Frontend 定向回收（2026-03-19 18:31 Asia/Shanghai）：frontend 已回收本地 commit `df2e731a1108b523698395ae8683bcb468cb8382`，完成 `FE-009 + FE-010 + QA-002(前端侧)`：保留首页封面图展示并锁定“点击返图进入详情页 + 多图兜底”守卫、预约页时间段改为卡片式选择并消费 `status/reasonCode/reasonText`、不可预约时段灰显且不可提交；`npm run check:weapp-contract` 已通过，frontend 当前回报“无阻塞风险”。当前项目状态已从“等待 worker 修复”切换为“等待 architect 统一复核后重跑 staff / 交互相关 UAT”。
 
 ## 推荐实施顺序
 

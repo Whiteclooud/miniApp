@@ -62,6 +62,9 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 - 店员侧身份统一从请求头 `X-Staff-OpenId` 读取。
 - 顾客预约页以“可预约日期 + 时间段”为核心，不再要求先选服务项目。
 - 首页展示实体固定为 `gallery`，不再引入 `hot-styles`、`artists`、`services` 作为当前 V1 主链路接口。
+- `GET /api/v1/gallery` 可直接承载首页封面图与详情多图字段（`imageUrl` + `imageUrls`），V1 不新增独立详情接口。
+- `GET /api/v1/availability?date=...` 需要返回该日应展示的全部时段，并同时携带 `status`、`reasonCode`、`reasonText` 供前端做卡片化禁用提示。
+- 本地 UAT 默认店员身份固定包含 `staff-openid-demo`，避免文档环境与服务默认白名单漂移。
 - 旧接口 `GET /api/v1/services`、`GET /api/v1/hot-styles`、`GET /api/v1/artists`、旧版 `GET /api/v1/appointments` 不再属于当前冻结契约。
 
 ## 数据模型
@@ -122,7 +125,7 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 - `customerOpenId` 不放入 body，也不再使用手机号作为“我的预约”主查询键。
 - 店员侧统一使用 `/api/v1/staff/*` 前缀，并统一做 `X-Staff-OpenId` 白名单校验。
 - 店员侧继续返回 `customerName` / `phone` 字段，便于识别顾客。
-- 对历史 SQLite 数据做最小迁移：补齐 `customer_open_id` 等字段，避免因旧表结构导致启动失败。
+- 对历史 SQLite 数据做最小迁移：补齐 `customer_open_id` 等字段，并兼容旧 `appointment_date -> date` 字段迁移，避免因旧表结构导致启动失败。
 - 历史记录若缺失 `customerOpenId`，可保留店员侧可见，但不再回退到手机号主查。
 - 对旧路由不做兼容回退，防止前端继续依赖冻结前契约。
 

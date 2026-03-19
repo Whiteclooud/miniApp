@@ -100,8 +100,8 @@ V1 当前只允许以下接口对外使用：
       "date": "2026-03-16",
       "timeSlot": "09:30-10:30",
       "status": "active",
-      "reasonCode": "",
-      "reasonText": ""
+      "reasonCode": "AVAILABLE",
+      "reasonText": "可预约"
     },
     {
       "date": "2026-03-16",
@@ -118,7 +118,7 @@ V1 当前只允许以下接口对外使用：
 
 - 当请求携带 `date` 时，服务端应返回该日期下所有应展示的时间段，而不只是可预约时段。
 - `status=active` 表示前端可点击选择；`status=disabled` 表示前端需灰显且不可点击。
-- `reasonCode` / `reasonText` 用于前端展示不可预约原因，例如：`DATE_CLOSED`、`NOT_OPEN_YET`、`SLOT_OCCUPIED`。
+- `reasonCode` / `reasonText` 由后端直接提供，当前至少覆盖：`AVAILABLE`、`DATE_CLOSED`、`DATE_OUT_OF_RANGE`、`SLOT_OCCUPIED`；前端不得自行硬编码原因文案替代。
 - `date` 为可选；传值时必须为 `YYYY-MM-DD`。
 - 返回结果需同时受 `advanceOpenDays`、`closedDates`、`dailySlots`、已批准预约占用影响。
 
@@ -250,6 +250,7 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 店员身份口径固定为 `X-Staff-OpenId`。
+- 本地 UAT 默认白名单至少包含 `staff-openid-demo`；若环境变量额外配置其他值，应与默认值共同生效。
 - 白名单外身份统一返回 `401 + STAFF_UNAUTHORIZED`。
 
 ## 7. 店员更新预约规则

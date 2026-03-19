@@ -1,17 +1,19 @@
 # UAT Results
 
-## 当前状态（2026-03-19 18:06 Asia/Shanghai）
+## 当前状态（2026-03-19 18:31 Asia/Shanghai）
 
 本文件用于承接当前统一验收基线的真实页面 UAT 记录。
 
-本轮已收到 Lan 的一轮真实页面 UAT 反馈，顾客侧主链路基本通过，当前阻塞集中在店员鉴权一致性与本地历史 SQLite 兼容。
+本轮已收到 Lan 的一轮真实页面 UAT 反馈，顾客侧主链路基本通过；针对 staff 鉴权、本地历史 SQLite 兼容、返图详情多图与预约页禁用原因展示的定向修复，前后端 worker 均已回收。
 
 ### 已完成的机器门槛校验
 
 - `npm run test:server`：2026-03-18 17:29 复核通过
 - `npm run check:weapp-contract`：2026-03-18 17:29 复核通过
+- backend 定向修复自测：`npm run test:server` 通过（worker commit `abfdfe5`）
+- frontend 定向修复自测：`npm run check:weapp-contract` 通过（worker commit `df2e731`）
 
-结论：当前代码基线已再次确认满足冻结契约，项目阶段维持在“真实页面 UAT 执行”，不再是“继续代码修偏”。
+结论：当前代码与 UAT 反馈已形成明确修复包，项目阶段从“问题发现”切换为“统一基线复核 + 二次 UAT 准备”。
 
 ## 本轮 UAT 环境
 
@@ -20,7 +22,7 @@
 - 店员 OpenID（UAT 实际输入）：`staff-openid-demo`
 - 顾客 OpenID（开发环境模拟）：`customer-openid-demo`
 - 数据库文件：`apps/server/data/miniapp.sqlite`
-- `npm run test:server`：本轮反馈未填写；Lan 另行说明 backend 已在其侧验证通过
+- `npm run test:server`：首轮真实页面 UAT 反馈中未填写；后续 backend 定向修复自测已回收通过（worker commit `abfdfe5`）
 
 ## 用例执行面板
 
@@ -38,24 +40,23 @@
 
 ## 当前推进动作
 
-- 当前机器门槛已复核通过，但真实页面 UAT 已暴露新的定向修复项，不再是“继续盲测全部 Case”。
-- 当前先收口三块：
-  1. staff 默认白名单与 UAT 输入值对齐（`staff-openid-demo`）
-  2. 旧 SQLite `appointment_date -> date` 启动迁移兼容
-  3. 首页返图“封面 -> 详情多图”体验补齐
-- 待以上三块完成后，再补跑 Case 4~9。
+- 第一轮真实页面 UAT 暴露的问题已拆成 `BE-008`、`BE-009`、`FE-009`、`FE-010`、`QA-002`，且前后端定向修复均已在 worker workspace 回收。
+- 当前下一步不是继续扩写需求，而是做两件事：
+  1. architect 统一复核前后端修复结果，并把契约 / 文档 / 当前基线状态更新一致
+  2. 基于修复后的统一基线重跑 Case 4~9，重点复测 staff 链路、不可预约原因展示与接口口径防回退
+- 在统一基线复核完成前，暂不进入 push / review / release 判断。
 
 ## 问题记录
 
 1. 店员输入 `staff-openid-demo` 后，请求 `/api/v1/staff/appointments` 返回 `401 Unauthorized`，导致 Case 4 / 5 / 6 无法继续。
 2. 当前统一验收基线直接复核可见：后端默认店员白名单仍为 `staff-openid-v1`，与 `docs/UAT_GUIDE.md` 及本轮 UAT 输入值 `staff-openid-demo` 不一致，属于环境一致性问题。
-3. Lan 反馈本地 `apps/server/data/miniapp.sqlite` 中 `appointments` 表仍保留旧 schema（`appointment_date` 列）；backend 已声称补了启动迁移与回归自测，但 architect 当前本地 / 远端主线尚未直接看到该新提交，需继续核对并合入。
-4. 新增体验需求：首页返图目前只能看单图，需支持“首页只展示封面图，点击后进入详情页查看其它图片”。
-5. 新增体验需求：预约页的时间段选择要更直观，建议改为块状/卡片式选择；不可预约的时间段不要直接消失，要显性禁用并提示原因。
+3. Lan 反馈本地 `apps/server/data/miniapp.sqlite` 中 `appointments` 表仍保留旧 schema（`appointment_date` 列）；backend 已回收“启动自动迁移到 `date` 模型”的修复与自测，当前待 architect 在统一基线复核并确认未回退。
+4. 新增体验需求：首页返图目前只能看单图，需支持“首页只展示封面图，点击后进入详情页查看其它图片”；frontend 已回收 FE-009，自检通过，待统一基线复核。
+5. 新增体验需求：预约页的时间段选择要更直观，建议改为块状/卡片式选择；不可预约的时间段不要直接消失，要显性禁用并提示原因。frontend / backend 已分别回收 FE-010 / BE-009，待二次 UAT 验证真实效果。
 
 ## 结论口径
 
 - 当前不进入 push / review / release 判断。
-- 当前阶段判断为：顾客主链路已通过 UAT，staff 侧与本地旧库兼容仍需定向修复。
+- 当前阶段判断为：顾客主链路已通过首轮 UAT，staff 侧与新交互项所需的定向修复已回收，当前待统一基线复核后重跑 Case 4~9。
 - 若 Case 9 出现旧接口（如 `/api/v1/services`、旧版 `GET /api/v1/appointments`），直接判定为契约回退问题。
-- 待 `BE-008` 与 `FE-009` 收口后，再重跑 Case 4~9 形成最终验收结论。
+- 只有在 `BE-008`、`BE-009`、`FE-009`、`FE-010` 落入统一验收基线并完成二次 UAT 后，才进入最终验收结论与后续发布判断。
