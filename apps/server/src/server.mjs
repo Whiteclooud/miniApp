@@ -463,8 +463,10 @@ function migrateAppointmentsTable(db) {
 
   const columns = tableColumns(db, 'appointments');
   const hasIdColumn = columns.some((column) => column.name === 'id');
+  const hasDateColumn = columns.some((column) => column.name === 'date');
+  const needsRebuild = !hasIdColumn || !hasDateColumn;
 
-  if (!hasIdColumn) {
+  if (needsRebuild) {
     const backupTableName = `appointments_legacy_${Date.now()}`;
     db.exec(`ALTER TABLE appointments RENAME TO ${backupTableName}`);
     createAppointmentsTable(db);
@@ -517,7 +519,7 @@ function migrateAppointmentsTable(db) {
         serviceName: String(row.service_name || row.serviceName || ''),
         artistId: String(row.artist_id || row.artistId || ''),
         artistName: String(row.artist_name || row.artistName || ''),
-        date: String(row.date || ''),
+        date: String(row.date || row.appointment_date || row.appointmentDate || ''),
         timeSlot: String(row.time_slot || row.timeSlot || ''),
         note: String(row.note || ''),
         status: String(row.status || 'pending'),
@@ -1525,6 +1527,60 @@ function createLegacyDatabaseMissingCustomerOpenId(dbPath) {
   db.close();
 }
 
+function createLegacyDatabaseWithAppointmentDate(dbPath) {
+  ensureDirForFile(dbPath);
+  const db = new DatabaseSync(dbPath);
+
+  db.exec(`
+    CREATE TABLE appointments (
+      id TEXT PRIMARY KEY,
+      customer_name TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      service_id TEXT NOT NULL DEFAULT '',
+      service_name TEXT NOT NULL DEFAULT '',
+      appointment_date TEXT NOT NULL,
+      time_slot TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      review_note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      reviewed_at TEXT DEFAULT NULL
+    )
+  `);
+
+  db.prepare(`
+    INSERT INTO appointments (
+      id,
+      customer_name,
+      phone,
+      service_id,
+      service_name,
+      appointment_date,
+      time_slot,
+      note,
+      status,
+      review_note,
+      created_at,
+      reviewed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    'apt-legacy-date-column-001',
+    'Legacy Date Column User',
+    '13400000000',
+    'svc-classic',
+    '缁忓吀绾壊缇庣敳',
+    '2026-03-18',
+    '16:00-17:00',
+    'legacy appointment_date row',
+    'approved',
+    'legacy approved',
+    '2026-03-11T10:00:00.000Z',
+    '2026-03-11T11:00:00.000Z'
+  );
+
+  db.close();
+}
+
 function createLegacyRulesDatabase(dbPath) {
   ensureDirForFile(dbPath);
   const db = new DatabaseSync(dbPath);
@@ -1564,6 +1620,7 @@ async function runSelfTest() {
   const dbPath = path.join(tempDir, 'test.sqlite');
   const legacyDbPath = path.join(tempDir, 'legacy.sqlite');
   const legacyMissingCustomerOpenIdDbPath = path.join(tempDir, 'legacy-missing-customer-openid.sqlite');
+  const legacyDbWithAppointmentDatePath = path.join(tempDir, 'legacy-appointment-date.sqlite');
   const legacyRulesDbPath = path.join(tempDir, 'legacy-rules.sqlite');
 
   const today = startOfToday();
@@ -2008,6 +2065,20 @@ async function runSelfTest() {
       assert.equal(migratedMyRes.body.items.length, 1);
       assert.equal(migratedMyRes.body.items[0].customerOpenId, 'openid-migrated-customer-001');
       assert.equal(migratedMyRes.body.items[0].phone, '13500000000');
+    });
+
+    createLegacyDatabaseWithAppointmentDate(legacyDbWithAppointmentDatePath);
+    await withStartedServer(legacyDbWithAppointmentDatePath, async (baseUrl) => {
+      const migratedStaffListRes = await requestJson(baseUrl, '/api/v1/staff/appointments', {
+        headers: {
+          'X-Staff-OpenId': defaultStaffOpenId
+        }
+      });
+      assert.equal(migratedStaffListRes.status, 200);
+      assert.equal(migratedStaffListRes.body.items.length, 1);
+      assert.equal(migratedStaffListRes.body.items[0].id, 'apt-legacy-date-column-001');
+      assert.equal(migratedStaffListRes.body.items[0].date, '2026-03-18');
+      assert.equal(migratedStaffListRes.body.items[0].status, 'approved');
     });
 
     createLegacyRulesDatabase(legacyRulesDbPath);
