@@ -51,6 +51,7 @@
 2. 当前统一验收基线直接复核可见：后端默认店员白名单仍为 `staff-openid-v1`，与 `docs/UAT_GUIDE.md` 及本轮 UAT 输入值 `staff-openid-demo` 不一致，属于环境一致性问题。
 3. Lan 反馈本地 `apps/server/data/miniapp.sqlite` 中 `appointments` 表仍保留旧 schema（`appointment_date` 列）；backend 已声称补了启动迁移与回归自测，但 architect 当前本地 / 远端主线尚未直接看到该新提交，需继续核对并合入。
 4. 新增体验需求：首页返图目前只能看单图，需支持“首页只展示封面图，点击后进入详情页查看其它图片”。
+5. 新增体验需求：预约页的时间段选择要更直观，建议改为块状/卡片式选择；不可预约的时间段不要直接消失，要显性禁用并提示原因。
 
 ## 结论口径
 

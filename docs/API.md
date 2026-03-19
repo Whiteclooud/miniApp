@@ -32,6 +32,7 @@ V1 当前只允许以下接口对外使用：
 - 当前页面 UAT 已确认顾客主链路可跑通，但 staff 侧存在环境一致性问题：文档与 UAT 使用 `staff-openid-demo`，当前统一验收基线服务默认白名单仍需与之对齐，否则 `/api/v1/staff/*` 会返回 `401 + STAFF_UNAUTHORIZED`。
 - SQLite 历史库需兼容 `appointments.appointment_date` 旧列；若沿用本地老库启动失败，服务端需在启动时自动迁移到当前 `date` 字段模型。
 - 返图接口在不新增详情接口的前提下，扩展 `imageUrls` 供前端详情页展示多图。
+- 顾客预约页新增显性时间段选择体验：`GET /api/v1/availability?date=...` 对当前日期应返回“可约 + 不可约”时段与原因，供前端做卡片化选择和禁用提示。
 
 ## 1. 健康检查
 
@@ -97,8 +98,17 @@ V1 当前只允许以下接口对外使用：
   "items": [
     {
       "date": "2026-03-16",
-      "timeSlot": "10:00-11:00",
-      "status": "active"
+      "timeSlot": "09:30-10:30",
+      "status": "active",
+      "reasonCode": "",
+      "reasonText": ""
+    },
+    {
+      "date": "2026-03-16",
+      "timeSlot": "11:00-12:00",
+      "status": "disabled",
+      "reasonCode": "SLOT_OCCUPIED",
+      "reasonText": "该时间段已被预约"
     }
   ]
 }
@@ -106,7 +116,9 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
-- 仅返回当前仍可预约的时段。
+- 当请求携带 `date` 时，服务端应返回该日期下所有应展示的时间段，而不只是可预约时段。
+- `status=active` 表示前端可点击选择；`status=disabled` 表示前端需灰显且不可点击。
+- `reasonCode` / `reasonText` 用于前端展示不可预约原因，例如：`DATE_CLOSED`、`NOT_OPEN_YET`、`SLOT_OCCUPIED`。
 - `date` 为可选；传值时必须为 `YYYY-MM-DD`。
 - 返回结果需同时受 `advanceOpenDays`、`closedDates`、`dailySlots`、已批准预约占用影响。
 
