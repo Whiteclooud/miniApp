@@ -1,6 +1,6 @@
 # UAT Results
 
-## 当前状态（2026-03-19 19:10 Asia/Shanghai）
+## 当前状态（2026-03-19 19:43 Asia/Shanghai）
 
 本文件用于承接当前统一验收基线的真实页面 UAT 记录。
 
@@ -13,8 +13,9 @@
 - backend 定向修复自测：`npm run test:server` 通过（worker commit `abfdfe5`）
 - frontend 定向修复自测：`npm run check:weapp-contract` 通过（worker commit `df2e731`）
 - architect 统一基线复核：2026-03-19 19:10 再次在当前 repo 执行 `npm run test:server` 与 `npm run check:weapp-contract`，均通过
+- architect 文件级抽查：2026-03-19 19:43 直接读取当前 repo 关键文件后确认，当前统一验收基线并未真实反映本轮 worker 回收结果：后端仍保留 `staff-openid-v1` 默认白名单，前端 booking / contract-selfcheck 也仍缺少本轮新增交互与守卫
 
-结论：当前代码与 UAT 反馈已形成明确修复包，且统一验收基线上的机器门槛已再次通过；项目阶段从“统一基线复核 + 二次 UAT 准备”切换为“二次真实页面 UAT 可执行”。
+结论：当前代码与 UAT 反馈虽已形成“修复方案”，但尚未真正稳定落入 architect 当前统一验收基线；项目阶段从“二次真实页面 UAT 可执行”回退为“统一基线重新收口，暂缓二次 UAT”。
 
 ## 本轮 UAT 环境
 
@@ -41,12 +42,13 @@
 
 ## 当前推进动作
 
-- 第一轮真实页面 UAT 暴露的问题已拆成 `BE-008`、`BE-009`、`FE-009`、`FE-010`、`QA-002`，且前后端定向修复与 architect 统一基线复核均已完成。
-- 当前下一步不是继续扩写需求，而是直接基于修复后的统一基线重跑 Case 4~9，重点复测：
-  1. `staff-openid-demo` 默认白名单是否已恢复店员链路
-  2. 预约页 disabled 时段的灰显与 `reasonText` 展示是否符合预期
-  3. 首页返图封面 -> 详情多图链路与接口口径防回退
-- 在二次真实页面 UAT 跑完前，仍不进入 push / review / release 判断。
+- 第一轮真实页面 UAT 暴露的问题已拆成 `BE-008`、`BE-009`、`FE-009`、`FE-010`、`QA-002`，worker 侧均已回收，但 architect 当前 repo 直接抽查后确认这些修复尚未稳定落入统一验收基线。
+- 当前下一步不是继续跑二次 UAT，而是先完成真实文件级合入/覆写与再次代码级复核，重点核清：
+  1. 后端默认白名单是否已从 `staff-openid-v1` 收口到包含 `staff-openid-demo`
+  2. `availability` 是否真的返回 `status/reasonCode/reasonText`
+  3. `gallery` 是否真的提供 `imageUrls`
+  4. 前端 booking 页与 `contract-selfcheck` 是否真的落入本轮新增交互与守卫
+- 在这些修复真正进入当前统一验收基线前，暂停二次真实页面 UAT，也不进入 push / review / release 判断。
 
 ## 问题记录
 
@@ -59,6 +61,6 @@
 ## 结论口径
 
 - 当前不进入 push / review / release 判断。
-- 当前阶段判断为：顾客主链路已通过首轮 UAT，staff 侧与新交互项所需修复已完成并通过统一基线复核，当前可直接重跑 Case 4~9。
-- 若 Case 9 出现旧接口（如 `/api/v1/services`、旧版 `GET /api/v1/appointments`），直接判定为契约回退问题。
-- 只有在二次 UAT 确认 `BE-008`、`BE-009`、`FE-009`、`FE-010` 的页面效果与接口行为都通过后，才进入最终验收结论与后续发布判断。
+- 当前阶段判断为：顾客主链路已通过首轮 UAT，但 staff 侧与新交互项所需修复尚未可靠进入 architect 当前统一验收基线，当前属于严重基线漂移风险。
+- 若当前就继续跑二次 UAT，会得到“worker 结果正确、architect 基线仍旧”的混合结论，无法作为 push / release 依据。
+- 只有在 `BE-008`、`BE-009`、`FE-009`、`FE-010` 先真实落入统一验收基线并再次通过代码级复核后，才恢复二次 UAT，并在其通过后进入最终验收与后续发布判断。
