@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 统一验收基线已收口，进入真实页面 UAT 执行阶段（返图展示 + 可配置预约规则 + 审批制预约）
+V1 统一验收基线已进入真实页面 UAT 复盘与定向修复阶段（主链路顾客侧已通过，当前聚焦 staff 鉴权、旧 SQLite 迁移兼容、返图多图详情）
 
 ## 任务列表
 
@@ -38,6 +38,15 @@ V1 统一验收基线已收口，进入真实页面 UAT 执行阶段（返图展
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | FE-008 | frontend | 按冻结契约完成页面侧统一自测与联调收口 | `docs/API.md`、`docs/TASKS.md`、当前前端代码基线 | 前端自测结论、必要的窄范围修正 commit、残余风险清单 | FE-006, FE-007, QA-001 | 首页/预约/我的预约/店员规则/店员审核五段链路按冻结接口可跑通；`contract-selfcheck` 通过；不再调用旧接口 | 页面已有功能可见但链路仍有隐性失败，导致 UAT 误判 |
 | BE-007 | backend | 按冻结契约完成服务侧统一自测与联调收口 | `docs/API.md`、`docs/TASKS.md`、当前后端代码基线 | 后端自测结论、必要的窄范围修正 commit、残余风险清单 | BE-006, QA-001 | OpenID 主链路、booking-rules 模型、approved-only slot 占用、SQLite 持久化全部按冻结契约通过自测 | 实现局部修正后再次回退旧口径，导致联调结果不稳定 |
+
+## UAT 复盘与增补任务（2026-03-19）
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-005 | architect | 收口本轮 UAT 结果并重新冻结修复范围 | `docs/UAT_RESULTS.md`、Lan 本轮 UAT 反馈、当前基线代码 | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、派工 brief | FE-008, BE-007 | 明确区分“已通过项 / 当前阻塞项 / 新增体验需求”，并把后续修复范围限制在 staff 鉴权、SQLite 迁移、多图返图详情三块 | 未先冻结范围就继续改代码，导致修复再次扩散 |
+| BE-008 | backend | 修复 staff 默认白名单与旧 SQLite appointments schema 迁移兼容 | 本轮 UAT 问题 1/2、`docs/API.md`、`docs/UAT_RESULTS.md` | `apps/server/src/server.mjs`、回归自测结论 | BE-007, ARCH-005 | 在不额外配置环境变量时，`staff-openid-demo` 可用于本地 UAT；历史 `appointment_date` 旧库启动时可自动迁移到 `date` 模型；`npm run test:server` 与真实本地 SQLite 启动都通过 | 仅修测试临时库，不修本地持久化库，导致 UAT 与自测继续分叉 |
+| FE-009 | frontend | 实现首页返图卡片点击进入详情页并支持多图查看 | 本轮新增体验需求、`docs/PRD.md`、`docs/API.md` gallery 新字段 | `apps/weapp/pages/home/*`、新增 `pages/gallery-detail/*`、`app.json`、相关服务/样式 | FE-008, ARCH-005 | 首页默认只展示单张封面图；点击任一返图卡片后可进入详情页查看多张图片；当 `imageUrls` 缺失时使用封面图兜底；不影响预约主链路 | 若前端自行发明详情接口或字段，会再次造成前后端口径漂移 |
+| QA-002 | frontend/backend | 追加真实页面回归用例：staff 白名单默认值、旧库迁移、多图返图详情 | 本轮 UAT 问题与新增需求、`docs/UAT_GUIDE.md` | 更新后的 UAT 记录 / 自测结论 / 回归说明 | ARCH-005, BE-008, FE-009 | 至少覆盖：`staff-openid-demo` 可通行、旧 SQLite 可正常启动、返图详情可查看多图且首页仍只展示封面 | 只修代码不补回归项，下轮 UAT 再次复发 |
 
 ## 本轮前端 handoff 要点
 
@@ -215,6 +224,7 @@ V1 统一验收基线已收口，进入真实页面 UAT 执行阶段（返图展
 - 状态落档（2026-03-18 17:12 Asia/Shanghai）：architect 已再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，结果均通过；并新增 `docs/UAT_RESULTS.md` 作为真实页面 UAT 执行面板，统一记录当前机器门槛结论、Case 1~9 状态与问题清单。
 - 执行复核（2026-03-18 17:29 Asia/Shanghai）：architect 在当前统一验收基线再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，两项继续通过；说明当前代码口径仍稳定停留在冻结契约，项目下一步仍应直接转入微信开发者工具真实页面 UAT 记录，而不是继续新增代码收口任务。
 - 当前收口结论（2026-03-18 17:29 Asia/Shanghai）：代码基线与文档基线当前一致，剩余动作已收敛为微信开发者工具中的真实页面 UAT；在该外部环境验收完成前，不再继续派生新的代码任务，也不进入 push / review / release。
+- UAT 复盘更新（2026-03-19 18:xx Asia/Shanghai）：Lan 已完成一轮真实页面 UAT，Case 1/2/3/7 通过，Case 4/5/6 因 `/api/v1/staff/appointments` 返回 `401` 未通过。architect 当前直接复核统一验收基线后发现，后端默认店员白名单仍是 `staff-openid-v1`，与 UAT 指南中的 `staff-openid-demo` 不一致；同时 Lan 反馈本地历史 SQLite 仍可能保留 `appointment_date` 旧列，说明真实运行环境与 `npm run test:server` 的临时库结果仍有差异。当前已将问题冻结为 `BE-008`，并新增返图“首页封面 -> 详情多图”需求进入 `FE-009`。
 
 ## 推荐实施顺序
 

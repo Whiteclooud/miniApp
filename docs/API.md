@@ -27,6 +27,12 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/artists`
 - 旧版 `GET /api/v1/appointments`
 
+## 本轮 UAT / 集成备注（2026-03-19）
+
+- 当前页面 UAT 已确认顾客主链路可跑通，但 staff 侧存在环境一致性问题：文档与 UAT 使用 `staff-openid-demo`，当前统一验收基线服务默认白名单仍需与之对齐，否则 `/api/v1/staff/*` 会返回 `401 + STAFF_UNAUTHORIZED`。
+- SQLite 历史库需兼容 `appointments.appointment_date` 旧列；若沿用本地老库启动失败，服务端需在启动时自动迁移到当前 `date` 字段模型。
+- 返图接口在不新增详情接口的前提下，扩展 `imageUrls` 供前端详情页展示多图。
+
 ## 1. 健康检查
 
 ### Request
@@ -57,7 +63,12 @@ V1 当前只允许以下接口对外使用：
     {
       "id": "gallery-aurora",
       "title": "极光猫眼",
-      "imageUrl": "https://example.com/images/aurora-cat-eye.jpg",
+      "imageUrl": "https://example.com/images/aurora-cat-eye-cover.jpg",
+      "imageUrls": [
+        "https://example.com/images/aurora-cat-eye-cover.jpg",
+        "https://example.com/images/aurora-cat-eye-detail-1.jpg",
+        "https://example.com/images/aurora-cat-eye-detail-2.jpg"
+      ],
       "tags": ["猫眼", "通勤", "热门"],
       "sortOrder": 1,
       "status": "active"
@@ -69,6 +80,8 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 仅返回 `active` 数据。
+- `imageUrl` 为首页封面图；`imageUrls` 为详情页多图数组。
+- 若 `imageUrls` 缺失或为空，前端至少用 `imageUrl` 兜底展示详情。
 - 前端按 `sortOrder` 稳定展示。
 
 ## 3. 获取可预约时段

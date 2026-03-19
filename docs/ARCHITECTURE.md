@@ -8,6 +8,12 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 - 后端：Node.js 模块化 HTTP API
 - 数据：SQLite 持久化（当前已落地）
 
+## 本轮 UAT / 集成补充（2026-03-19）
+
+- 当前 UAT 暴露出一类环境一致性风险：文档约定与页面输入使用 `staff-openid-demo`，但统一验收基线里的服务默认白名单仍可见 `staff-openid-v1`，导致 staff 接口出现 401。
+- 当前 UAT 还暴露出 SQLite 旧库兼容风险：历史 `appointments` 表仍可能保留 `appointment_date` 旧列，若未做启动迁移，则 `npm run dev:server` 与临时自测库表现不一致。
+- 新增前台体验要求：首页返图改为“封面卡片 -> 详情多图”两层展示，避免首页信息过长。
+
 ## 为什么当前这样做
 
 - 微信单端项目中，原生小程序调试路径最短，适合当前 V1 收口阶段。
@@ -28,6 +34,7 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 ### 前端模块
 
 - 首页 `pages/home`
+- 返图详情页 `pages/gallery-detail`
 - 预约页 `pages/booking`
 - 我的预约 `pages/my-bookings`
 - 店员规则配置 `pages/staff/rules`
@@ -39,6 +46,7 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 
 - 健康检查 `/health`
 - 首页图库 `/api/v1/gallery`
+- 返图详情仍复用 `/api/v1/gallery` 返回的案例明细（V1 不新增独立详情接口）
 - 可预约时段 `/api/v1/availability`
 - 顾客创建预约 `POST /api/v1/appointments`
 - 顾客查询我的预约 `GET /api/v1/my/appointments`
@@ -63,12 +71,14 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 - `id`
 - `title`
 - `imageUrl`
+- `imageUrls`
 - `tags`
 - `sortOrder`
 - `status`
 
 说明：
 - `GalleryItem` 用于首页返图 / 案例展示。
+- `imageUrl` 作为首页封面图；`imageUrls` 作为详情页多图数组，若缺失则前端以前台封面图兜底。
 - V1 先支持静态种子或轻量维护，不扩展为复杂内容管理系统。
 
 ### BookingRule
@@ -120,10 +130,11 @@ V1 采用低依赖、可快速联调的单体式实现，优先打通“展示 -
 
 ### 顾客侧
 
-1. 首页只承载品牌展示、返图展示、顾客入口 / 店员入口分流与预约 CTA。
+1. 首页只承载品牌展示、返图封面展示、顾客入口 / 店员入口分流与预约 CTA。
 2. 预约页只承载“选择日期 -> 选择可用时间段 -> 填写补充联系信息 -> 提交申请”。
 3. “我的预约”只按当前顾客 OpenID 查询。
 4. 页面必须对 loading / empty / error / unauthorized 给出显性反馈。
+5. 返图卡片支持点击进入详情页查看多图，不在首页直接展开全部明细图。
 
 ### 店员侧
 
