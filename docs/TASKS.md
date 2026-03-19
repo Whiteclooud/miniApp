@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 统一验收基线出现再次漂移，当前回退到“统一基线重新收口”阶段（首轮真实页面 UAT 已拿到结果，但 architect 直接复核当前 repo 发现本轮修复尚未真正落入统一验收基线）
+V1 统一验收基线已重新收口并恢复到二次 UAT 可执行状态（architect 已将本轮前后端修复真正落入当前 repo，并再次通过代码级复核）
 
 ## 任务列表
 
@@ -233,6 +233,7 @@ V1 统一验收基线出现再次漂移，当前回退到“统一基线重新�
 - Frontend 定向回收（2026-03-19 18:31 Asia/Shanghai）：frontend 已回收本地 commit `df2e731a1108b523698395ae8683bcb468cb8382`，完成 `FE-009 + FE-010 + QA-002(前端侧)`：保留首页封面图展示并锁定“点击返图进入详情页 + 多图兜底”守卫、预约页时间段改为卡片式选择并消费 `status/reasonCode/reasonText`、不可预约时段灰显且不可提交；`npm run check:weapp-contract` 已通过，frontend 当前回报“无阻塞风险”。
 - Architect 统一复核（2026-03-19 19:10 Asia/Shanghai）：architect 已在当前统一验收基线直接执行 `npm run test:server` 与 `npm run check:weapp-contract`，两项均通过；但这一步仅说明旧自测门槛仍可通过，不代表 `BE-008 / BE-009 / FE-009 / FE-010 / QA-002` 已真正落入当前 repo。 
 - 风险复核（2026-03-19 19:43 Asia/Shanghai）：architect 直接抽查当前统一验收基线代码后确认存在严重偏差：`apps/server/src/server.mjs` 仍保留 `defaultStaffOpenId = 'staff-openid-v1'`，未体现本轮要求的 `staff-openid-demo` 默认白名单，也未显性体现 `availability` 的 `status/reasonCode/reasonText` 与 `gallery.imageUrls` 口径；`apps/weapp/pages/booking/index.js` 仍是旧的 availability 归一化与选择逻辑，`apps/weapp/scripts/contract-selfcheck.mjs` 也未覆盖本轮新增的返图详情与 disabled reason 守卫。判定：当前并非“可直接重跑二次 UAT”，而是“worker 结果与 architect 当前 repo 再次失配”的严重基线漂移，需先完成真实文件级合入/覆写，再谈二次 UAT、push 或 release。
+- Architect 收口完成（2026-03-19 22:22 Asia/Shanghai）：architect 已将本轮前后端修复真实合入当前统一验收基线：后端已切到 `staff-openid-demo` 默认白名单、补齐 `appointment_date -> date` 迁移、`gallery.imageUrls` 与 `availability status/reasonCode/reasonText`；前端已补齐首页封面图 -> 详情多图链路、预约页卡片式时间段选择、disabled 原因展示与 `contract-selfcheck` 新守卫。当前再次执行 `npm run test:server` 与 `npm run check:weapp-contract` 均通过，项目阶段已从“统一基线重新收口”切回“可执行二次真实页面 UAT（优先 Case 4~9）”。
 
 ## 推荐实施顺序
 

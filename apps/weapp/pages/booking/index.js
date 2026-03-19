@@ -36,6 +36,10 @@ function formatDateLabel(value) {
   return `${prefix} ${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
 }
 
+function normalizeText(value, fallback = '') {
+  return typeof value === 'string' ? value.trim() || fallback : fallback;
+}
+
 function normalizeStringOption(value, index, prefix) {
   return {
     id: `${prefix}-${index}`,
@@ -61,16 +65,37 @@ function normalizeDateOption(item, index) {
   };
 }
 
+function normalizeTimeSlotStatus(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (normalized === 'active' || normalized === 'disabled') {
+    return normalized;
+  }
+  return '';
+}
+
 function normalizeTimeSlotOption(item, index) {
   if (typeof item === 'string') {
-    return normalizeStringOption(item, index, 'time-slot');
+    return {
+      ...normalizeStringOption(item, index, 'time-slot'),
+      status: 'active',
+      reasonCode: '',
+      reasonText: ''
+    };
   }
 
-  const value = item.timeSlot || item.value || item.label || item.name || '';
+  const value = normalizeText(item.timeSlot || item.value || item.label || item.name);
+  const reasonCode = normalizeText(item.reasonCode || item.reason_code || item.code);
+  const reasonText = normalizeText(item.reasonText || item.reason_text || item.reason || item.disabledReason);
+  const explicitStatus = normalizeTimeSlotStatus(item.status);
+  const status = explicitStatus || ((item.disabled === true || item.available === false || reasonCode || reasonText) ? 'disabled' : 'active');
+
   return {
     id: item.id || `time-slot-${index}`,
-    label: item.label || value,
-    value
+    label: normalizeText(item.label || item.timeLabel, value) || value,
+    value,
+    status,
+    reasonCode,
+    reasonText
   };
 }
 
@@ -144,6 +169,32 @@ function getTimeSlotOptionsForDate(availability, date) {
   return availability.defaultTimeSlotOptions || [];
 }
 
+function getSelectedTimeSlotOption(timeSlotOptions, selectedTimeSlotValue) {
+  return (timeSlotOptions || []).find((item) => item.value === selectedTimeSlotValue) || null;
+}
+
+function getFirstActiveTimeSlot(timeSlotOptions) {
+  return (timeSlotOptions || []).find((item) => item.status === 'active') || null;
+}
+
+function resolveSelectedTimeSlotValue(timeSlotOptions, currentValue) {
+  const currentOption = getSelectedTimeSlotOption(timeSlotOptions, currentValue);
+  if (currentOption && currentOption.status === 'active') {
+    return currentOption.value;
+  }
+
+  const firstActiveOption = getFirstActiveTimeSlot(timeSlotOptions);
+  return firstActiveOption ? firstActiveOption.value : '';
+}
+
+function getTimeSlotReasonText(timeSlotOption) {
+  if (!timeSlotOption) {
+    return '';
+  }
+
+  return timeSlotOption.reasonText || timeSlotOption.reasonCode || '';
+}
+
 function getIdentityMeta() {
   const app = getApp();
   const identity = app.getCustomerIdentity ? app.getCustomerIdentity() : app.globalData.customerIdentity;
@@ -204,6 +255,7 @@ Page({
     stateMessage: '',
     submitMessage: '',
     submitState: 'idle',
+    timeSlotStateMessage: '',
     customerIdentity: {
       openId: '',
       label: '未设置顾客 OpenID',
@@ -217,7 +269,7 @@ Page({
     dateOptions: [],
     dateIndex: 0,
     timeSlotOptions: [],
-    timeSlotIndex: 0,
+    selectedTimeSlotValue: '',
     availability: {
       dateOptions: [],
       timeSlotOptionsByDate: {},
@@ -295,7 +347,7 @@ Page({
   },
 
   async onDateChange(event) {
-    const dateIndex = Number(event.detail.value);
+    const dateIndex = Number(event.currentTarget.dataset.index ?? event.detail.value);
     const nextDate = (this.data.dateOptions[dateIndex] && this.data.dateOptions[dateIndex].value) || '';
     if (!nextDate) {
       return;
@@ -304,8 +356,24 @@ Page({
     await this.loadAvailability(nextDate);
   },
 
-  onTimeSlotChange(event) {
-    this.setData({ timeSlotIndex: Number(event.detail.value) });
+  onTimeSlotTap(event) {
+    const { value, status, reasonText, reasonCode } = event.currentTarget.dataset;
+    if (!value) {
+      return;
+    }
+
+    if (status !== 'active') {
+      wx.showToast({
+        title: reasonText || reasonCode || '当前时段不可预约',
+        icon: 'none'
+      });
+      return;
+    }
+
+    this.setData({
+      selectedTimeSlotValue: value,
+      submitMessage: ''
+    });
   },
 
   async loadPage() {
@@ -316,7 +384,9 @@ Page({
         pageState: 'unauthorized',
         stateMessage: customerIdentity.isDevelopEnv
           ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
-          : '未获取到顾客 OpenID，当前环境不能提交预约。'
+          : '未获取到顾客 OpenID，当前环境不能提交预约。',
+        timeSlotStateMessage: '',
+        selectedTimeSlotValue: ''
       });
       return;
     }
@@ -337,7 +407,9 @@ Page({
         pageState: 'unauthorized',
         stateMessage: customerIdentity.isDevelopEnv
           ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
-          : '未获取到顾客 OpenID，当前环境不能提交预约。'
+          : '未获取到顾客 OpenID，当前环境不能提交预约。',
+        timeSlotStateMessage: '',
+        selectedTimeSlotValue: ''
       });
       return;
     }
@@ -347,24 +419,36 @@ Page({
       customerIdentity,
       pageState: 'loading',
       stateMessage: '',
-      submitMessage: ''
+      submitMessage: '',
+      timeSlotStateMessage: ''
     });
 
     try {
+      const previousDate = this.data.availability.selectedDate;
+      const previousSelectedTimeSlotValue = this.data.selectedTimeSlotValue;
       const availability = normalizeAvailability(await getAvailability(date), date);
       const dateOptions = availability.dateOptions;
       const selectedDate = availability.selectedDate;
       const timeSlotOptions = getTimeSlotOptionsForDate(availability, selectedDate);
       const selectedIndex = Math.max(dateOptions.findIndex((item) => item.value === selectedDate), 0);
+      const shouldKeepSelection = selectedDate === previousDate;
+      const selectedTimeSlotValue = resolveSelectedTimeSlotValue(
+        timeSlotOptions,
+        shouldKeepSelection ? previousSelectedTimeSlotValue : ''
+      );
+      const hasActiveTimeSlots = timeSlotOptions.some((item) => item.status === 'active');
 
       let pageState = 'ready';
       let stateMessage = '';
+      let timeSlotStateMessage = '';
       if (!dateOptions.length) {
         pageState = 'empty';
         stateMessage = 'availability 接口已返回，但当前没有可约日期。';
       } else if (!timeSlotOptions.length) {
         pageState = 'empty';
         stateMessage = 'availability 接口已返回，但当前日期暂无可约时段，请联系店员确认排期。';
+      } else if (!hasActiveTimeSlots) {
+        timeSlotStateMessage = '当前日期暂无可直接提交的可预约时段；灰色卡片已展示不可预约原因，请改选日期或联系门店确认排期。';
       }
 
       this.setData({
@@ -372,14 +456,17 @@ Page({
         dateOptions,
         dateIndex: selectedIndex,
         timeSlotOptions,
-        timeSlotIndex: 0,
+        selectedTimeSlotValue,
         pageState,
-        stateMessage
+        stateMessage,
+        timeSlotStateMessage
       });
     } catch (error) {
       this.setData({
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',
-        stateMessage: formatPageErrorMessage(error, '预约页加载失败，请确认 availability 接口是否可用。')
+        stateMessage: formatPageErrorMessage(error, '预约页加载失败，请确认 availability 接口是否可用。'),
+        timeSlotStateMessage: '',
+        selectedTimeSlotValue: ''
       });
     }
   },
@@ -390,7 +477,7 @@ Page({
       dateOptions,
       dateIndex,
       timeSlotOptions,
-      timeSlotIndex,
+      selectedTimeSlotValue,
       form,
       customerIdentity
     } = this.data;
@@ -410,7 +497,7 @@ Page({
     }
 
     const dateOption = dateOptions[dateIndex];
-    const timeSlotOption = timeSlotOptions[timeSlotIndex];
+    const timeSlotOption = getSelectedTimeSlotOption(timeSlotOptions, selectedTimeSlotValue);
     const customerName = (form.customerName || '').trim();
     const phone = (form.phone || '').trim();
     const note = (form.note || '').trim();
@@ -423,11 +510,11 @@ Page({
       return;
     }
 
-    if (!dateOption || !timeSlotOption) {
+    if (!dateOption || !timeSlotOption || timeSlotOption.status !== 'active') {
       this.setData({
-        submitMessage: '预约信息不完整，请确认预约日期和时间段。'
+        submitMessage: getTimeSlotReasonText(timeSlotOption) || '当前没有可提交的预约时段，请改选其他日期或时间。'
       });
-      wx.showToast({ title: '预约信息不完整', icon: 'none' });
+      wx.showToast({ title: '请选择可预约时段', icon: 'none' });
       return;
     }
 

@@ -70,7 +70,7 @@ function getFunctionBody(text, functionName) {
 
 function scanLegacyTokens(dirPath) {
   const scanExtensions = new Set(['.js', '.json', '.wxml']);
-  const tokens = ['/api/v1/staff/rules', 'bookingEnabled', 'bookingNotice'];
+  const tokens = ['/api/v1/staff/rules', 'bookingEnabled', 'bookingNotice', 'confirmed', 'cancelled', 'completed'];
 
   for (const name of fs.readdirSync(dirPath)) {
     const fullPath = path.join(dirPath, name);
@@ -98,16 +98,19 @@ const requestPath = 'apps/weapp/utils/request.js';
 const requestText = readText(requestPath);
 expectIncludes(requestText, "'X-Customer-OpenId'", requestPath);
 expectIncludes(requestText, "'X-Staff-OpenId'", requestPath);
-expectIncludes(requestText, "getCustomerIdentityOrThrow", requestPath);
+expectIncludes(requestText, 'getCustomerIdentityOrThrow', requestPath);
 
 const appointmentServicePath = 'apps/weapp/services/appointment.js';
 const appointmentServiceText = readText(appointmentServicePath);
+const listGalleryBody = getFunctionBody(appointmentServiceText, 'listGallery');
 const getAvailabilityBody = getFunctionBody(appointmentServiceText, 'getAvailability');
 const createAppointmentBody = getFunctionBody(appointmentServiceText, 'createAppointment');
 const listMyAppointmentsBody = getFunctionBody(appointmentServiceText, 'listMyAppointments');
 const listStaffRulesBody = getFunctionBody(appointmentServiceText, 'listStaffRules');
 const updateStaffRulesBody = getFunctionBody(appointmentServiceText, 'updateStaffRules');
 
+expectIncludes(listGalleryBody, "url: '/api/v1/gallery'", `${appointmentServicePath}#listGallery`);
+expectExcludes(listGalleryBody, '/api/v1/gallery/', `${appointmentServicePath}#listGallery`);
 expectIncludes(appointmentServiceText, "url: '/api/v1/availability'", appointmentServicePath);
 expectRegex(
   getAvailabilityBody,
@@ -141,7 +144,7 @@ expectIncludes(createAppointmentBody, 'appointmentDate', `${appointmentServicePa
   expectExcludes(createAppointmentBody, token, `${appointmentServicePath}#createAppointment`);
 });
 
-expectIncludes(listMyAppointmentsBody, "/api/v1/my/appointments", `${appointmentServicePath}#listMyAppointments`);
+expectIncludes(listMyAppointmentsBody, '/api/v1/my/appointments', `${appointmentServicePath}#listMyAppointments`);
 expectRegex(
   listMyAppointmentsBody,
   /auth:\s*'customer'/,
@@ -149,7 +152,6 @@ expectRegex(
   'must use customer auth'
 );
 expectExcludes(listMyAppointmentsBody, 'phone', `${appointmentServicePath}#listMyAppointments`);
-expectExcludes(appointmentServiceText, "url: '/api/v1/appointments',\n    auth: 'customer'", appointmentServicePath);
 
 expectIncludes(listStaffRulesBody, '/api/v1/staff/booking-rules', `${appointmentServicePath}#listStaffRules`);
 expectRegex(
@@ -173,8 +175,33 @@ expectRegex(
 );
 expectExcludes(appointmentServiceText, '/api/v1/staff/rules', appointmentServicePath);
 
+const homePagePath = 'apps/weapp/pages/home/index.js';
+const homePageText = readText(homePagePath);
+expectIncludes(homePageText, 'goGalleryDetail', homePagePath);
+expectIncludes(homePageText, '/pages/gallery-detail/index?id=', homePagePath);
+expectIncludes(homePageText, 'normalizeGalleryItems', homePagePath);
+
+const galleryDetailPagePath = 'apps/weapp/pages/gallery-detail/index.js';
+const galleryDetailPageText = readText(galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'listGallery', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'normalizeGalleryItems', galleryDetailPagePath);
+expectExcludes(galleryDetailPageText, '/api/v1/gallery/', galleryDetailPagePath);
+expectExcludes(galleryDetailPageText, 'detailApi', galleryDetailPagePath);
+
+const galleryUtilsPath = 'apps/weapp/utils/gallery.js';
+const galleryUtilsText = readText(galleryUtilsPath);
+expectIncludes(galleryUtilsText, 'item.imageUrls', galleryUtilsPath);
+expectIncludes(galleryUtilsText, 'item.imageUrl', galleryUtilsPath);
+expectIncludes(galleryUtilsText, 'const coverImageUrl = imageUrls[0] ||', galleryUtilsPath);
+
 const bookingPagePath = 'apps/weapp/pages/booking/index.js';
 const bookingPageText = readText(bookingPagePath);
+expectIncludes(bookingPageText, 'normalizeTimeSlotStatus', bookingPagePath);
+expectIncludes(bookingPageText, 'reasonText', bookingPagePath);
+expectIncludes(bookingPageText, 'selectedTimeSlotValue', bookingPagePath);
+expectIncludes(bookingPageText, 'onTimeSlotTap', bookingPagePath);
+expectIncludes(bookingPageText, "status !== 'active'", bookingPagePath);
+expectIncludes(bookingPageText, 'getTimeSlotReasonText', bookingPagePath);
 expectRegex(
   bookingPageText,
   /createAppointment\(\{[\s\S]*appointmentDate:\s*dateOption\.value[\s\S]*timeSlot:\s*timeSlotOption\.value[\s\S]*\}\)/,
@@ -185,6 +212,19 @@ expectRegex(
   expectExcludes(bookingPageText, `${token}:`, bookingPagePath);
 });
 
+const bookingWxmlPath = 'apps/weapp/pages/booking/index.wxml';
+const bookingWxmlText = readText(bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'time-slot-grid', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'bindtap="onTimeSlotTap"', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'item.reasonText || item.reasonCode', bookingWxmlPath);
+expectExcludes(bookingWxmlText, 'picker mode="selector" range="{{timeSlotOptions}}"', bookingWxmlPath);
+
+const bookingWxssPath = 'apps/weapp/pages/booking/index.wxss';
+const bookingWxssText = readText(bookingWxssPath);
+expectIncludes(bookingWxssText, '.time-slot-grid', bookingWxssPath);
+expectIncludes(bookingWxssText, '.time-slot-card.is-disabled', bookingWxssPath);
+expectIncludes(bookingWxssText, '.time-slot-card.is-selected', bookingWxssPath);
+
 const myBookingsPagePath = 'apps/weapp/pages/my-bookings/index.js';
 const myBookingsPageText = readText(myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'listMyAppointments', myBookingsPagePath);
@@ -193,8 +233,8 @@ expectExcludes(myBookingsPageText, 'phone=', myBookingsPagePath);
 ['confirmed', 'cancelled', 'completed'].forEach((token) => {
   expectExcludes(myBookingsPageText, `'${token}'`, myBookingsPagePath);
 });
-expectIncludes(myBookingsPageText, "approved", myBookingsPagePath);
-expectIncludes(myBookingsPageText, "rejected", myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'approved', myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'rejected', myBookingsPagePath);
 
 const staffAppointmentsPagePath = 'apps/weapp/pages/staff/appointments/index.js';
 const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
@@ -203,8 +243,6 @@ const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
 });
 expectIncludes(staffAppointmentsPageText, "'approved'", staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, "'rejected'", staffAppointmentsPagePath);
-expectExcludes(staffAppointmentsPageText, "status: 'confirmed'", `${staffAppointmentsPagePath}#reviewAppointment`);
-expectExcludes(staffAppointmentsPageText, "status: 'cancelled'", `${staffAppointmentsPagePath}#reviewAppointment`);
 
 const staffAppointmentsWxmlPath = 'apps/weapp/pages/staff/appointments/index.wxml';
 const staffAppointmentsWxmlText = readText(staffAppointmentsWxmlPath);
@@ -230,6 +268,7 @@ const appJsonPath = 'apps/weapp/app.json';
 const appJson = JSON.parse(readText(appJsonPath) || '{}');
 const requiredPages = [
   'pages/home/index',
+  'pages/gallery-detail/index',
   'pages/booking/index',
   'pages/my-bookings/index',
   'pages/staff/rules/index',

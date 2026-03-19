@@ -40,15 +40,40 @@
 
   <view wx:else class="card form-card">
     <view class="field-label">日期</view>
-    <picker mode="selector" range="{{dateOptions}}" range-key="label" value="{{dateIndex}}" bindchange="onDateChange">
-      <view class="field-picker">{{dateOptions[dateIndex] ? dateOptions[dateIndex].label : '请选择日期'}}</view>
-    </picker>
+    <scroll-view class="date-scroll" scroll-x enable-flex show-scrollbar="false">
+      <view class="date-chip-row">
+        <view
+          wx:for="{{dateOptions}}"
+          wx:key="id"
+          class="date-chip {{index === dateIndex ? 'selected' : ''}}"
+          data-index="{{index}}"
+          bindtap="onDateChange"
+        >
+          <view class="date-chip-title">{{item.label}}</view>
+          <view class="date-chip-value">{{item.value}}</view>
+        </view>
+      </view>
+    </scroll-view>
     <view class="helper-text">切换日期时会重新调用 availability 接口，并使用固定 query key：date。</view>
 
     <view class="field-label">可预约时间段</view>
-    <picker mode="selector" range="{{timeSlotOptions}}" range-key="label" value="{{timeSlotIndex}}" bindchange="onTimeSlotChange">
-      <view class="field-picker">{{timeSlotOptions[timeSlotIndex] ? timeSlotOptions[timeSlotIndex].label : '请选择时间段'}}</view>
-    </picker>
+    <view class="time-slot-grid">
+      <view
+        wx:for="{{timeSlotOptions}}"
+        wx:key="id"
+        class="time-slot-card {{item.status === 'active' ? 'is-active' : 'is-disabled'}} {{selectedTimeSlotValue === item.value ? 'is-selected' : ''}}"
+        data-value="{{item.value}}"
+        data-status="{{item.status}}"
+        data-reason-text="{{item.reasonText}}"
+        data-reason-code="{{item.reasonCode}}"
+        bindtap="onTimeSlotTap"
+      >
+        <view class="time-slot-value">{{item.label}}</view>
+        <view class="time-slot-meta" wx:if="{{item.status === 'disabled' && (item.reasonText || item.reasonCode)}}">{{item.reasonText || item.reasonCode}}</view>
+        <view class="time-slot-meta success" wx:elif="{{item.status === 'active'}}">可预约</view>
+      </view>
+    </view>
+    <view wx:if="{{timeSlotStateMessage}}" class="helper-text warning-text">{{timeSlotStateMessage}}</view>
 
     <view class="field-label">姓名（选填，仅用于联系）</view>
     <input class="field-input" data-field="customerName" value="{{form.customerName}}" bindinput="onInput" placeholder="如需门店回访，可填写联系人姓名" />

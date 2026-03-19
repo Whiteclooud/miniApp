@@ -1,4 +1,5 @@
 const { listGallery } = require('../../services/appointment');
+const { normalizeGalleryItems } = require('../../utils/gallery');
 
 Page({
   data: {
@@ -21,7 +22,7 @@ Page({
     try {
       const res = await listGallery();
       this.setData({
-        galleryItems: res.items || [],
+        galleryItems: normalizeGalleryItems(res.items || []),
         loading: false,
         hasError: false
       });
@@ -36,6 +37,16 @@ Page({
         icon: 'none'
       });
     }
+  },
+
+  goGalleryDetail(event) {
+    const { id } = event.currentTarget.dataset;
+    if (!id) {
+      return;
+    }
+    wx.navigateTo({
+      url: `/pages/gallery-detail/index?id=${encodeURIComponent(id)}`
+    });
   },
 
   goBooking() {

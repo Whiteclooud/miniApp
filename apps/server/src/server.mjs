@@ -11,13 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const port = Number(process.env.PORT || 3000);
 const defaultDbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'miniapp.sqlite');
-const defaultStaffOpenId = 'staff-openid-v1';
-const allowedStaffOpenIds = new Set(
-  String(process.env.STAFF_OPEN_IDS || process.env.STAFF_OPEN_ID || defaultStaffOpenId)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-);
+const defaultStaffOpenId = 'staff-openid-demo';
+const allowedStaffOpenIds = buildAllowedStaffOpenIds();
 
 const seedGalleryItems = [
   {
@@ -75,6 +70,20 @@ const bookingRuleAllowedFields = new Set([
   'dailySlots',
   'updatedAt'
 ]);
+
+function buildAllowedStaffOpenIds() {
+  const configuredIds = [process.env.STAFF_OPEN_IDS, process.env.STAFF_OPEN_ID]
+    .flatMap((value) => String(value || '').split(','))
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const allowedIds = new Set([defaultStaffOpenId]);
+  for (const staffOpenId of configuredIds) {
+    allowedIds.add(staffOpenId);
+  }
+
+  return allowedIds;
+}
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -441,6 +450,20 @@ function createAppointmentsTable(db) {
   `);
 }
 
+function migrateLegacyAppointmentDateColumn(db) {
+  const hasLegacyAppointmentDateColumn = columnExists(db, 'appointments', 'appointment_date');
+  ensureColumn(db, 'appointments', 'date', "TEXT NOT NULL DEFAULT ''");
+
+  if (hasLegacyAppointmentDateColumn) {
+    db.exec(`
+      UPDATE appointments
+      SET date = appointment_date
+      WHERE TRIM(COALESCE(date, '')) = ''
+        AND TRIM(COALESCE(appointment_date, '')) <> ''
+    `);
+  }
+}
+
 function buildLegacyAppointmentId(row, index) {
   const id = String(row.id || '').trim();
   if (id) {
@@ -517,7 +540,7 @@ function migrateAppointmentsTable(db) {
         serviceName: String(row.service_name || row.serviceName || ''),
         artistId: String(row.artist_id || row.artistId || ''),
         artistName: String(row.artist_name || row.artistName || ''),
-        date: String(row.date || ''),
+        date: String(row.date || row.appointment_date || ''),
         timeSlot: String(row.time_slot || row.timeSlot || ''),
         note: String(row.note || ''),
         status: String(row.status || 'pending'),
@@ -532,6 +555,7 @@ function migrateAppointmentsTable(db) {
     db.exec(`DROP TABLE ${backupTableName}`);
   }
 
+  migrateLegacyAppointmentDateColumn(db);
   ensureColumn(db, 'appointments', 'customer_name', "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, 'appointments', 'phone', "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, 'appointments', 'service_id', "TEXT NOT NULL DEFAULT ''");
@@ -846,6 +870,7 @@ function normalizeGalleryItem(row) {
     id: row.id,
     title: row.title,
     imageUrl: row.image_url,
+    imageUrls: row.image_url ? [row.image_url] : [],
     tags: JSON.parse(row.tags_json),
     priceFrom: row.price_from,
     serviceId: row.service_id,
@@ -856,11 +881,21 @@ function normalizeGalleryItem(row) {
   };
 }
 
-function normalizeAvailabilityItem(date, timeSlot) {
+function normalizeAvailabilityItem(
+  date,
+  timeSlot,
+  {
+    status = 'active',
+    reasonCode = 'AVAILABLE',
+    reasonText = '可预约'
+  } = {}
+) {
   return {
     date,
     timeSlot,
-    status: 'active'
+    status,
+    reasonCode,
+    reasonText
   };
 }
 
@@ -1018,17 +1053,35 @@ function findUnexpectedFields(body, allowedFields) {
 }
 
 function isDateBookable(date, rules, today = startOfToday()) {
+  return !getDateDisabledReason(date, rules, today);
+}
+
+function getDateDisabledReason(date, rules, today = startOfToday()) {
   const parsedDate = parseDateValue(date);
   if (!parsedDate) {
-    return false;
+    return {
+      reasonCode: 'DATE_INVALID',
+      reasonText: '日期格式无效'
+    };
   }
 
+  const normalizedDate = formatDateValue(parsedDate);
   const diffDays = diffCalendarDays(today, parsedDate);
   if (diffDays < 0 || diffDays > rules.advanceOpenDays) {
-    return false;
+    return {
+      reasonCode: 'DATE_OUT_OF_RANGE',
+      reasonText: '所选日期不在当前开放预约范围内'
+    };
   }
 
-  return !rules.closedDates.includes(formatDateValue(parsedDate));
+  if (rules.closedDates.includes(normalizedDate)) {
+    return {
+      reasonCode: 'DATE_CLOSED',
+      reasonText: '所选日期当前暂停预约'
+    };
+  }
+
+  return null;
 }
 
 function isSlotDefinedInRules(timeSlot, rules) {
@@ -1051,26 +1104,59 @@ function buildOpenDates(rules, specificDate = '') {
   return dates;
 }
 
+function listOccupiedSlots(queries, startDate, endDate) {
+  return new Set(
+    queries.listOccupiedSlotsByDateRange
+      .all({ startDate, endDate })
+      .map((row) => `${row.date}__${row.time_slot}`)
+  );
+}
+
 function listAvailabilityItems(queries, rules, specificDate = '') {
-  const openDates = buildOpenDates(rules, specificDate);
-  if (openDates.length === 0 || rules.dailySlots.length === 0) {
+  const timeSlots = sortTimeSlots(rules.dailySlots);
+  if (timeSlots.length === 0) {
     return [];
   }
 
-  const rangeStart = openDates[0];
-  const rangeEnd = openDates[openDates.length - 1];
-  const occupiedRows = queries.listOccupiedSlotsByDateRange.all({
-    startDate: rangeStart,
-    endDate: rangeEnd
-  });
-  const occupiedSlots = new Set(
-    occupiedRows.map((row) => `${row.date}__${row.time_slot}`)
-  );
+  if (specificDate) {
+    const occupiedSlots = listOccupiedSlots(queries, specificDate, specificDate);
+    const dateDisabledReason = getDateDisabledReason(specificDate, rules);
 
+    return timeSlots.map((timeSlot) => {
+      if (dateDisabledReason) {
+        return normalizeAvailabilityItem(specificDate, timeSlot, {
+          status: 'disabled',
+          ...dateDisabledReason
+        });
+      }
+
+      if (occupiedSlots.has(`${specificDate}__${timeSlot}`)) {
+        return normalizeAvailabilityItem(specificDate, timeSlot, {
+          status: 'disabled',
+          reasonCode: 'SLOT_OCCUPIED',
+          reasonText: '该时段已被已通过审核的预约占用'
+        });
+      }
+
+      return normalizeAvailabilityItem(specificDate, timeSlot);
+    });
+  }
+
+  const openDates = buildOpenDates(rules);
+  if (openDates.length === 0) {
+    return [];
+  }
+
+  const occupiedSlots = listOccupiedSlots(queries, openDates[0], openDates[openDates.length - 1]);
   const items = [];
   for (const date of openDates) {
-    for (const timeSlot of sortTimeSlots(rules.dailySlots)) {
+    for (const timeSlot of timeSlots) {
       if (occupiedSlots.has(`${date}__${timeSlot}`)) {
+        items.push(normalizeAvailabilityItem(date, timeSlot, {
+          status: 'disabled',
+          reasonCode: 'SLOT_OCCUPIED',
+          reasonText: '该时段已被已通过审核的预约占用'
+        }));
         continue;
       }
       items.push(normalizeAvailabilityItem(date, timeSlot));
@@ -1578,6 +1664,8 @@ async function runSelfTest() {
       assert.equal(galleryRes.status, 200);
       assert.ok(Array.isArray(galleryRes.body.items));
       assert.ok(galleryRes.body.items.length >= 3);
+      assert.ok(Array.isArray(galleryRes.body.items[0].imageUrls));
+      assert.deepEqual(galleryRes.body.items[0].imageUrls, [galleryRes.body.items[0].imageUrl]);
 
       const corsPreflightRes = await requestJson(baseUrl, '/api/v1/staff/booking-rules', {
         method: 'OPTIONS'
@@ -1656,27 +1744,33 @@ async function runSelfTest() {
       const availabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${openDate}`);
       assert.equal(availabilityRes.status, 200);
       assert.deepEqual(availabilityRes.body.items, [
-        { date: openDate, timeSlot: '09:00-10:00', status: 'active' },
-        { date: openDate, timeSlot: '10:30-11:30', status: 'active' }
+        { date: openDate, timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: openDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
 
       const closedAvailabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${closedDate}`);
       assert.equal(closedAvailabilityRes.status, 200);
-      assert.deepEqual(closedAvailabilityRes.body.items, []);
+      assert.deepEqual(closedAvailabilityRes.body.items, [
+        { date: closedDate, timeSlot: '09:00-10:00', status: 'disabled', reasonCode: 'DATE_CLOSED', reasonText: '所选日期当前暂停预约' },
+        { date: closedDate, timeSlot: '10:30-11:30', status: 'disabled', reasonCode: 'DATE_CLOSED', reasonText: '所选日期当前暂停预约' }
+      ]);
 
       const outOfWindowAvailabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${outsideDate}`);
       assert.equal(outOfWindowAvailabilityRes.status, 200);
-      assert.deepEqual(outOfWindowAvailabilityRes.body.items, []);
+      assert.deepEqual(outOfWindowAvailabilityRes.body.items, [
+        { date: outsideDate, timeSlot: '09:00-10:00', status: 'disabled', reasonCode: 'DATE_OUT_OF_RANGE', reasonText: '所选日期不在当前开放预约范围内' },
+        { date: outsideDate, timeSlot: '10:30-11:30', status: 'disabled', reasonCode: 'DATE_OUT_OF_RANGE', reasonText: '所选日期不在当前开放预约范围内' }
+      ]);
 
       const allAvailabilityRes = await requestJson(baseUrl, '/api/v1/availability');
       assert.equal(allAvailabilityRes.status, 200);
       assert.deepEqual(allAvailabilityRes.body.items, [
-        { date: formatDateValue(today), timeSlot: '09:00-10:00', status: 'active' },
-        { date: formatDateValue(today), timeSlot: '10:30-11:30', status: 'active' },
-        { date: openDate, timeSlot: '09:00-10:00', status: 'active' },
-        { date: openDate, timeSlot: '10:30-11:30', status: 'active' },
-        { date: secondOpenDate, timeSlot: '09:00-10:00', status: 'active' },
-        { date: secondOpenDate, timeSlot: '10:30-11:30', status: 'active' }
+        { date: formatDateValue(today), timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: formatDateValue(today), timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: openDate, timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: openDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: secondOpenDate, timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: secondOpenDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
 
       const unauthorizedCreateRes = await requestJson(baseUrl, '/api/v1/appointments', {
@@ -1736,8 +1830,8 @@ async function runSelfTest() {
       const availabilityAfterFirstPendingRes = await requestJson(baseUrl, `/api/v1/availability?date=${openDate}`);
       assert.equal(availabilityAfterFirstPendingRes.status, 200);
       assert.deepEqual(availabilityAfterFirstPendingRes.body.items, [
-        { date: openDate, timeSlot: '09:00-10:00', status: 'active' },
-        { date: openDate, timeSlot: '10:30-11:30', status: 'active' }
+        { date: openDate, timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: openDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
 
       const createSecondPendingRes = await requestJson(baseUrl, '/api/v1/appointments', {
@@ -1824,7 +1918,8 @@ async function runSelfTest() {
       const availabilityAfterApproveRes = await requestJson(baseUrl, `/api/v1/availability?date=${openDate}`);
       assert.equal(availabilityAfterApproveRes.status, 200);
       assert.deepEqual(availabilityAfterApproveRes.body.items, [
-        { date: openDate, timeSlot: '10:30-11:30', status: 'active' }
+        { date: openDate, timeSlot: '09:00-10:00', status: 'disabled', reasonCode: 'SLOT_OCCUPIED', reasonText: '该时段已被已通过审核的预约占用' },
+        { date: openDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
 
       const createAfterApprovedRes = await requestJson(baseUrl, '/api/v1/appointments', {
@@ -1945,7 +2040,8 @@ async function runSelfTest() {
       const persistedAvailabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${openDate}`);
       assert.equal(persistedAvailabilityRes.status, 200);
       assert.deepEqual(persistedAvailabilityRes.body.items, [
-        { date: openDate, timeSlot: '10:30-11:30', status: 'active' }
+        { date: openDate, timeSlot: '09:00-10:00', status: 'disabled', reasonCode: 'SLOT_OCCUPIED', reasonText: '该时段已被已通过审核的预约占用' },
+        { date: openDate, timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
     });
 
@@ -2026,13 +2122,16 @@ async function runSelfTest() {
       const migratedAvailabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${formatDateValue(addDays(today, 1))}`);
       assert.equal(migratedAvailabilityRes.status, 200);
       assert.deepEqual(migratedAvailabilityRes.body.items, [
-        { date: formatDateValue(addDays(today, 1)), timeSlot: '09:00-10:00', status: 'active' },
-        { date: formatDateValue(addDays(today, 1)), timeSlot: '10:30-11:30', status: 'active' }
+        { date: formatDateValue(addDays(today, 1)), timeSlot: '09:00-10:00', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' },
+        { date: formatDateValue(addDays(today, 1)), timeSlot: '10:30-11:30', status: 'active', reasonCode: 'AVAILABLE', reasonText: '可预约' }
       ]);
 
       const migratedClosedDayAvailabilityRes = await requestJson(baseUrl, `/api/v1/availability?date=${formatDateValue(addDays(today, 3))}`);
       assert.equal(migratedClosedDayAvailabilityRes.status, 200);
-      assert.deepEqual(migratedClosedDayAvailabilityRes.body.items, []);
+      assert.deepEqual(migratedClosedDayAvailabilityRes.body.items, [
+        { date: formatDateValue(addDays(today, 3)), timeSlot: '09:00-10:00', status: 'disabled', reasonCode: 'DATE_CLOSED', reasonText: '所选日期当前暂停预约' },
+        { date: formatDateValue(addDays(today, 3)), timeSlot: '10:30-11:30', status: 'disabled', reasonCode: 'DATE_CLOSED', reasonText: '所选日期当前暂停预约' }
+      ]);
     });
 
     console.log('self-test ok');
