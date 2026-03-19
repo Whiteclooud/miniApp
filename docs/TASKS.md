@@ -48,7 +48,7 @@ V1 统一验收基线出现再次漂移，当前回退到“统一基线重新�
 | FE-009 | frontend | 实现首页返图卡片点击进入详情页并支持多图查看 | 本轮新增体验需求、`docs/PRD.md`、`docs/API.md` gallery 新字段 | `apps/weapp/pages/home/*`、新增 `pages/gallery-detail/*`、`app.json`、相关服务/样式 | FE-008, ARCH-005 | 首页默认只展示单张封面图；点击任一返图卡片后可进入详情页查看多张图片；当 `imageUrls` 缺失时使用封面图兜底；不影响预约主链路 | 若前端自行发明详情接口或字段，会再次造成前后端口径漂移 |
 | QA-002 | frontend/backend | 追加真实页面回归用例：staff 白名单默认值、旧库迁移、多图返图详情 | 本轮 UAT 问题与新增需求、`docs/UAT_GUIDE.md` | 更新后的 UAT 记录 / 自测结论 / 回归说明 | ARCH-005, BE-008, FE-009 | 至少覆盖：`staff-openid-demo` 可通行、旧 SQLite 可正常启动、返图详情可查看多图且首页仍只展示封面 | 只修代码不补回归项，下轮 UAT 再次复发 |
 | BE-009 | backend | 扩展 availability 返回不可预约时段与原因，支持前端显性禁用提示 | 用户新增预约页交互要求、`docs/API.md` | `apps/server/src/server.mjs`、回归自测结论 | BE-007, ARCH-005 | 当顾客请求某天 availability 时，返回该日应展示的全部时间段，并标注 `active/disabled + reasonCode/reasonText`；不回退预约提交流程 | 只返回 active 时段会导致前端无法做灰显禁用说明 |
-| FE-010 | frontend | 重做预约页时间段选择交互为卡片式选择，并显性展示不可预约原因 | 用户新增预约页交互要求、`docs/API.md` availability 新口径 | `apps/weapp/pages/booking/*`、必要的样式/脚本 | FE-008, BE-009, ARCH-005 | 时间段不再只用 selector；可约时段可点击高亮，不可约时段灰显且显示原因；提交流程不受影响 | 若前端自行猜测不可约原因，会再次与后端口径漂移 |
+| FE-010 | frontend | 重做预约页时间段选择交互为卡片式选择，并显性展示不可预约原因 | 用户新增预约页交互要求、参考图、`docs/API.md` availability 新口径 | `apps/weapp/pages/booking/*`、必要的样式/脚本 | FE-008, BE-009, ARCH-005 | 日期区改为横向日期条（日期+星期+状态）；时间段不再只用 selector，而是两列卡片式选择；可约时段可点击高亮，不可约时段灰显且显示原因；提交流程不受影响 | 若前端自行猜测不可约原因，会再次与后端口径漂移 |
 
 ## 本轮前端 handoff 要点
 

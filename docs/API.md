@@ -119,6 +119,7 @@ V1 当前只允许以下接口对外使用：
 - 当请求携带 `date` 时，服务端应返回该日期下所有应展示的时间段，而不只是可预约时段。
 - `status=active` 表示前端可点击选择；`status=disabled` 表示前端需灰显且不可点击。
 - `reasonCode` / `reasonText` 由后端直接提供，当前至少覆盖：`AVAILABLE`、`DATE_CLOSED`、`DATE_OUT_OF_RANGE`、`SLOT_OCCUPIED`；前端不得自行硬编码原因文案替代。
+- 前端可直接把 `reasonText` 渲染为时间段卡片的副文案；当 `status=active` 且 `reasonText` 为空时，前端可显示“可预约”等正向提示。
 - `date` 为可选；传值时必须为 `YYYY-MM-DD`。
 - 返回结果需同时受 `advanceOpenDays`、`closedDates`、`dailySlots`、已批准预约占用影响。
 
