@@ -1,6 +1,6 @@
 # UAT Results
 
-## 当前状态（2026-03-19 18:31 Asia/Shanghai）
+## 当前状态（2026-03-19 19:10 Asia/Shanghai）
 
 本文件用于承接当前统一验收基线的真实页面 UAT 记录。
 
@@ -12,8 +12,9 @@
 - `npm run check:weapp-contract`：2026-03-18 17:29 复核通过
 - backend 定向修复自测：`npm run test:server` 通过（worker commit `abfdfe5`）
 - frontend 定向修复自测：`npm run check:weapp-contract` 通过（worker commit `df2e731`）
+- architect 统一基线复核：2026-03-19 19:10 再次在当前 repo 执行 `npm run test:server` 与 `npm run check:weapp-contract`，均通过
 
-结论：当前代码与 UAT 反馈已形成明确修复包，项目阶段从“问题发现”切换为“统一基线复核 + 二次 UAT 准备”。
+结论：当前代码与 UAT 反馈已形成明确修复包，且统一验收基线上的机器门槛已再次通过；项目阶段从“统一基线复核 + 二次 UAT 准备”切换为“二次真实页面 UAT 可执行”。
 
 ## 本轮 UAT 环境
 
@@ -40,11 +41,12 @@
 
 ## 当前推进动作
 
-- 第一轮真实页面 UAT 暴露的问题已拆成 `BE-008`、`BE-009`、`FE-009`、`FE-010`、`QA-002`，且前后端定向修复均已在 worker workspace 回收。
-- 当前下一步不是继续扩写需求，而是做两件事：
-  1. architect 统一复核前后端修复结果，并把契约 / 文档 / 当前基线状态更新一致
-  2. 基于修复后的统一基线重跑 Case 4~9，重点复测 staff 链路、不可预约原因展示与接口口径防回退
-- 在统一基线复核完成前，暂不进入 push / review / release 判断。
+- 第一轮真实页面 UAT 暴露的问题已拆成 `BE-008`、`BE-009`、`FE-009`、`FE-010`、`QA-002`，且前后端定向修复与 architect 统一基线复核均已完成。
+- 当前下一步不是继续扩写需求，而是直接基于修复后的统一基线重跑 Case 4~9，重点复测：
+  1. `staff-openid-demo` 默认白名单是否已恢复店员链路
+  2. 预约页 disabled 时段的灰显与 `reasonText` 展示是否符合预期
+  3. 首页返图封面 -> 详情多图链路与接口口径防回退
+- 在二次真实页面 UAT 跑完前，仍不进入 push / review / release 判断。
 
 ## 问题记录
 
@@ -57,6 +59,6 @@
 ## 结论口径
 
 - 当前不进入 push / review / release 判断。
-- 当前阶段判断为：顾客主链路已通过首轮 UAT，staff 侧与新交互项所需的定向修复已回收，当前待统一基线复核后重跑 Case 4~9。
+- 当前阶段判断为：顾客主链路已通过首轮 UAT，staff 侧与新交互项所需修复已完成并通过统一基线复核，当前可直接重跑 Case 4~9。
 - 若 Case 9 出现旧接口（如 `/api/v1/services`、旧版 `GET /api/v1/appointments`），直接判定为契约回退问题。
-- 只有在 `BE-008`、`BE-009`、`FE-009`、`FE-010` 落入统一验收基线并完成二次 UAT 后，才进入最终验收结论与后续发布判断。
+- 只有在二次 UAT 确认 `BE-008`、`BE-009`、`FE-009`、`FE-010` 的页面效果与接口行为都通过后，才进入最终验收结论与后续发布判断。
