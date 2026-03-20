@@ -36,6 +36,8 @@
 
 ### 1.1 当前前端真实技术栈
 
+补充边界文档：详见 `docs/WEAPP_REFACTOR_BOUNDARY.md`，后续前端 TS 增量迁移与 worker brief 一律以该文档与本计划联合为准。
+
 代码事实：
 - 小程序入口与页面注册在 `apps/weapp/app.json`
 - 应用启动与全局状态在 `apps/weapp/app.js`
