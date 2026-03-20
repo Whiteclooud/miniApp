@@ -635,6 +635,8 @@ repo/miniApp
 - 环境有了落地方式
 - 前端知道未来怎么增量升级，而不是被动等后端“推倒重来”
 
+补充状态（2026-03-20 19:1x）：`DEV-001` 已有第一版实物——`infra/compose/docker-compose.api.yml` 与 `docs/API_ENV_AND_CUTOVER.md`。当前环境方案已从“仅文档占位”推进到“可按手册启动 MySQL、并指导新旧服务切换/回滚”的阶段。
+
 ---
 
 ## 六、重构触发阈值

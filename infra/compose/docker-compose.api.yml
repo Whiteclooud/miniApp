@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  miniapp-mysql:
+    image: mysql:8.4
+    container_name: miniapp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: miniapp_api
+      MYSQL_USER: miniapp
+      MYSQL_PASSWORD: miniapp
+    ports:
+      - '3306:3306'
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - miniapp_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-proot']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  miniapp_mysql_data:
