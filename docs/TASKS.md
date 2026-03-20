@@ -54,8 +54,9 @@ V1 二次真实页面 UAT 已完成一轮复测：主链路已基本跑通，当
 
 | ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ARCH-006 | architect | 收口 2026-03-20 二次 UAT 结果并冻结最终修复范围 | Lan 二次 UAT 反馈、`docs/UAT_RESULTS.md`、当前基线代码 | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/TASKS.md`、派工 brief | ARCH-005, FE-009, FE-010, BE-009 | 明确区分“主链路已通过项 / 体验缺陷 / 待确认项”，并把下一轮修复范围限制在规则页结构化交互与 Case 2 现象复核两块 | 若不先分清“真 bug / 规则导致 / 体验不达标”，会再次扩大修复范围 |
+| ARCH-006 | architect | 收口 2026-03-20 二次 UAT 结果并冻结最终修复范围 | Lan 二次 UAT 反馈、`docs/UAT_RESULTS.md`、当前基线代码 | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/TASKS.md`、派工 brief | ARCH-005, FE-009, FE-010, BE-009 | 明确区分“主链路已通过项 / 体验缺陷 / 待确认项”，并把下一轮修复范围限制在规则页结构化交互、Case 2 现象复核和店员月历视图三块 | 若不先分清“真 bug / 规则导致 / 体验不达标”，会再次扩大修复范围 |
 | FE-011 | frontend | 将店员规则页重构为结构化配置交互 | Lan 二次 UAT 反馈、`docs/PRD.md`、`docs/ARCHITECTURE.md`、现有 `booking-rules` 契约 | `apps/weapp/pages/staff/rules/*`、必要样式/脚本、自测结论 | ARCH-006, FE-004 | `advanceOpenDays` 使用可选控件而非裸数字输入；`closedDates` 使用日期选择 + 已选列表；`dailySlots` 使用可增删的时间段项/卡片而非多行文本；保存后读回结果一致，不回退冻结 API 字段 | 若前端为了追求易用性自行改接口字段，会再次造成契约漂移 |
+| FE-012 | frontend | 为店员预约页补充月历 / 月视图总览能力 | Lan 补充需求、参考图、`docs/PRD.md`、`docs/ARCHITECTURE.md`、现有 staff appointments 契约 | `apps/weapp/pages/staff/appointments/*`、必要样式/脚本、自测结论 | ARCH-006, FE-005 | 店员可切换月份并查看当月日历；日期格能展示预约概况/状态标记；点击日期可联动查看当天预约明细；不发明新接口、不引入拖拽排班 | 若现有 staff appointments 数据口径不足以支撑月历，又未及时上收 architect，会导致前后端再次漂移 |
 | QA-003 | frontend/backend | 复现并定位“顾客预约仅 1 个可选时段”现象，并补齐判定依据 | Lan Case 2 反馈、当前 booking rules / appointments 数据、`docs/UAT_GUIDE.md` | 复现说明、修复或判定结论、必要的回归补充 | ARCH-006, FE-010, BE-009 | 能明确判断该现象是规则配置/已批准占用导致的预期结果，还是 availability / 页面渲染缺陷；若是缺陷需落代码并补回归，若是预期需补清晰提示或验收说明 | 若只看页面现象不还原当时规则与数据状态，容易误修正确行为 |
 
 ## 本轮前端 handoff 要点
