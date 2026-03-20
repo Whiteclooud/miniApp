@@ -1,77 +1,123 @@
 @import '../../../app.wxss';
 
-.title-card,
-.auth-card,
+.identity-card,
+.dev-card,
+.nav-card,
+.state-card,
+.summary-card,
 .form-card {
   margin-bottom: 24rpx;
 }
 
-.title,
-.section-title {
-  font-size: 34rpx;
+.rules-shell {
+  padding-bottom: 24rpx;
+}
+
+.field-label,
+.section-title,
+.nav-title {
+  font-size: 30rpx;
   font-weight: 700;
 }
 
-.desc,
-.section-desc,
-.helper-text {
+.helper-text,
+.state-desc,
+.picker-caption {
   margin-top: 12rpx;
   color: #7d5b4c;
-  font-size: 26rpx;
+  font-size: 24rpx;
   line-height: 1.6;
 }
 
-.nav-button,
-.small-button,
-.submit-button {
-  margin-top: 20rpx;
-}
-
-.field-label {
-  margin-top: 20rpx;
-  font-size: 26rpx;
-  font-weight: 600;
-}
-
 .field-input,
-.field-picker {
-  margin-top: 10rpx;
+.picker-trigger {
+  margin-top: 12rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
   background: #fff6f2;
-  border-radius: 18rpx;
-  padding: 20rpx;
+  border-radius: 20rpx;
   font-size: 28rpx;
+  color: #5f4a42;
 }
 
-.tag-list {
+.inline-button {
   margin-top: 16rpx;
 }
 
-.tag-item {
+.stepper-row,
+.action-row,
+.slot-picker-grid {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12rpx;
-  padding: 18rpx 20rpx;
-  background: #fff8f6;
-  border-radius: 18rpx;
-  color: #6f574b;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.stepper-button {
+  flex: 1;
+  border-radius: 999rpx;
+  background: #fff0ea;
+  color: #8d5f55;
   font-size: 24rpx;
 }
 
-.slot-row {
+.chips-row,
+.summary-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
   margin-top: 16rpx;
 }
 
-.slot-picker {
+.option-chip,
+.preset-chip,
+.summary-chip {
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: #fff3ee;
+  color: #8a6258;
+  font-size: 24rpx;
+}
+
+.option-chip-active,
+.preset-chip-active {
+  background: #2f1d17;
+  color: #fff4ee;
+}
+
+.slot-picker-item {
+  flex: 1;
+}
+
+.tag-list,
+.slot-card-list {
+  margin-top: 16rpx;
+}
+
+.tag-item,
+.slot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
   margin-bottom: 12rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f5;
+}
+
+.slot-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #43312d;
+}
+
+.slot-helper {
+  margin-top: 6rpx;
 }
 
 .remove-text {
   color: #c35e72;
   font-size: 24rpx;
-}
-
-.inline-remove {
-  display: inline-block;
-  margin-top: 4rpx;
 }

@@ -47,20 +47,77 @@
     <button class="button-ghost button-row-spacer" bindtap="loadData">重新加载</button>
   </view>
 
-  <view wx:else class="card form-card">
-    <view class="field-label">提前开放天数</view>
-    <input class="field-input" data-field="advanceOpenDays" value="{{form.advanceOpenDays}}" bindinput="onInput" type="number" placeholder="填写顾客可提前预约的天数，例如：7" />
-    <view class="helper-text">使用冻结契约字段 advanceOpenDays；请填写大于等于 0 的整数。</view>
+  <view wx:else class="rules-shell">
+    <view class="card summary-card">
+      <view class="section-title">当前规则摘要</view>
+      <view class="summary-chip-list">
+        <view wx:for="{{ruleSummary}}" wx:key="*this" class="summary-chip">{{item}}</view>
+      </view>
+      <view wx:if="{{updatedAtText}}" class="helper-text">最近更新时间：{{updatedAtText}}</view>
+    </view>
 
-    <view class="field-label">每日可预约时段</view>
-    <textarea class="field-textarea compact-textarea" data-field="dailySlots" value="{{dailySlotsText}}" bindinput="onInput" placeholder="每行一个时段，例如：10:00-11:30" />
-    <view class="helper-text">按行维护 dailySlots；主模型保持为 dailySlots 数组。</view>
+    <view class="card form-card">
+      <view class="field-label">提前开放天数</view>
+      <picker mode="selector" range="{{advanceOpenDayOptions}}" range-key="label" value="{{advanceOpenDaysIndex}}" bindchange="onAdvanceOpenDaysPickerChange">
+        <view class="picker-trigger">{{form.advanceOpenDays}} 天</view>
+      </picker>
+      <view class="stepper-row">
+        <button class="stepper-button" data-delta="-1" bindtap="stepAdvanceOpenDays">-1 天</button>
+        <button class="stepper-button" data-delta="1" bindtap="stepAdvanceOpenDays">+1 天</button>
+      </view>
+      <view class="chips-row">
+        <view wx:for="{{advanceOpenDayOptions}}" wx:key="value" class="option-chip {{item.active ? 'option-chip-active' : ''}}" data-value="{{item.value}}" bindtap="pickAdvanceOption">{{item.label}}</view>
+      </view>
+      <view class="helper-text">使用冻结契约字段 advanceOpenDays，但前端改为可选控件，不再要求直接输入原始数字。</view>
+    </view>
 
-    <view class="field-label">闭店日期</view>
-    <textarea class="field-textarea compact-textarea" data-field="closedDates" value="{{closedDatesText}}" bindinput="onInput" placeholder="每行一个日期，例如：2026-03-18" />
-    <view class="helper-text">closedDates 使用 YYYY-MM-DD；主模型保持为 closedDates 数组。</view>
+    <view class="card form-card">
+      <view class="field-label">闭店日期</view>
+      <picker mode="date" value="{{draftClosedDate}}" bindchange="onDraftClosedDateChange">
+        <view class="picker-trigger">{{draftClosedDate || '选择一个闭店日期'}}</view>
+      </picker>
+      <button class="button-secondary compact-button inline-button" bindtap="addClosedDate">添加闭店日期</button>
+      <view wx:if="{{form.closedDates.length}}" class="tag-list">
+        <view wx:for="{{form.closedDates}}" wx:key="*this" class="tag-item">
+          <text>{{item}}</text>
+          <text class="remove-text" data-date="{{item}}" bindtap="removeClosedDate">移除</text>
+        </view>
+      </view>
+      <view wx:else class="helper-text">当前未设置闭店日期。</view>
+    </view>
 
-    <view wx:if="{{updatedAtText}}" class="helper-text">最近更新时间（updatedAt）：{{updatedAtText}}</view>
+    <view class="card form-card">
+      <view class="field-label">每日可预约时段</view>
+      <view class="slot-picker-grid">
+        <view class="slot-picker-item">
+          <view class="picker-caption">开始时间</view>
+          <picker mode="time" value="{{draftSlotStart}}" data-field="draftSlotStart" bindchange="onDraftSlotTimeChange">
+            <view class="picker-trigger">{{draftSlotStart}}</view>
+          </picker>
+        </view>
+        <view class="slot-picker-item">
+          <view class="picker-caption">结束时间</view>
+          <picker mode="time" value="{{draftSlotEnd}}" data-field="draftSlotEnd" bindchange="onDraftSlotTimeChange">
+            <view class="picker-trigger">{{draftSlotEnd}}</view>
+          </picker>
+        </view>
+      </view>
+      <button class="button-secondary compact-button inline-button" bindtap="addDailySlot">添加时段</button>
+      <view class="chips-row preset-row">
+        <view wx:for="{{slotPresetOptions}}" wx:key="slot" class="preset-chip {{item.active ? 'preset-chip-active' : ''}}" data-start="{{item.start}}" data-end="{{item.end}}" bindtap="applySlotPreset">{{item.label}}</view>
+      </view>
+      <view wx:if="{{form.dailySlots.length}}" class="slot-card-list">
+        <view wx:for="{{form.dailySlots}}" wx:key="*this" class="slot-card">
+          <view>
+            <view class="slot-title">{{item}}</view>
+            <view class="helper-text slot-helper">保存时仍按 dailySlots 数组提交。</view>
+          </view>
+          <text class="remove-text" data-slot="{{item}}" bindtap="removeDailySlot">删除</text>
+        </view>
+      </view>
+      <view wx:else class="helper-text">请至少添加一个时段。</view>
+    </view>
+
     <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>
     <button class="button-primary" bindtap="submit" loading="{{submitState === 'submitting'}}">保存规则</button>
   </view>
