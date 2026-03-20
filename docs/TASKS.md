@@ -71,6 +71,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 | ARCH-008 | architect | 将 Phase 0/1 首轮任务正式化并持续滚动维护 | `docs/REFACTOR_PLAN.md`、前后端 worker brief、执行结果 | 可持续推进的任务板、阶段状态更新、依赖关系维护 | ARCH-007 | `TASKS.md` 能持续承接 Phase 0~4，而不再停留在一次性方案文档 | 方案有了但任务板未跟进，后续执行断层 |
 | BE-010 | backend | 新建 `apps/api` NestJS 并行骨架与基础运行环境 | `docs/REFACTOR_PLAN.md`、现有 `apps/server`、目标技术栈 | `apps/api/**`、health 模块、基础 config、启动脚本 | ARCH-007 | `apps/api` 可独立启动、`/health` 可访问、旧 `apps/server` 不受影响 | 新旧架构混改，导致回滚困难 |
 | BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
+| BE-012 | backend | 在 `apps/api` 首先迁入 gallery 模块并对齐冻结契约 | `docs/API.md` gallery 契约、`apps/api` 骨架、现有 `apps/server` gallery 逻辑 | `apps/api/src/modules/gallery/**` 或等价模块、`GET /api/v1/gallery` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 active gallery 数据，字段与冻结契约一致，不影响旧 `apps/server` | 过早迁复杂业务路由导致新骨架失稳 |
 | FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
 | DEV-001 | architect/test-devops | 形成 MySQL / Docker 本地开发环境方案与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
 
@@ -81,6 +82,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - BE-010 / BE-011：backend worker 两轮回报都未在主仓留下可审阅产物；architect 已于 2026-03-20 18:4x 直接在当前 repo 落下 `apps/api` 首轮并行骨架、Nest health 模块、Prisma v1 schema 与 init migration，并补根脚本 `dev:api / start:api / build:api`。随后已在本地完成 `apps/api` 依赖安装、`npm run prisma:generate` 与 `npm run build`，说明新后端骨架已从“静态落库”推进到“本地可构建”门槛；当前剩余后端门槛转为 `DATABASE_URL` 对应 MySQL 环境、`prisma migrate deploy` 与 `/health` 运行级验证。
 - FE-013：frontend 边界审查结论已由 architect 真实落库到 `docs/WEAPP_REFACTOR_BOUNDARY.md`，并在 `docs/REFACTOR_PLAN.md` 中建立引用；当前已从“口头回报”切换为“主仓可审阅文档产物”。
 - DEV-001：architect 已补 `infra/compose/api-mysql.compose.yml`、`docs/API_PARALLEL_RUNBOOK.md` 与 `apps/api/Dockerfile`，明确 MySQL 本地环境、`apps/server` / `apps/api` 并行方式、切换步骤与回滚手册。当前剩余动作是基于该环境手册做 `apps/api` 的 `prisma migrate deploy + /health` 运行级验证。
+- BE-012：已正式加入执行清单；考虑到运行级环境验证当前受限，下一条仍可并行推进的明确任务是把 `gallery` 作为第一条业务模块迁入 `apps/api`，用最小业务面验证 Nest + Prisma 骨架在冻结契约下的可演进性。
 
 ## 本轮前端 handoff 要点
 
