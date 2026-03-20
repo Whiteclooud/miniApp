@@ -13,7 +13,7 @@
 
   <view class="section-header">
     <view class="section-title">返图灵感</view>
-    <view class="section-subtitle">先看看近期受欢迎的风格</view>
+    <view class="section-subtitle">首页只展示封面图，点击卡片可查看详情多图</view>
   </view>
 
   <view wx:if="{{loading}}" class="card state-card">正在加载返图内容...</view>
@@ -21,7 +21,7 @@
   <view wx:elif="{{galleryItems.length === 0}}" class="card state-card">返图内容整理中，稍后再来看看。</view>
   <block wx:else>
     <block wx:for="{{galleryItems}}" wx:key="id">
-      <view class="card gallery-card">
+      <view class="card gallery-card" data-id="{{item.id}}" bindtap="goGalleryDetail">
         <image
           wx:if="{{item.imageUrl}}"
           class="gallery-image"
@@ -33,7 +33,7 @@
           <view class="gallery-tags">
             <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
           </view>
-          <view class="gallery-desc">{{item.description}}</view>
+          <view class="gallery-desc">点击查看详情多图</view>
         </view>
       </view>
     </block>

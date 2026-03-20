@@ -1,0 +1,28 @@
+<view class="container">
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">返图详情加载中...</view>
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">{{stateMessage}}</view>
+  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">{{stateMessage}}</view>
+  <view wx:else class="detail-wrapper">
+    <view class="card detail-card">
+      <view class="detail-title">{{item.title}}</view>
+      <view class="detail-tags">
+        <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+      </view>
+      <view class="detail-helper">点击图片可预览大图；若后端未提供多图，前端会自动使用封面图兜底。</view>
+    </view>
+
+    <view class="image-list">
+      <image
+        wx:for="{{previewUrls}}"
+        wx:key="*this"
+        class="detail-image"
+        mode="aspectFill"
+        src="{{item}}"
+        data-url="{{item}}"
+        bindtap="previewImage"
+      />
+    </view>
+
+    <button class="button-primary" bindtap="goBooking">预约这一款</button>
+  </view>
+</view>

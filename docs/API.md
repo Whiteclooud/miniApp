@@ -27,6 +27,13 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/artists`
 - 旧版 `GET /api/v1/appointments`
 
+## 本轮 UAT / 集成备注（2026-03-19）
+
+- 当前页面 UAT 已确认顾客主链路可跑通，但 staff 侧存在环境一致性问题：文档与 UAT 使用 `staff-openid-demo`，当前统一验收基线服务默认白名单仍需与之对齐，否则 `/api/v1/staff/*` 会返回 `401 + STAFF_UNAUTHORIZED`。
+- SQLite 历史库需兼容 `appointments.appointment_date` 旧列；若沿用本地老库启动失败，服务端需在启动时自动迁移到当前 `date` 字段模型。
+- 返图接口在不新增详情接口的前提下，扩展 `imageUrls` 供前端详情页展示多图。
+- 顾客预约页新增显性时间段选择体验：`GET /api/v1/availability?date=...` 对当前日期应返回“可约 + 不可约”时段与原因，供前端做卡片化选择和禁用提示。
+
 ## 1. 健康检查
 
 ### Request
@@ -57,7 +64,12 @@ V1 当前只允许以下接口对外使用：
     {
       "id": "gallery-aurora",
       "title": "极光猫眼",
-      "imageUrl": "https://example.com/images/aurora-cat-eye.jpg",
+      "imageUrl": "https://example.com/images/aurora-cat-eye-cover.jpg",
+      "imageUrls": [
+        "https://example.com/images/aurora-cat-eye-cover.jpg",
+        "https://example.com/images/aurora-cat-eye-detail-1.jpg",
+        "https://example.com/images/aurora-cat-eye-detail-2.jpg"
+      ],
       "tags": ["猫眼", "通勤", "热门"],
       "sortOrder": 1,
       "status": "active"
@@ -69,6 +81,8 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 仅返回 `active` 数据。
+- `imageUrl` 为首页封面图；`imageUrls` 为详情页多图数组。
+- 若 `imageUrls` 缺失或为空，前端至少用 `imageUrl` 兜底展示详情。
 - 前端按 `sortOrder` 稳定展示。
 
 ## 3. 获取可预约时段
@@ -84,8 +98,17 @@ V1 当前只允许以下接口对外使用：
   "items": [
     {
       "date": "2026-03-16",
-      "timeSlot": "10:00-11:00",
-      "status": "active"
+      "timeSlot": "09:30-10:30",
+      "status": "active",
+      "reasonCode": "AVAILABLE",
+      "reasonText": "可预约"
+    },
+    {
+      "date": "2026-03-16",
+      "timeSlot": "11:00-12:00",
+      "status": "disabled",
+      "reasonCode": "SLOT_OCCUPIED",
+      "reasonText": "该时间段已被预约"
     }
   ]
 }
@@ -93,7 +116,10 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
-- 仅返回当前仍可预约的时段。
+- 当请求携带 `date` 时，服务端应返回该日期下所有应展示的时间段，而不只是可预约时段。
+- `status=active` 表示前端可点击选择；`status=disabled` 表示前端需灰显且不可点击。
+- `reasonCode` / `reasonText` 由后端直接提供，当前至少覆盖：`AVAILABLE`、`DATE_CLOSED`、`DATE_OUT_OF_RANGE`、`SLOT_OCCUPIED`；前端不得自行硬编码原因文案替代。
+- 前端可直接把 `reasonText` 渲染为时间段卡片的副文案；当 `status=active` 且 `reasonText` 为空时，前端可显示“可预约”等正向提示。
 - `date` 为可选；传值时必须为 `YYYY-MM-DD`。
 - 返回结果需同时受 `advanceOpenDays`、`closedDates`、`dailySlots`、已批准预约占用影响。
 
@@ -225,6 +251,7 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 店员身份口径固定为 `X-Staff-OpenId`。
+- 本地 UAT 默认白名单至少包含 `staff-openid-demo`；若环境变量额外配置其他值，应与默认值共同生效。
 - 白名单外身份统一返回 `401 + STAFF_UNAUTHORIZED`。
 
 ## 7. 店员更新预约规则
