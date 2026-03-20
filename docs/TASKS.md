@@ -82,7 +82,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - BE-010 / BE-011：backend worker 两轮回报都未在主仓留下可审阅产物；architect 已于 2026-03-20 18:4x 直接在当前 repo 落下 `apps/api` 首轮并行骨架、Nest health 模块、Prisma v1 schema 与 init migration，并补根脚本 `dev:api / start:api / build:api`。随后已在本地完成 `apps/api` 依赖安装、`npm run prisma:generate` 与 `npm run build`，说明新后端骨架已从“静态落库”推进到“本地可构建”门槛；当前剩余后端门槛转为 `DATABASE_URL` 对应 MySQL 环境、`prisma migrate deploy` 与 `/health` 运行级验证。
 - FE-013：frontend 边界审查结论已由 architect 真实落库到 `docs/WEAPP_REFACTOR_BOUNDARY.md`，并在 `docs/REFACTOR_PLAN.md` 中建立引用；当前已从“口头回报”切换为“主仓可审阅文档产物”。
 - DEV-001：architect 已补 `infra/compose/api-mysql.compose.yml`、`docs/API_PARALLEL_RUNBOOK.md` 与 `apps/api/Dockerfile`，明确 MySQL 本地环境、`apps/server` / `apps/api` 并行方式、切换步骤与回滚手册。当前剩余动作是基于该环境手册做 `apps/api` 的 `prisma migrate deploy + /health` 运行级验证。
-- BE-012：已正式加入执行清单；考虑到运行级环境验证当前受限，下一条仍可并行推进的明确任务是把 `gallery` 作为第一条业务模块迁入 `apps/api`，用最小业务面验证 Nest + Prisma 骨架在冻结契约下的可演进性。
+- BE-012：backend worker 回报曾再次与主仓事实不一致；architect 已于 2026-03-20 21:0x 直接在当前 repo 落下 `apps/api` 的 `gallery` 模块，并将其挂入 `AppModule`。当前目标从“确保模块真实落库”推进为“保持 build 不回退，并在后续 MySQL 环境可用时补 `/api/v1/gallery` 运行级验证”。
 
 ## 本轮前端 handoff 要点
 

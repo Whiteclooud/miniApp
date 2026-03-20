@@ -16,6 +16,7 @@
 
 - NestJS 基础启动结构
 - `GET /health` 健康检查模块
+- `GET /api/v1/gallery` 首个业务模块（active-only + sortOrder 排序）
 - Prisma module / service
 - Prisma v1 schema
 - MySQL 初始 migration 基线
