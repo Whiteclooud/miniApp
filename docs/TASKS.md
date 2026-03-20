@@ -72,6 +72,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 | BE-010 | backend | 新建 `apps/api` NestJS 并行骨架与基础运行环境 | `docs/REFACTOR_PLAN.md`、现有 `apps/server`、目标技术栈 | `apps/api/**`、health 模块、基础 config、启动脚本 | ARCH-007 | `apps/api` 可独立启动、`/health` 可访问、旧 `apps/server` 不受影响 | 新旧架构混改，导致回滚困难 |
 | BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
 | BE-012 | backend | 在 `apps/api` 首先迁入 gallery 模块并对齐冻结契约 | `docs/API.md` gallery 契约、`apps/api` 骨架、现有 `apps/server` gallery 逻辑 | `apps/api/src/modules/gallery/**` 或等价模块、`GET /api/v1/gallery` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 active gallery 数据，字段与冻结契约一致，不影响旧 `apps/server` | 过早迁复杂业务路由导致新骨架失稳 |
+| BE-013 | backend | 在 `apps/api` 迁入 booking-rules 读接口并对齐冻结契约 | `docs/API.md` booking-rules 契约、`apps/api` 现有骨架、现有 `apps/server` booking-rules 逻辑 | `apps/api` 中 `GET /api/v1/staff/booking-rules` 模块/路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，字段与冻结契约一致，不影响旧 `apps/server` | 若过早把写接口/校验一起迁入，容易扩大范围 |
 | FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
 | DEV-001 | architect/test-devops | 形成 MySQL / Docker 本地开发环境方案与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
 
@@ -83,6 +84,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - FE-013：frontend 边界审查结论已由 architect 真实落库到 `docs/WEAPP_REFACTOR_BOUNDARY.md`，并在 `docs/REFACTOR_PLAN.md` 中建立引用；当前已从“口头回报”切换为“主仓可审阅文档产物”。
 - DEV-001：architect 已补 `infra/compose/api-mysql.compose.yml`、`docs/API_PARALLEL_RUNBOOK.md` 与 `apps/api/Dockerfile`，明确 MySQL 本地环境、`apps/server` / `apps/api` 并行方式、切换步骤与回滚手册。当前剩余动作是基于该环境手册做 `apps/api` 的 `prisma migrate deploy + /health` 运行级验证。
 - BE-012：backend worker 回报曾再次与主仓事实不一致；architect 已于 2026-03-20 21:0x 直接在当前 repo 落下 `apps/api` 的 `gallery` 模块，并将其挂入 `AppModule`，随后再次执行 `npm run build` 通过，并提交为 `a50dc92 feat: add gallery module to apps api`。当前目标从“确保模块真实落库”推进为“在后续 MySQL 环境可用时补 `/api/v1/gallery` 运行级验证”。
+- BE-013：已正式加入执行清单；在运行级环境验证暂受限制的情况下，下一条仍可并行推进的明确任务是把 `booking-rules` 读接口迁入 `apps/api`，继续验证新后端对冻结契约的承接能力。
 
 ## 本轮前端 handoff 要点
 
