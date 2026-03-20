@@ -78,7 +78,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 
 - ARCH-007：已启动，`docs/REFACTOR_PLAN.md` 已落库并 push。
 - ARCH-008：已启动，本次更新 `TASKS.md` 即为第一轮任务正式化。
-- BE-010 / BE-011：backend worker 两轮回报都未在主仓留下可审阅产物；architect 已于 2026-03-20 18:4x 直接在当前 repo 落下 `apps/api` 首轮并行骨架、Nest health 模块、Prisma v1 schema 与 init migration，并补根脚本 `dev:api / start:api / build:api`。当前状态从“等待真实落库”切换为“待安装依赖与运行级验证”。
+- BE-010 / BE-011：backend worker 两轮回报都未在主仓留下可审阅产物；architect 已于 2026-03-20 18:4x 直接在当前 repo 落下 `apps/api` 首轮并行骨架、Nest health 模块、Prisma v1 schema 与 init migration，并补根脚本 `dev:api / start:api / build:api`。随后已在本地完成 `apps/api` 依赖安装、`npm run prisma:generate` 与 `npm run build`，说明新后端骨架已从“静态落库”推进到“本地可构建”门槛；当前剩余后端门槛转为 `DATABASE_URL` 对应 MySQL 环境、`prisma migrate deploy` 与 `/health` 运行级验证。
 - FE-013：frontend 边界审查结论已由 architect 真实落库到 `docs/WEAPP_REFACTOR_BOUNDARY.md`，并在 `docs/REFACTOR_PLAN.md` 中建立引用；当前已从“口头回报”切换为“主仓可审阅文档产物”。
 - DEV-001：由 architect 先落文档方案，待 `apps/api` 骨架出现后再补 compose / env 实物。
 

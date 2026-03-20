@@ -31,10 +31,10 @@ enum GalleryStatus {
 model User {
   id          String      @id @default(cuid())
   openId      String      @unique @map("open_id") @db.VarChar(191)
-  role        UserRole    @db.Enum("CUSTOMER", "STAFF")
+  role        UserRole
   displayName String?     @map("display_name") @db.VarChar(191)
   phone       String?     @db.VarChar(32)
-  status      UserStatus  @default(ACTIVE) @db.Enum("ACTIVE", "DISABLED")
+  status      UserStatus  @default(ACTIVE)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
@@ -49,7 +49,7 @@ model Appointment {
   date             String             @db.VarChar(10)
   timeSlot         String             @map("time_slot") @db.VarChar(32)
   note             String?            @db.Text
-  status           AppointmentStatus  @default(PENDING) @db.Enum("PENDING", "APPROVED", "REJECTED")
+  status           AppointmentStatus  @default(PENDING)
   createdAt        DateTime           @default(now()) @map("created_at")
   reviewedAt       DateTime?          @map("reviewed_at")
   reviewedByOpenId String?            @map("reviewed_by_open_id") @db.VarChar(191)
@@ -78,7 +78,7 @@ model GalleryItem {
   imageUrlsJson String        @default("[]") @map("image_urls_json") @db.LongText
   tagsJson      String        @default("[]") @map("tags_json") @db.LongText
   sortOrder     Int           @default(0) @map("sort_order")
-  status        GalleryStatus @default(ACTIVE) @db.Enum("ACTIVE", "INACTIVE")
+  status        GalleryStatus @default(ACTIVE)
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
