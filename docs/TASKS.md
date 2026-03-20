@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前剩余工作已收敛为“顾客预约页可约时段现象复核收口 + 店员页页面级体验复核 + 最终验收判断”。其中 QA-003 后端复核已确认“只剩一个可选时段”更符合规则/approved-only 占用语义下的预期行为；FE-011 / FE-012 已由 architect 直接落入当前 repo、通过 `npm run check:weapp-contract`，并提交为 `ebcb900 feat: land staff rules structured ui and calendar view`。
+V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前剩余工作已收敛为“店员页页面级体验复核 + 最终验收判断”。其中 QA-003 已完成架构侧最终复核并判定为更符合规则/approved-only 占用语义下的预期行为；FE-011 / FE-012 已由 architect 直接落入当前 repo、通过 `npm run check:weapp-contract`，并提交为 `ebcb900 feat: land staff rules structured ui and calendar view`。
 
 ## 任务列表
 
