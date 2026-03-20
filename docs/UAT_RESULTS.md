@@ -15,6 +15,7 @@
 - architect 统一基线复核：2026-03-19 19:10 再次在当前 repo 执行 `npm run test:server` 与 `npm run check:weapp-contract`，均通过
 - architect 文件级抽查：2026-03-19 19:43 直接读取当前 repo 关键文件后确认，当前统一验收基线并未真实反映本轮 worker 回收结果：后端仍保留 `staff-openid-v1` 默认白名单，前端 booking / contract-selfcheck 也仍缺少本轮新增交互与守卫
 - architect 基线收口复核：2026-03-19 22:22 已将本轮前后端修复真实落入当前 repo，并再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，均通过
+- architect 当日回归复核：2026-03-20 13:08 在当前 repo 再次执行 `npm run test:server` 与 `npm run check:weapp-contract`，均通过；说明二次 UAT 前当前统一验收基线未出现新的代码级回退
 
 结论：当前代码与 UAT 反馈已不再停留在“修复方案”层面，而是已真正进入 architect 当前统一验收基线；项目阶段从“统一基线重新收口，暂缓二次 UAT”恢复为“可执行二次真实页面 UAT”。
 
