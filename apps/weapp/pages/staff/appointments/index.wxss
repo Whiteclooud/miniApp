@@ -1,91 +1,233 @@
 @import '../../../app.wxss';
 
-.title-card,
-.auth-card,
-.filter-card,
+.identity-card,
+.dev-card,
+.nav-card,
 .state-card,
-.appointment-card {
+.summary-card,
+.calendar-card,
+.detail-card,
+.booking-card,
+.empty-subcard {
   margin-bottom: 24rpx;
 }
 
-.title,
-.section-title {
-  font-size: 34rpx;
+.section-title,
+.nav-title,
+.detail-title,
+.section-subtitle {
+  font-size: 30rpx;
   font-weight: 700;
 }
 
-.desc,
 .section-desc,
 .helper-text,
-.appointment-meta {
+.state-desc {
   margin-top: 12rpx;
   color: #7d5b4c;
-  font-size: 26rpx;
+  font-size: 24rpx;
   line-height: 1.6;
 }
 
-.nav-button {
-  margin-top: 20rpx;
-}
-
-.field-input,
-.field-picker,
-.field-textarea {
+.field-input {
   margin-top: 12rpx;
   background: #fff6f2;
-  border-radius: 18rpx;
+  border-radius: 20rpx;
   padding: 20rpx;
   font-size: 28rpx;
 }
 
-.field-textarea {
-  min-height: 140rpx;
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
 }
 
-.appointment-top {
+.summary-item {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff7f3;
+}
+
+.summary-label {
+  font-size: 24rpx;
+  color: #8e6558;
+}
+
+.summary-value {
+  margin-top: 8rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.calendar-header,
+.calendar-week,
+.action-row,
+.booking-header,
+.info-row,
+.calendar-day-row,
+.calendar-badges {
   display: flex;
+}
+
+.calendar-header {
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
 }
 
-.appointment-date {
-  flex: 1;
+.calendar-title {
   font-size: 30rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.status-chip {
+.calendar-switch {
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #fff0ea;
+  color: #8d5f55;
+  font-size: 24rpx;
+}
+
+.today-button {
+  margin-top: 16rpx;
+}
+
+.week-label-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.week-label {
+  text-align: center;
+  font-size: 22rpx;
+  color: #8a665a;
+}
+
+.calendar-week {
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.calendar-cell {
+  flex: 1;
+  min-height: 140rpx;
+  padding: 16rpx 12rpx;
+  border-radius: 18rpx;
+  background: #fff8f4;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+}
+
+.calendar-cell-muted {
+  opacity: 0.45;
+}
+
+.calendar-cell-selected {
+  border-color: #2f1d17;
+  background: #fff1ea;
+}
+
+.calendar-day-row {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-day-number {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #4b3630;
+}
+
+.calendar-day-today {
+  color: #c35e72;
+}
+
+.calendar-count {
+  font-size: 22rpx;
+  color: #8e6558;
+}
+
+.calendar-badges {
+  flex-direction: column;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.calendar-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4rpx 10rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+}
+
+.calendar-badge.pending,
+.status-pill.pending {
+  background: #fff3d9;
+  color: #a87500;
+}
+
+.calendar-badge.approved,
+.status-pill.approved {
+  background: #e5f8eb;
+  color: #1f8a49;
+}
+
+.calendar-badge.rejected,
+.status-pill.rejected {
+  background: #fde8e8;
+  color: #b24444;
+}
+
+.status-section {
+  margin-bottom: 24rpx;
+}
+
+.booking-header,
+.info-row {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.booking-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.status-pill {
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
   font-size: 22rpx;
 }
 
-.status-chip.pending {
-  background: #fff3d9;
-  color: #a87500;
+.info-row {
+  margin-top: 14rpx;
 }
 
-.status-chip.approved {
-  background: #e5f8eb;
-  color: #1f8a49;
+.info-label {
+  width: 140rpx;
+  color: #8a665a;
+  font-size: 24rpx;
 }
 
-.status-chip.rejected {
-  background: #fde8e8;
-  color: #b24444;
+.info-value {
+  flex: 1;
+  text-align: right;
+  color: #44332d;
+  font-size: 24rpx;
 }
 
-.review-box {
-  margin-top: 20rpx;
-}
-
-.review-actions {
-  display: flex;
-  gap: 16rpx;
+.review-action-row {
   margin-top: 16rpx;
 }
 
-.review-button {
-  flex: 1;
+.empty-subcard {
+  color: #8a665a;
+  font-size: 24rpx;
 }
