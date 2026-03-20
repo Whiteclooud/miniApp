@@ -523,6 +523,7 @@ repo/miniApp
 ### 回滚策略
 - 通过端口 / env 切回 `apps/server`
 - 前端仍可继续调用旧服务
+- 并行环境与回滚操作细则见 `docs/API_PARALLEL_RUNBOOK.md`
 
 ## Phase 3：前端类型化与适配新登录链路
 

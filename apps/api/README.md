@@ -65,6 +65,8 @@
 - 旧 `closed_dates_json` / `daily_slots_json` -> 新模型 `closedDatesJson` / `dailySlotsJson`
 - 旧 `image_urls_json` / `tags_json` -> 新模型 `imageUrlsJson` / `tagsJson`
 
+更多环境与切换说明，见：`docs/API_PARALLEL_RUNBOOK.md`
+
 ## 当前残余风险
 
 1. 当前只落了 `/health` 与 Prisma 基线，冻结契约主业务路由尚未迁入 NestJS。
