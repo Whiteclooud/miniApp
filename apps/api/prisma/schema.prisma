@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GalleryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id          String      @id @default(cuid())
+  openId      String      @unique @map("open_id") @db.VarChar(191)
+  role        UserRole    @db.Enum("CUSTOMER", "STAFF")
+  displayName String?     @map("display_name") @db.VarChar(191)
+  phone       String?     @db.VarChar(32)
+  status      UserStatus  @default(ACTIVE) @db.Enum("ACTIVE", "DISABLED")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Appointment {
+  id               String             @id @default(cuid())
+  customerOpenId   String             @map("customer_open_id") @db.VarChar(191)
+  customerName     String?            @map("customer_name") @db.VarChar(191)
+  phone            String?            @db.VarChar(32)
+  date             String             @db.VarChar(10)
+  timeSlot         String             @map("time_slot") @db.VarChar(32)
+  note             String?            @db.Text
+  status           AppointmentStatus  @default(PENDING) @db.Enum("PENDING", "APPROVED", "REJECTED")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  reviewedAt       DateTime?          @map("reviewed_at")
+  reviewedByOpenId String?            @map("reviewed_by_open_id") @db.VarChar(191)
+  reviewNote       String?            @map("review_note") @db.Text
+
+  @@index([customerOpenId], map: "idx_appointments_customer_open_id")
+  @@index([date], map: "idx_appointments_date")
+  @@index([status], map: "idx_appointments_status")
+  @@map("appointments")
+}
+
+model BookingRule {
+  id              String   @id @default(cuid())
+  advanceOpenDays Int      @default(7) @map("advance_open_days")
+  closedDatesJson String   @default("[]") @map("closed_dates_json") @db.LongText
+  dailySlotsJson  String   @default("[]") @map("daily_slots_json") @db.LongText
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("booking_rules")
+}
+
+model GalleryItem {
+  id            String        @id @default(cuid())
+  title         String        @db.VarChar(191)
+  imageUrl      String        @map("image_url") @db.Text
+  imageUrlsJson String        @default("[]") @map("image_urls_json") @db.LongText
+  tagsJson      String        @default("[]") @map("tags_json") @db.LongText
+  sortOrder     Int           @default(0) @map("sort_order")
+  status        GalleryStatus @default(ACTIVE) @db.Enum("ACTIVE", "INACTIVE")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([sortOrder], map: "idx_gallery_items_sort_order")
+  @@index([status], map: "idx_gallery_items_status")
+  @@map("gallery_items")
+}

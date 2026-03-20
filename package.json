@@ -7,6 +7,9 @@
     "dev:server": "node apps/server/src/server.mjs",
     "start:server": "node apps/server/src/server.mjs",
     "test:server": "node apps/server/src/server.mjs --self-test",
+    "dev:api": "npm --prefix apps/api run start:dev",
+    "start:api": "npm --prefix apps/api run start",
+    "build:api": "npm --prefix apps/api run build",
     "check:docs": "node tools/check-docs.mjs",
     "check:weapp-contract": "node apps/weapp/scripts/contract-selfcheck.mjs"
   }
