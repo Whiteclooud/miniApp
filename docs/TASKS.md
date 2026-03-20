@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 已完成一轮复测：主链路已基本跑通，当前剩余工作已收敛为“规则编辑体验升级 + 顾客预约页可约时段现象复核 + 最终验收收口”（architect 已将本轮前后端修复真正落入当前 repo，并完成 GitHub 同步）
+V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前剩余工作已收敛为“规则编辑体验升级 + 店员月历视图增强 + 顾客预约页可约时段现象复核 + 最终验收收口”（architect 已将本轮前后端修复真正落入当前 repo，并完成 GitHub 同步）
 
 ## 任务列表
 
@@ -244,9 +244,11 @@ V1 二次真实页面 UAT 已完成一轮复测：主链路已基本跑通，当
 - 风险复核（2026-03-19 19:43 Asia/Shanghai）：architect 直接抽查当前统一验收基线代码后确认存在严重偏差：`apps/server/src/server.mjs` 仍保留 `defaultStaffOpenId = 'staff-openid-v1'`，未体现本轮要求的 `staff-openid-demo` 默认白名单，也未显性体现 `availability` 的 `status/reasonCode/reasonText` 与 `gallery.imageUrls` 口径；`apps/weapp/pages/booking/index.js` 仍是旧的 availability 归一化与选择逻辑，`apps/weapp/scripts/contract-selfcheck.mjs` 也未覆盖本轮新增的返图详情与 disabled reason 守卫。判定：当前并非“可直接重跑二次 UAT”，而是“worker 结果与 architect 当前 repo 再次失配”的严重基线漂移，需先完成真实文件级合入/覆写，再谈二次 UAT、push 或 release。
 - Architect 收口完成（2026-03-19 22:22 Asia/Shanghai）：architect 已将本轮前后端修复真实合入当前统一验收基线：后端已切到 `staff-openid-demo` 默认白名单、补齐 `appointment_date -> date` 迁移、`gallery.imageUrls` 与 `availability status/reasonCode/reasonText`；前端已补齐首页封面图 -> 详情多图链路、预约页卡片式时间段选择、disabled 原因展示与 `contract-selfcheck` 新守卫。当前再次执行 `npm run test:server` 与 `npm run check:weapp-contract` 均通过，项目阶段已从“统一基线重新收口”切回“可执行二次真实页面 UAT（优先 Case 4~9）”。
 - GitHub 同步（2026-03-20 13:07 Asia/Shanghai）：architect 已将当前统一验收基线 push 到 `origin/main`，远端已更新到 `2eb7fd9 feat: restore second uat baseline`；Lan 后续二次 UAT 以 GitHub 当前 `main` 为准。
-- 二次 UAT 反馈（2026-03-20 15:25 Asia/Shanghai）：Lan 回报 Case 1/3/5/6/7/8 通过，说明店员鉴权、审核闭环、顾客状态回查、无权限拦截与持久化问题已从真实页面层面关闭；Case 2 被标记为“不通过”，现象是顾客预约页“只有一个时间段可以选择”；Case 4 被标记为“不通过”，原因是店员规则页仍依赖直接编辑文本，不符合期望的结构化配置体验；Case 9 在本轮反馈中尚未明确最终勾选结果，暂按待确认处理。
+- 二次 UAT 反馈（2026-03-20 15:25 Asia/Shanghai）：Lan 回报 Case 1/3/5/6/7/8 通过，说明店员鉴权、审核闭环、顾客状态回查、无权限拦截与持久化问题已从真实页面层面关闭；Case 2 被标记为“不通过”，现象是顾客预约页“只有一个时间段可以选择”；Case 4 被标记为“不通过”，原因是店员规则页仍依赖直接编辑文本，不符合期望的结构化配置体验；Case 9 初始反馈未明确最终勾选结果。
 - 口径判断（2026-03-20 15:25 Asia/Shanghai）：当前剩余问题已从“主链路跑不通”收敛为“Case 2 现象复核 + Case 4 体验升级”。用户同时确认：店员驳回预约时可选填写驳回理由，且顾客端可看到该理由；该行为符合 V1 当前能力，不作为缺陷回退项。
-- Heartbeat 推进（2026-03-20 15:37 Asia/Shanghai）：architect 已按最新冻结范围重新派发两条定向 run：frontend 聚焦 `FE-011 + FE-012`（规则页结构化配置 + 店员月历视图），backend 聚焦 `QA-003` 后端侧复核（定位“顾客预约只有一个可选时段”现象是否属于 rules/approved 占用预期，或为 availability 缺陷）。当前进入“等待 worker 回收 -> architect 审阅 -> 再决定是否补充派工/进入最终验收”的推进状态。
+- 需求增补（2026-03-20 15:26 Asia/Shanghai）：Lan 新增店员侧体验要求：预约页除列表外，需要补充类似参考图的月历 / 月视图，用于查看当月日程总览；architect 已冻结为 FE-012。
+- UAT 结果补充（2026-03-20 16:02 Asia/Shanghai）：Lan 已补充确认 Case 9“接口口径一致性（防回退）”通过。当前二次 UAT 对外可确认的通过项已扩展为 Case 1/3/5/6/7/8/9。
+- Worker 回收（2026-03-20 16:0x Asia/Shanghai）：frontend 已回收本地 commit `4fc0e62`，完成 FE-011（规则页结构化配置）、FE-012（店员月历视图）并对 QA-003 给出前端侧判断：Case 2 当前更偏规则/已批准占用导致的预期结果，同时已补充更清晰的可约数量提示与显式字段兼容判定。当前进入“architect 合入审阅 frontend 结果 -> 视需要补 backend QA-003 复核 -> 再决定是否进入最终验收”的推进状态。
 
 ## 推荐实施顺序
 
