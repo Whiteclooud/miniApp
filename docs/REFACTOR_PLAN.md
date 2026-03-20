@@ -389,6 +389,11 @@ repo/miniApp
 
 ## 2.7 关于 pnpm workspace / shared package / OpenAPI / Swagger / shared DTO
 
+前端边界补充：详见 `docs/WEAPP_REFACTOR_BOUNDARY.md`。
+该文档基于当前真实 `apps/weapp` 代码，而不是理想目录，定义了 TypeScript 首批落点、mock auth / request / services 的迁移顺序，以及为什么 `booking` / `staff/*` 不应作为首批 TS 化页面。  
+
+
+
 ### pnpm workspace
 **建议引入，但放在 Phase 1，作为轻量基础设施升级。**
 

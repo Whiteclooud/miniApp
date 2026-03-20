@@ -78,8 +78,8 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 
 - ARCH-007：已启动，`docs/REFACTOR_PLAN.md` 已落库并 push。
 - ARCH-008：已启动，本次更新 `TASKS.md` 即为第一轮任务正式化。
-- BE-010 / BE-011：已向 backend worker 下发 Phase 1 planning brief，下一步进入 `apps/api` 骨架与 Prisma v1 落地。
-- FE-013：已向 frontend worker 下发前端边界审查 brief；若 worker 再次受限，则由 architect 直接补齐审查与任务卡。
+- BE-010 / BE-011：backend 首轮尝试曾被并发限制打断；architect 已于 2026-03-20 18:0x 重新派发 run，当前等待 `apps/api` 骨架与 Prisma v1 基线真实落库。
+- FE-013：frontend 边界审查结论已由 architect 真实落库到 `docs/WEAPP_REFACTOR_BOUNDARY.md`，并在 `docs/REFACTOR_PLAN.md` 中建立引用；当前已从“口头回报”切换为“主仓可审阅文档产物”。
 - DEV-001：由 architect 先落文档方案，待 `apps/api` 骨架出现后再补 compose / env 实物。
 
 ## 本轮前端 handoff 要点
