@@ -21,7 +21,8 @@
    - 以后再做：Redis、消息队列、微服务、后台独立系统、多店模型、跨端框架。
 
 4. **第一优先级不是改页面，而是冻结基线与搭新后端骨架**
-   - 2026-03-20 18:4x：首轮 `apps/api` 并行骨架已真实落入当前 repo，包含 Nest health 模块、Prisma v1 schema 与 init migration；随后已完成依赖安装、`prisma generate` 与 Nest build，自此进入“本地可构建、待环境验证”阶段。下一步转入 MySQL / Docker 环境补齐、`prisma migrate deploy` 与 `/health` 运行级验证。
+   - 2026-03-20 18:4x：首轮 `apps/api` 并行骨架已真实落入当前 repo，包含 Nest health 模块、Prisma v1 schema 与 init migration；随后已完成依赖安装、`prisma generate` 与 Nest build，自此进入“本地可构建、待环境验证”阶段。
+   - 2026-03-20 21:0x：首个业务模块 `gallery` 已迁入 `apps/api` 并通过再次 build，说明新后端已从“纯骨架”进入“可承载第一条冻结契约业务路由”的阶段。下一步转入 MySQL / Docker 环境补齐、`prisma migrate deploy`、`/health` 与 `/api/v1/gallery` 运行级验证。
    - 当前业务流程已跑通，最怕的是“边重构边把可用基线弄丢”。
    - 所以先做：**基线冻结、兼容契约、Nest 骨架、Prisma schema、MySQL / Docker、本地切换能力**。
 
