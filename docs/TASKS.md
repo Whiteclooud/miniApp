@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前剩余工作已收敛为“店员页页面级体验复核 + 最终验收判断”。其中 QA-003 已完成架构侧最终复核并判定为更符合规则/approved-only 占用语义下的预期行为；FE-011 / FE-012 已由 architect 直接落入当前 repo、通过 `npm run check:weapp-contract`，并提交为 `ebcb900 feat: land staff rules structured ui and calendar view`。
+V1 二次真实页面 UAT 已确认主链路与接口口径均通过；项目当前阶段切换为“增量重构规划 + 新后端并行落地准备”。原则是：保留现有可运行基线，不推倒重来，优先后端重构、前端稳态升级，并为多 agent 并行协作补齐清晰的模块边界、依赖、回滚路径与验收标准。详见 `docs/REFACTOR_PLAN.md`。
 
 ## 任务列表
 
@@ -373,3 +373,13 @@ V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前剩
   - 只出现本轮契约接口：`/api/v1/gallery`、`/api/v1/availability`、`POST /api/v1/appointments`、`GET /api/v1/my/appointments`、`/api/v1/staff/*`
   - 不出现旧接口：`/api/v1/services`、旧版 `GET /api/v1/appointments`
   - 若出现旧接口调用，判定为回归问题
+
+## 增量重构任务（2026-03-20）
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-007 | architect | 冻结当前可运行基线并形成增量重构方案 | 当前仓库代码、`docs/API.md`、UAT 结果 | `docs/REFACTOR_PLAN.md`、更新后的 `docs/TASKS.md`、首轮派工 brief | 当前 UAT 通过基线 | 形成“当前诊断 / 目标架构 / Phase 0~4 / 回滚策略 / 首轮执行建议”完整方案 | 若未先冻结基线，后续新旧实现会持续漂移 |
+| BE-010 | backend | 新建 `apps/api` NestJS 并行骨架与基础运行环境 | `docs/REFACTOR_PLAN.md`、现有 `apps/server`、目标技术栈 | `apps/api/**`、health 模块、基础 config、启动脚本 | ARCH-007 | `apps/api` 可独立启动、`/health` 可访问、旧 `apps/server` 不受影响 | 新旧架构混改，导致回滚困难 |
+| BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
+| FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
+| DEV-001 | architect/test-devops | 补齐 MySQL / Docker 本地开发环境说明与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
