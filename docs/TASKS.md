@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前项目仍处于“最终页面验收 / 发布判断前收口”阶段，而不是立即进入大规模增量重构执行。当前唯一剩余门槛是：在微信开发者工具中复核 `pages/staff/rules` 的结构化交互与 `pages/staff/appointments` 的月历视图真实页面表现；只有这一步通过后，才进入最终验收与后续 push / review / release 判断。`docs/REFACTOR_PLAN.md` 当前作为后续演进参考，不视为已启动主线任务。
+V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-20 起，项目主线正式切换为“**Phase 0/1 增量重构落地**”。当前原则是：保留现有 `apps/weapp + apps/server` 可运行基线，不推倒重来，优先启动后端新架构并行骨架、环境基线、前端边界审查与任务分层，为后续 Phase 2~4 持续推进建立可并行、可回滚的执行面。
 
 ## 任务列表
 
@@ -62,6 +62,25 @@ V1 二次真实页面 UAT 已确认主链路与接口口径均通过；当前项
 | QA-003 | frontend/backend | 复现并定位“顾客预约仅 1 个可选时段”现象，并补齐判定依据 | Lan Case 2 反馈、当前 booking rules / appointments 数据、`docs/UAT_GUIDE.md` | 复现说明、修复或判定结论、必要的回归补充 | ARCH-006, FE-010, BE-009 | 能明确判断该现象是规则配置/已批准占用导致的预期结果，还是 availability / 页面渲染缺陷；若是缺陷需落代码并补回归，若是预期需补清晰提示或验收说明 | 若只看页面现象不还原当时规则与数据状态，容易误修正确行为 |
 
 > 状态更新（2026-03-20 16:05 Asia/Shanghai）：QA-003 后端复核已确认，“顾客预约页只有一个时间段可选”当前更符合规则配置 + `approved-only` 占用语义下的预期表现，未发现后端 availability 缺陷；当前待结合最新前端页面表现做最终验收口径收口。
+
+## Phase 0 / Phase 1 增量重构任务（2026-03-20 已启动）
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-007 | architect | 冻结当前可运行基线并形成增量重构执行蓝图 | 当前仓库代码、`docs/API.md`、UAT 结果 | `docs/REFACTOR_PLAN.md`、更新后的 `docs/TASKS.md`、首轮派工 brief | 当前 UAT 通过基线 | 形成“当前诊断 / 目标架构 / Phase 0~4 / 回滚策略 / 首轮执行建议”完整方案，并作为后续 phase 统一入口 | 若未先冻结基线，后续新旧实现会持续漂移 |
+| ARCH-008 | architect | 将 Phase 0/1 首轮任务正式化并持续滚动维护 | `docs/REFACTOR_PLAN.md`、前后端 worker brief、执行结果 | 可持续推进的任务板、阶段状态更新、依赖关系维护 | ARCH-007 | `TASKS.md` 能持续承接 Phase 0~4，而不再停留在一次性方案文档 | 方案有了但任务板未跟进，后续执行断层 |
+| BE-010 | backend | 新建 `apps/api` NestJS 并行骨架与基础运行环境 | `docs/REFACTOR_PLAN.md`、现有 `apps/server`、目标技术栈 | `apps/api/**`、health 模块、基础 config、启动脚本 | ARCH-007 | `apps/api` 可独立启动、`/health` 可访问、旧 `apps/server` 不受影响 | 新旧架构混改，导致回滚困难 |
+| BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
+| FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
+| DEV-001 | architect/test-devops | 形成 MySQL / Docker 本地开发环境方案与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
+
+### Phase 0 / 1 当前执行状态
+
+- ARCH-007：已启动，`docs/REFACTOR_PLAN.md` 已落库并 push。
+- ARCH-008：已启动，本次更新 `TASKS.md` 即为第一轮任务正式化。
+- BE-010 / BE-011：已向 backend worker 下发 Phase 1 planning brief，下一步进入 `apps/api` 骨架与 Prisma v1 落地。
+- FE-013：已向 frontend worker 下发前端边界审查 brief；若 worker 再次受限，则由 architect 直接补齐审查与任务卡。
+- DEV-001：由 architect 先落文档方案，待 `apps/api` 骨架出现后再补 compose / env 实物。
 
 ## 本轮前端 handoff 要点
 
