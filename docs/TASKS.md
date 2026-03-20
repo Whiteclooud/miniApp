@@ -246,6 +246,7 @@ V1 二次真实页面 UAT 已完成一轮复测：主链路已基本跑通，当
 - GitHub 同步（2026-03-20 13:07 Asia/Shanghai）：architect 已将当前统一验收基线 push 到 `origin/main`，远端已更新到 `2eb7fd9 feat: restore second uat baseline`；Lan 后续二次 UAT 以 GitHub 当前 `main` 为准。
 - 二次 UAT 反馈（2026-03-20 15:25 Asia/Shanghai）：Lan 回报 Case 1/3/5/6/7/8 通过，说明店员鉴权、审核闭环、顾客状态回查、无权限拦截与持久化问题已从真实页面层面关闭；Case 2 被标记为“不通过”，现象是顾客预约页“只有一个时间段可以选择”；Case 4 被标记为“不通过”，原因是店员规则页仍依赖直接编辑文本，不符合期望的结构化配置体验；Case 9 在本轮反馈中尚未明确最终勾选结果，暂按待确认处理。
 - 口径判断（2026-03-20 15:25 Asia/Shanghai）：当前剩余问题已从“主链路跑不通”收敛为“Case 2 现象复核 + Case 4 体验升级”。用户同时确认：店员驳回预约时可选填写驳回理由，且顾客端可看到该理由；该行为符合 V1 当前能力，不作为缺陷回退项。
+- Heartbeat 推进（2026-03-20 15:37 Asia/Shanghai）：architect 已按最新冻结范围重新派发两条定向 run：frontend 聚焦 `FE-011 + FE-012`（规则页结构化配置 + 店员月历视图），backend 聚焦 `QA-003` 后端侧复核（定位“顾客预约只有一个可选时段”现象是否属于 rules/approved 占用预期，或为 availability 缺陷）。当前进入“等待 worker 回收 -> architect 审阅 -> 再决定是否补充派工/进入最终验收”的推进状态。
 
 ## 推荐实施顺序
 
