@@ -6,6 +6,7 @@ import { StaffAppointmentsService } from './staff-appointments.service';
 @Module({
   imports: [PrismaModule],
   controllers: [StaffAppointmentsController],
-  providers: [StaffAppointmentsService]
+  providers: [StaffAppointmentsService],
+  exports: [StaffAppointmentsService]
 })
 export class StaffAppointmentsModule {}

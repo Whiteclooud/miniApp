@@ -1,11 +1,34 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { AppointmentStatus } from '@prisma/client';
+import {
+  Appointment,
+  AppointmentStatus
+} from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_STATUS = 'pending';
 const ALLOWED_STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
 type ListStatus = (typeof ALLOWED_STATUS_VALUES)[number];
+
+export interface StaffAppointmentItem {
+  id: string;
+  customerOpenId: string;
+  customerName: string;
+  phone: string;
+  date: string;
+  timeSlot: string;
+  note: string;
+  status: ListStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string;
+}
 
 function resolveAllowedStaffIds(): string[] {
   const values = [process.env.STAFF_OPEN_IDS, process.env.STAFF_OPEN_ID, 'staff-openid-demo']
@@ -54,7 +77,7 @@ function toPrismaAppointmentStatus(status: string | undefined): AppointmentStatu
 export class StaffAppointmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private assertStaffAuthorized(staffOpenId?: string) {
+  assertStaffAuthorized(staffOpenId?: string) {
     const normalizedStaffOpenId = `${staffOpenId || ''}`.trim();
     const allowlist = resolveAllowedStaffIds();
 
@@ -79,7 +102,33 @@ export class StaffAppointmentsService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
     });
 
-    return rows.map((item) => ({
+    return rows.map((item) => this.toStaffAppointmentItem(item));
+  }
+
+  async getStaffAppointmentDetail(staffOpenId?: string, appointmentId?: string) {
+    this.assertStaffAuthorized(staffOpenId);
+    const normalizedAppointmentId = `${appointmentId || ''}`.trim();
+
+    const appointment = normalizedAppointmentId
+      ? await this.prisma.appointment.findUnique({
+          where: {
+            id: normalizedAppointmentId
+          }
+        })
+      : null;
+
+    if (!appointment) {
+      throw new NotFoundException({
+        error: 'Appointment not found',
+        code: 'APPOINTMENT_NOT_FOUND'
+      });
+    }
+
+    return this.toStaffAppointmentItem(appointment);
+  }
+
+  toStaffAppointmentItem(item: Appointment): StaffAppointmentItem {
+    return {
       id: item.id,
       customerOpenId: item.customerOpenId || '',
       customerName: item.customerName ?? '',
@@ -92,6 +141,6 @@ export class StaffAppointmentsService {
       reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,
       reviewedBy: item.reviewedByOpenId ?? null,
       reviewNote: item.reviewNote ?? ''
-    }));
+    };
   }
 }

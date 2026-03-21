@@ -430,6 +430,6 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - BE-013：backend worker 已在其 workspace 完成 booking-rules 读模块并提交 `c7dda8b feat: add booking rules reader to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
 - BE-014：backend worker 已在其 workspace 完成 my appointments 读模块并提交 `e0ab5b4 feat(api): add my appointments reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
 - BE-015：backend worker 已在其 workspace 完成 staff appointments 列表读模块并提交 `70254c4 feat(api): add staff appointments list reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
-- BE-016：backend worker 已在其 workspace 完成 staff appointment detail 读模块并提交 `b3d0601 feat(api): add staff appointment detail endpoint`；worker 已完成最小运行验证（200 / 401 / 404 三类场景），当前待 architect 侧把该事实并入统一基线审阅口径，并在可用数据库环境下补统一 smoke test。
+- BE-016：backend worker 已完成 staff appointment detail 读模块并提交 `b3d0601 feat(api): add staff appointment detail endpoint`；architect 已于 2026-03-21 11:5x 直接把 `GET /api/v1/staff/appointments/:id` 同步落入当前主仓 `apps/api`，并再次执行 `npm run build` 通过。当前剩余门槛已收敛为在可用数据库环境下补统一 smoke test，而不是详情读接口本身是否已落库。
 - 运行级验证更新（2026-03-21 10:3x Asia/Shanghai）：architect 已在当前主仓 `apps/api` 直接执行 `npm run build` 通过，说明新后端骨架与已迁入读模块在统一基线上可构建；继续执行 `npx prisma migrate deploy` 时，当前机器返回 `P1001: Can't reach database server at 127.0.0.1:3307`，说明本轮剩余阻塞已从“代码是否可构建”收敛为“本机 MySQL / compose 环境尚未启动”。在数据库可用前，`/health` 与新迁入读接口暂无法完成运行级 smoke test。
 - 当前下一步：优先补齐本机 MySQL / `DATABASE_URL` 环境，再在 architect 统一基线补 `/health`、`/api/v1/gallery`、`/api/v1/my/appointments`、`/api/v1/staff/appointments`、`/api/v1/staff/appointments/:id` 的最小运行级验证；在此之前，不把 `apps/api` 视为可切流基线。
