@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-function mapAppointmentStatus(status: AppointmentStatus): 'pending' | 'approved' | 'rejected' {
+function normalizeAppointmentStatus(status: AppointmentStatus) {
   switch (status) {
     case AppointmentStatus.APPROVED:
       return 'approved';
@@ -18,27 +18,41 @@ function mapAppointmentStatus(status: AppointmentStatus): 'pending' | 'approved'
 export class MyAppointmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listByCustomerOpenId(customerOpenId: string) {
+  assertCustomerAuthorized(customerOpenId?: string) {
+    const normalizedCustomerOpenId = `${customerOpenId || ''}`.trim();
+
+    if (!normalizedCustomerOpenId) {
+      throw new UnauthorizedException({
+        error: 'Customer unauthorized',
+        code: 'CUSTOMER_UNAUTHORIZED'
+      });
+    }
+
+    return normalizedCustomerOpenId;
+  }
+
+  async listMyAppointments(customerOpenId?: string) {
+    const normalizedCustomerOpenId = this.assertCustomerAuthorized(customerOpenId);
     const rows = await this.prisma.appointment.findMany({
       where: {
-        customerOpenId
+        customerOpenId: normalizedCustomerOpenId
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      customerOpenId: row.customerOpenId,
-      customerName: row.customerName ?? '',
-      phone: row.phone ?? '',
-      date: row.date,
-      timeSlot: row.timeSlot,
-      note: row.note ?? '',
-      status: mapAppointmentStatus(row.status),
-      createdAt: row.createdAt.toISOString(),
-      reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
-      reviewedBy: row.reviewedByOpenId ?? null,
-      reviewNote: row.reviewNote ?? ''
+    return rows.map((item) => ({
+      id: item.id,
+      customerOpenId: item.customerOpenId,
+      customerName: item.customerName || '',
+      phone: item.phone || '',
+      date: item.date,
+      timeSlot: item.timeSlot,
+      note: item.note || '',
+      status: normalizeAppointmentStatus(item.status),
+      createdAt: item.createdAt.toISOString(),
+      reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,
+      reviewedBy: item.reviewedByOpenId || null,
+      reviewNote: item.reviewNote || ''
     }));
   }
 }
