@@ -4,6 +4,8 @@
 
 本文件用于说明 `apps/server` 与 `apps/api` 在 Phase 0/1 的并行运行方式，以及本地 MySQL / Docker 环境、切换策略与回滚路径。
 
+如需单独查看 MySQL 版本、Docker 启动方式、本机直装步骤与最小验收清单，优先参考：`docs/MYSQL_SETUP.md`。
+
 当前原则：
 - `apps/server` 继续作为已通过 UAT 的稳定基线
 - `apps/api` 只作为新后端并行演进骨架，不直接替代旧服务
