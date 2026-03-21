@@ -418,6 +418,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 | BE-013 | backend | 在 `apps/api` 迁入店员 booking-rules 读接口并对齐冻结契约 | `docs/API.md` booking-rules 契约、`apps/api` 骨架、现有 `apps/server` 逻辑 | `apps/api` booking-rules 模块、`GET /api/v1/staff/booking-rules` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，字段与冻结契约一致，不影响旧 `apps/server` | 若过早把写接口/校验一起迁入，容易扩大范围 |
 | BE-014 | backend | 在 `apps/api` 迁入顾客侧 my appointments 读接口并对齐冻结契约 | `docs/API.md` my appointments 契约、`apps/api` 骨架、现有 `apps/server` appointments 读逻辑 | `apps/api` my-appointments 模块、`GET /api/v1/my/appointments` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可按 `X-Customer-OpenId` 返回当前顾客预约记录，字段与冻结契约一致，不影响旧 `apps/server` | 若身份头口径或状态映射偏差，会直接破坏顾客主链路 |
 | BE-015 | backend | 在 `apps/api` 迁入店员侧 staff appointments 列表读接口并对齐冻结契约 | `docs/API.md` staff appointments 契约、`apps/api` 骨架、现有 `apps/server` appointments 读逻辑 | `apps/api` staff-appointments 模块、`GET /api/v1/staff/appointments` 路由、最小自测结论 | BE-010, BE-011, BE-013 | 新 `apps/api` 可按 `X-Staff-OpenId` 返回店员预约列表，支持 `status=pending|approved|rejected`，字段与冻结契约一致，不影响旧 `apps/server` | 若白名单口径或状态筛选回退，会直接破坏店员侧读链路 |
+| BE-016 | backend | 在 `apps/api` 迁入店员侧 staff appointment 详情读接口并对齐冻结契约 | `docs/API.md` staff appointment detail 契约、`apps/api` 骨架、现有 `apps/server` appointments 详情读逻辑 | `apps/api` staff-appointment-detail 模块、`GET /api/v1/staff/appointments/:id` 路由、最小自测结论 | BE-010, BE-011, BE-015 | 新 `apps/api` 可按 `X-Staff-OpenId` 返回单条预约详情，命中返回 `{ item }`，未命中返回 `404 + APPOINTMENT_NOT_FOUND`，字段与冻结契约一致，不影响旧 `apps/server` | 若详情接口的鉴权 / 404 口径与列表接口漂移，会直接破坏店员侧读链路一致性 |
 
 ### Phase 0 / 1 当前执行状态
 
@@ -429,5 +430,6 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - BE-013：backend worker 已在其 workspace 完成 booking-rules 读模块并提交 `c7dda8b feat: add booking rules reader to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
 - BE-014：backend worker 已在其 workspace 完成 my appointments 读模块并提交 `e0ab5b4 feat(api): add my appointments reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
 - BE-015：backend worker 已在其 workspace 完成 staff appointments 列表读模块并提交 `70254c4 feat(api): add staff appointments list reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
+- BE-016：backend worker 已在其 workspace 完成 staff appointment detail 读模块并提交 `b3d0601 feat(api): add staff appointment detail endpoint`；worker 已完成最小运行验证（200 / 401 / 404 三类场景），当前待 architect 侧把该事实并入统一基线审阅口径，并在可用数据库环境下补统一 smoke test。
 - 运行级验证更新（2026-03-21 10:3x Asia/Shanghai）：architect 已在当前主仓 `apps/api` 直接执行 `npm run build` 通过，说明新后端骨架与已迁入读模块在统一基线上可构建；继续执行 `npx prisma migrate deploy` 时，当前机器返回 `P1001: Can't reach database server at 127.0.0.1:3307`，说明本轮剩余阻塞已从“代码是否可构建”收敛为“本机 MySQL / compose 环境尚未启动”。在数据库可用前，`/health` 与新迁入读接口暂无法完成运行级 smoke test。
-- 当前下一步：优先补齐本机 MySQL / `DATABASE_URL` 环境，再在 architect 统一基线补 `/health`、`/api/v1/gallery`、`/api/v1/my/appointments`、`/api/v1/staff/appointments` 的最小运行级验证；在此之前，不把 `apps/api` 视为可切流基线。
+- 当前下一步：优先补齐本机 MySQL / `DATABASE_URL` 环境，再在 architect 统一基线补 `/health`、`/api/v1/gallery`、`/api/v1/my/appointments`、`/api/v1/staff/appointments`、`/api/v1/staff/appointments/:id` 的最小运行级验证；在此之前，不把 `apps/api` 视为可切流基线。
