@@ -87,7 +87,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - DEV-001：architect 已补 `infra/compose/api-mysql.compose.yml`、`docs/API_PARALLEL_RUNBOOK.md` 与 `apps/api/Dockerfile`，明确 MySQL 本地环境、`apps/server` / `apps/api` 并行方式、切换步骤与回滚手册。当前剩余动作是基于该环境手册做 `apps/api` 的 `prisma migrate deploy + /health` 运行级验证。
 - BE-012：backend worker 回报曾再次与主仓事实不一致；architect 已于 2026-03-20 21:0x 直接在当前 repo 落下 `apps/api` 的 `gallery` 模块，并将其挂入 `AppModule`，随后再次执行 `npm run build` 通过，并提交为 `a50dc92 feat: add gallery module to apps api`。当前目标从“确保模块真实落库”推进为“在后续 MySQL 环境可用时补 `/api/v1/gallery` 运行级验证”。
 - BE-013：backend worker 回报再次与主仓事实不一致；architect 已于 2026-03-20 21:1x 直接在当前 repo 落下 `booking-rules` 读模块，并将其挂入 `AppModule`，随后再次执行 `npm run build` 通过，并提交为 `c7dda8b feat: add booking rules reader to apps api`。当前目标从“确保读模块真实落库”推进为“在后续 MySQL 环境可用时补 `GET /api/v1/staff/booking-rules` 运行级验证”。
-- BE-014：architect 已直接在当前 repo 落下 `apps/api/src/my-appointments/*`，完成 `GET /api/v1/my/appointments` 读接口迁入，并将其接入 `AppModule`；当前已再次执行 `apps/api` build 通过，说明新后端已具备承接顾客侧“我的预约”读接口的静态构建能力。下一步从“继续迁单个读接口”转为“在 MySQL 环境可用时补 `prisma migrate deploy + /health + /api/v1/my/appointments` 运行级验证”，随后再推进下一条可并行的 staff appointments / write-side 迁移任务。
+- BE-014：architect 已在当前 repo 收口 `apps/api/src/my-appointments/*` 的 Prisma 注入与返回映射，实现 `GET /api/v1/my/appointments` 读接口按冻结契约读取 `X-Customer-OpenId`、返回小写状态词与 `{ items: [...] }` 结构，并保持 `AppModule` 挂载；已在 `apps/api` 目录执行 `npm run build` 通过，说明新后端已具备承接顾客侧“我的预约”读接口的静态构建能力。下一步从“继续迁单个读接口”转为“在 MySQL 环境可用时补 `prisma migrate deploy + /health + /api/v1/my/appointments` 运行级验证”，随后再推进下一条可并行的 staff appointments / write-side 迁移任务。
 
 ## 本轮前端 handoff 要点
 
