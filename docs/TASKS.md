@@ -88,7 +88,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 - BE-012：backend worker 回报曾再次与主仓事实不一致；architect 已于 2026-03-20 21:0x 直接在当前 repo 落下 `apps/api` 的 `gallery` 模块，并将其挂入 `AppModule`，随后再次执行 `npm run build` 通过，并提交为 `a50dc92 feat: add gallery module to apps api`。当前目标从“确保模块真实落库”推进为“在后续 MySQL 环境可用时补 `/api/v1/gallery` 运行级验证”。
 - BE-013：backend worker 回报再次与主仓事实不一致；architect 已于 2026-03-20 21:1x 直接在当前 repo 落下 `booking-rules` 读模块，并将其挂入 `AppModule`，随后再次执行 `npm run build` 通过，并提交为 `c7dda8b feat: add booking rules reader to apps api`。当前目标从“确保读模块真实落库”推进为“在后续 MySQL 环境可用时补 `GET /api/v1/staff/booking-rules` 运行级验证”。
 - BE-014：architect 已在当前 repo 收口 `apps/api/src/my-appointments/*` 的 Prisma 注入与返回映射，实现 `GET /api/v1/my/appointments` 读接口按冻结契约读取 `X-Customer-OpenId`、返回小写状态词与 `{ items: [...] }` 结构，并保持 `AppModule` 挂载；已在 `apps/api` 目录执行 `npm run build` 通过，说明新后端已具备承接顾客侧“我的预约”读接口的静态构建能力。
-- BE-015：backend worker 已在其 workspace 固化店员侧预约列表读接口 commit `70254c4 feat(api): add staff appointments list reader`，覆盖 `GET /api/v1/staff/appointments`、`X-Staff-OpenId` 白名单校验、`status=pending|approved|rejected` 查询参数约束与小写状态返回；当前下一步不是继续口头回报，而是将该实现以可审阅文件快照/patch 收口到 architect 当前 repo，并在后续 MySQL 环境可用时补 `prisma migrate deploy + /health + /api/v1/staff/appointments` 运行级验证。
+- BE-015：architect 已在当前 repo 收口 `apps/api/src/staff-appointments/*` 与 `AppModule` 挂载，实现 `GET /api/v1/staff/appointments` 按冻结契约读取 `X-Staff-OpenId`、默认按 `pending` 查询、支持 `status=pending|approved|rejected` 过滤、返回 `{ items: [...] }` 与小写状态词；已在 `apps/api` 目录执行 `npm run build` 通过，说明新后端已具备承接店员侧预约列表读接口的静态构建能力。当前剩余门槛转为后续 MySQL 环境可用时补 `prisma migrate deploy + /health + /api/v1/staff/appointments` 运行级验证。
 
 ## 本轮前端 handoff 要点
 
