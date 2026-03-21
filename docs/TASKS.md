@@ -410,3 +410,19 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 | BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
 | FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
 | DEV-001 | architect/test-devops | 补齐 MySQL / Docker 本地开发环境说明与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
+| BE-012 | backend | 在 `apps/api` 迁入 gallery 读接口并对齐冻结契约 | `docs/API.md` gallery 契约、`apps/api` 骨架、现有 `apps/server` 逻辑 | `apps/api` gallery 模块、`GET /api/v1/gallery` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 active gallery 数据，字段与冻结契约一致，不影响旧 `apps/server` | 过早迁复杂业务路由导致新骨架失稳 |
+| BE-013 | backend | 在 `apps/api` 迁入店员 booking-rules 读接口并对齐冻结契约 | `docs/API.md` booking-rules 契约、`apps/api` 骨架、现有 `apps/server` 逻辑 | `apps/api` booking-rules 模块、`GET /api/v1/staff/booking-rules` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，字段与冻结契约一致，不影响旧 `apps/server` | 若过早把写接口/校验一起迁入，容易扩大范围 |
+| BE-014 | backend | 在 `apps/api` 迁入顾客侧 my appointments 读接口并对齐冻结契约 | `docs/API.md` my appointments 契约、`apps/api` 骨架、现有 `apps/server` appointments 读逻辑 | `apps/api` my-appointments 模块、`GET /api/v1/my/appointments` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可按 `X-Customer-OpenId` 返回当前顾客预约记录，字段与冻结契约一致，不影响旧 `apps/server` | 若身份头口径或状态映射偏差，会直接破坏顾客主链路 |
+| BE-015 | backend | 在 `apps/api` 迁入店员侧 staff appointments 列表读接口并对齐冻结契约 | `docs/API.md` staff appointments 契约、`apps/api` 骨架、现有 `apps/server` appointments 读逻辑 | `apps/api` staff-appointments 模块、`GET /api/v1/staff/appointments` 路由、最小自测结论 | BE-010, BE-011, BE-013 | 新 `apps/api` 可按 `X-Staff-OpenId` 返回店员预约列表，支持 `status=pending|approved|rejected`，字段与冻结契约一致，不影响旧 `apps/server` | 若白名单口径或状态筛选回退，会直接破坏店员侧读链路 |
+
+### Phase 0 / 1 当前执行状态
+
+- ARCH-007：已完成，`docs/REFACTOR_PLAN.md` 已落库，作为当前增量重构统一入口。
+- FE-013：已完成，前端边界审查结果已落为 `docs/WEAPP_REFACTOR_BOUNDARY.md`。
+- DEV-001：已完成第一版，`infra/compose/api-mysql.compose.yml` 与 `docs/API_PARALLEL_RUNBOOK.md` 已明确 MySQL 本地环境、并行运行与回滚路径。
+- BE-010 / BE-011：已由 architect 在当前主仓落下 `apps/api` 首轮 Nest + Prisma 骨架，并完成依赖安装、`prisma generate` 与 build 门槛验证；当前剩余门槛转为 MySQL / `DATABASE_URL` 运行级验证。
+- BE-012：backend worker 已在其 workspace 完成 gallery 读模块并提交 `a50dc92 feat: add gallery module to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
+- BE-013：backend worker 已在其 workspace 完成 booking-rules 读模块并提交 `c7dda8b feat: add booking rules reader to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
+- BE-014：backend worker 已在其 workspace 完成 my appointments 读模块并提交 `e0ab5b4 feat(api): add my appointments reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
+- BE-015：backend worker 已在其 workspace 完成 staff appointments 列表读模块并提交 `70254c4 feat(api): add staff appointments list reader`；当前已确认构建通过，待 architect 侧做统一合入 / 运行级 smoke test。
+- 当前下一步：优先在 architect 统一基线确认 `apps/api` 现状，并在可用 MySQL / `DATABASE_URL` 环境下补 `/health`、`/api/v1/gallery`、`/api/v1/my/appointments`、`/api/v1/staff/appointments` 的最小运行级验证；在此之前，不把 `apps/api` 视为可切流基线。
