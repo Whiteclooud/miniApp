@@ -413,6 +413,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 | BE-010 | backend | 新建 `apps/api` NestJS 并行骨架与基础运行环境 | `docs/REFACTOR_PLAN.md`、现有 `apps/server`、目标技术栈 | `apps/api/**`、health 模块、基础 config、启动脚本 | ARCH-007 | `apps/api` 可独立启动、`/health` 可访问、旧 `apps/server` 不受影响 | 新旧架构混改，导致回滚困难 |
 | BE-011 | backend | 设计 Prisma v1 数据模型并建立 MySQL 迁移基线 | `docs/REFACTOR_PLAN.md`、当前 SQLite schema、现有 API 契约 | `apps/api/prisma/schema.prisma`、初始 migration、字段映射说明 | BE-010, ARCH-007 | Prisma schema 覆盖 users / appointments / booking rules / gallery，且与现有 API 契约兼容 | 模型设计过度，偏离一店低并发实际 |
 | FE-013 | frontend | 审查当前小程序结构并给出 TypeScript 增量迁移边界 | `docs/REFACTOR_PLAN.md`、现有 `apps/weapp/**` | 前端迁移清单、目录边界建议、首批落点文件建议 | ARCH-007 | 明确 pages / services / utils / types / auth adapter 的目标边界，不破坏现有页面稳定性 | 只给理想目录，不贴当前实现 |
+| FE-014 | frontend | 按切流清单完成 `apps/api` 受控联调接入准备 | `docs/API_CUTOVER_CHECKLIST.md`、当前 `apps/weapp/**`、`docs/API.md`、已跑通的 `apps/api` 闭环 smoke | 前端切流前检查结果、必要的配置/请求层改动、页面级联调结论、回滚步骤补充 | BE-018, BE-019 | 小程序可在测试配置下指向 `apps/api` 并按清单完成首页/availability/创建预约/我的预约/店员审核最小联调，Network 不再回落旧接口，且保留切回 `apps/server` 的明确步骤 | 若前端仍有旧字段/旧路由依赖，会在切流试跑时集中暴露 |
 | DEV-001 | architect/test-devops | 补齐 MySQL / Docker 本地开发环境说明与切换策略 | `docs/REFACTOR_PLAN.md`、现有运行方式 | compose / env 设计说明、切换/回滚手册 | ARCH-007 | 能清楚说明 `apps/server` 与未来 `apps/api` 如何并行、如何切换、如何回滚 | 环境变量口径不统一导致联调混乱 |
 | BE-012 | backend | 在 `apps/api` 迁入 gallery 读接口并对齐冻结契约 | `docs/API.md` gallery 契约、`apps/api` 骨架、现有 `apps/server` 逻辑 | `apps/api` gallery 模块、`GET /api/v1/gallery` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 active gallery 数据，字段与冻结契约一致，不影响旧 `apps/server` | 过早迁复杂业务路由导致新骨架失稳 |
 | BE-013 | backend | 在 `apps/api` 迁入店员 booking-rules 读接口并对齐冻结契约 | `docs/API.md` booking-rules 契约、`apps/api` 骨架、现有 `apps/server` 逻辑 | `apps/api` booking-rules 模块、`GET /api/v1/staff/booking-rules` 路由、最小自测结论 | BE-010, BE-011 | 新 `apps/api` 可返回 `advanceOpenDays / closedDates / dailySlots / updatedAt`，字段与冻结契约一致，不影响旧 `apps/server` | 若过早把写接口/校验一起迁入，容易扩大范围 |
@@ -427,6 +428,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 
 - ARCH-007：已完成，`docs/REFACTOR_PLAN.md` 已落库，作为当前增量重构统一入口。
 - FE-013：已完成，前端边界审查结果已落为 `docs/WEAPP_REFACTOR_BOUNDARY.md`。
+- FE-014：已正式化为下一轮前端任务，目标是在不切默认流量的前提下，按 `docs/API_CUTOVER_CHECKLIST.md` 完成指向 `apps/api` 的受控联调准备、页面级最小链路验证与回滚步骤补充。
 - DEV-001：已完成第一版，`infra/compose/api-mysql.compose.yml` 与 `docs/API_PARALLEL_RUNBOOK.md` 已明确 MySQL 本地环境、并行运行与回滚路径。
 - BE-010 / BE-011：已由 architect 在当前主仓落下 `apps/api` 首轮 Nest + Prisma 骨架，并完成依赖安装、`prisma generate` 与 build 门槛验证；当前剩余门槛转为 MySQL / `DATABASE_URL` 运行级验证。
 - BE-012：backend worker 已在其 workspace 完成 gallery 读模块并提交 `a50dc92 feat: add gallery module to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
