@@ -1,15 +1,43 @@
 const { listGallery } = require('../../services/appointment');
 const { normalizeGalleryItems } = require('../../utils/gallery');
 
+function getApiProfileState() {
+  const app = getApp();
+  const apiProfile = app.getApiProfile();
+
+  return {
+    apiProfileLabel: apiProfile.label,
+    apiProfileBaseUrl: apiProfile.baseUrl,
+    apiProfileKey: apiProfile.key,
+    canSwitchApiProfile: apiProfile.canSwitch,
+    isDevelopEnv: apiProfile.isDevelopEnv
+  };
+}
+
 Page({
   data: {
     galleryItems: [],
     loading: true,
-    hasError: false
+    hasError: false,
+    apiProfileLabel: '',
+    apiProfileBaseUrl: '',
+    apiProfileKey: 'legacy',
+    canSwitchApiProfile: false,
+    isDevelopEnv: false,
+    switchingApiProfile: false
   },
 
   onLoad() {
+    this.syncApiProfileState();
     this.loadData();
+  },
+
+  onShow() {
+    this.syncApiProfileState();
+  },
+
+  syncApiProfileState() {
+    this.setData(getApiProfileState());
   },
 
   async onPullDownRefresh() {
@@ -37,6 +65,44 @@ Page({
         icon: 'none'
       });
     }
+  },
+
+  async applyApiProfile(profileKey, successText) {
+    if (this.data.switchingApiProfile) {
+      return;
+    }
+
+    const app = getApp();
+    this.setData({ switchingApiProfile: true });
+
+    try {
+      if (profileKey) {
+        app.setApiProfile(profileKey);
+      } else {
+        app.resetApiProfile();
+      }
+
+      this.syncApiProfileState();
+      await this.loadData();
+      wx.showToast({
+        title: successText,
+        icon: 'none'
+      });
+    } finally {
+      this.setData({ switchingApiProfile: false });
+    }
+  },
+
+  switchToApiProfile() {
+    this.applyApiProfile('api', '已切到 apps/api');
+  },
+
+  switchToLegacyProfile() {
+    this.applyApiProfile('legacy', '已切到 apps/server');
+  },
+
+  resetApiProfile() {
+    this.applyApiProfile('', '已恢复默认基线');
   },
 
   goGalleryDetail(event) {
