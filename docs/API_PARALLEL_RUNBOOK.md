@@ -130,10 +130,26 @@ npm run smoke:parallel
    - `POST review -> approved` happy-path
    - `PATCH review -> APPOINTMENT_ALREADY_REVIEWED`
    - `PATCH review -> SLOT_OCCUPIED`
+5. 当前已新增顾客创建预约专项 smoke：
+
+```bash
+cd apps/api
+npm run smoke:create-appointment
+```
+
+6. `smoke:create-appointment` 已覆盖：
+   - `401 + CUSTOMER_UNAUTHORIZED`
+   - `400 + INVALID_SLOT`
+   - `400 + DATE_OUT_OF_RANGE`
+   - `appointmentDate` happy-path -> `201 pending`
+   - 历史 `date` 字段兼容 -> `201 pending`
+   - body 中伪造 `customerOpenId` 被 header 覆盖
+   - 同 slot 两条 `pending` 可连续创建
+   - 同 slot 已有 `approved` 后创建返回 `409 + SLOT_OCCUPIED`
 
 当前结论：
-- `apps/api` 已从“仅骨架可构建”推进到“本机可连库、可起服务、已迁入 staff 读写接口具备可重复 smoke 验证能力”。
-- 但在 availability / create appointment 等主链路尚未迁入前，仍不应把 `apps/api` 视为前端可切流基线。
+- `apps/api` 已从“仅骨架可构建”推进到“本机可连库、可起服务、已迁入 create appointment + staff 读写接口且具备可重复 smoke 验证能力”。
+- 但在 availability 主链路尚未迁入前，仍不应把 `apps/api` 视为前端可切流基线。
 
 ---
 
@@ -186,7 +202,7 @@ npm run dev:server
 ## 6. 当前残余风险
 
 1. 当前 compose 只覆盖 MySQL，未把 `apps/api` 整体容器化运行验证也落一遍。
-2. `smoke:parallel` 当前已覆盖已迁入 staff 读写链路，但 `availability / create appointment` 仍未迁入，因此脚本覆盖面还不是完整主链路。
+2. 当前已迁入 `create appointment`，但 `availability` 仍未迁入，因此脚本覆盖面还不是完整顾客主链路。
 3. 若本机已占用 `3307` 或 `3100`，需要手动调整 env / compose 端口。
 4. 当前迁移脚本仍是空白阶段，旧 SQLite 数据尚未导入 MySQL。
 
@@ -194,7 +210,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 继续补 `create appointment / availability` 等尚未迁入主链路的并行迁移与运行验证
+1. 优先继续补 `availability` 的并行迁移与运行验证
 2. 在路由迁移过程中补兼容断言与切换检查表
-3. 待顾客侧主链路也迁入后，把 `smoke:parallel` 升级为“申请 -> 审核 -> 回查”完整闭环 smoke
+3. 待 `availability` 迁入后，把 `smoke:parallel` 升级为“可约时段 -> 申请 -> 审核 -> 回查”完整闭环 smoke
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本

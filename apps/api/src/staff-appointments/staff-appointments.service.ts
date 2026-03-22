@@ -1,13 +1,15 @@
-import {
-  Appointment,
-  AppointmentStatus
-} from '@prisma/client';
+import { AppointmentStatus } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
+import {
+  ApiAppointmentItem,
+  mapAppointmentStatus,
+  toApiAppointmentItem
+} from '../appointments/appointment-response';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_STATUS = 'pending';
@@ -15,20 +17,7 @@ const ALLOWED_STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
 type ListStatus = (typeof ALLOWED_STATUS_VALUES)[number];
 
-export interface StaffAppointmentItem {
-  id: string;
-  customerOpenId: string;
-  customerName: string;
-  phone: string;
-  date: string;
-  timeSlot: string;
-  note: string;
-  status: ListStatus;
-  createdAt: string;
-  reviewedAt: string | null;
-  reviewedBy: string | null;
-  reviewNote: string;
-}
+export type StaffAppointmentItem = ApiAppointmentItem;
 
 function resolveAllowedStaffIds(): string[] {
   const values = [process.env.STAFF_OPEN_IDS, process.env.STAFF_OPEN_ID, 'staff-openid-demo']
@@ -38,18 +27,6 @@ function resolveAllowedStaffIds(): string[] {
     .filter(Boolean);
 
   return [...new Set(values)];
-}
-
-function mapAppointmentStatus(status: AppointmentStatus): ListStatus {
-  switch (status) {
-    case AppointmentStatus.APPROVED:
-      return 'approved';
-    case AppointmentStatus.REJECTED:
-      return 'rejected';
-    case AppointmentStatus.PENDING:
-    default:
-      return 'pending';
-  }
 }
 
 function toPrismaAppointmentStatus(status: string | undefined): AppointmentStatus {
@@ -127,20 +104,7 @@ export class StaffAppointmentsService {
     return this.toStaffAppointmentItem(appointment);
   }
 
-  toStaffAppointmentItem(item: Appointment): StaffAppointmentItem {
-    return {
-      id: item.id,
-      customerOpenId: item.customerOpenId || '',
-      customerName: item.customerName ?? '',
-      phone: item.phone ?? '',
-      date: item.date,
-      timeSlot: item.timeSlot,
-      note: item.note ?? '',
-      status: mapAppointmentStatus(item.status),
-      createdAt: item.createdAt.toISOString(),
-      reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,
-      reviewedBy: item.reviewedByOpenId ?? null,
-      reviewNote: item.reviewNote ?? ''
-    };
+  toStaffAppointmentItem(item: any): StaffAppointmentItem {
+    return toApiAppointmentItem(item);
   }
 }

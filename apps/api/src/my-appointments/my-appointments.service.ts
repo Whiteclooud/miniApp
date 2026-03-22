@@ -1,18 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AppointmentStatus } from '@prisma/client';
+import { toApiAppointmentItem } from '../appointments/appointment-response';
 import { PrismaService } from '../prisma/prisma.service';
-
-function mapAppointmentStatus(status: AppointmentStatus) {
-  switch (status) {
-    case AppointmentStatus.APPROVED:
-      return 'approved';
-    case AppointmentStatus.REJECTED:
-      return 'rejected';
-    case AppointmentStatus.PENDING:
-    default:
-      return 'pending';
-  }
-}
 
 @Injectable()
 export class MyAppointmentsService {
@@ -41,19 +29,6 @@ export class MyAppointmentsService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
     });
 
-    return rows.map((item) => ({
-      id: item.id,
-      customerOpenId: item.customerOpenId,
-      customerName: item.customerName ?? '',
-      phone: item.phone ?? '',
-      date: item.date,
-      timeSlot: item.timeSlot,
-      note: item.note ?? '',
-      status: mapAppointmentStatus(item.status),
-      createdAt: item.createdAt.toISOString(),
-      reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,
-      reviewedBy: item.reviewedByOpenId ?? null,
-      reviewNote: item.reviewNote ?? ''
-    }));
+    return rows.map((item) => toApiAppointmentItem(item));
   }
 }
