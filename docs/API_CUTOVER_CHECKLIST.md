@@ -81,21 +81,24 @@ npm run smoke:parallel
 
 切前端前，只检查最小配置，不立刻长时间联调：
 
-- [ ] 前端 API base 可切到 `http://127.0.0.1:3100`
-- [ ] 仍可一键切回旧 `apps/server`
+- [ ] 首页已显示“当前接口基线”卡片
+- [ ] 开发环境可通过首页切流按钮把 API base 切到 `http://127.0.0.1:3100`
+- [ ] 仍可通过首页按钮或恢复默认基线一键切回旧 `apps/server`
 - [ ] 不同时混用新旧后端返回结构
 
 ### 3. Manual UAT mini-pass
 
 切到 `apps/api` 后，至少重跑以下最小链路：
 
-1. 首页返图加载
-2. 顾客查看某天 availability
-3. 顾客提交预约
-4. 顾客在“我的预约”看到 `pending`
-5. 店员审核通过
-6. 顾客回查为 `approved`
-7. 同 slot 第二条审批冲突
+1. 首页点击“切到 apps/api”，确认基线文案与 Base URL 已更新
+2. 首页返图加载
+3. 顾客查看某天 availability
+4. 顾客提交预约
+5. 顾客在“我的预约”看到 `pending`
+6. 店员审核通过
+7. 顾客回查为 `approved`
+8. 同 slot 第二条审批冲突
+9. 点击“使用 apps/server”或“恢复默认基线”，确认可回滚
 
 ## Rollback Trigger
 
