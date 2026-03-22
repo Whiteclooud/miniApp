@@ -19,7 +19,7 @@
 
 - 旧服务：`apps/server`
 - 新服务：`apps/api`
-- MySQL compose：`infra/compose/docker-compose.api.yml`
+- MySQL compose：`infra/compose/api-mysql.compose.yml`
 - 新服务环境样例：`apps/api/.env.example`
 
 职责分工：
@@ -35,13 +35,13 @@
 在仓库根目录执行：
 
 ```bash
-docker compose -f infra/compose/docker-compose.api.yml up -d
+docker compose -f infra/compose/api-mysql.compose.yml up -d
 ```
 
 ### 2. 默认连接信息
 
 - Host: `127.0.0.1`
-- Port: `3306`
+- Port: `3307`
 - Database: `miniapp_api`
 - Root user: `root`
 - Root password: `root`
@@ -54,10 +54,10 @@ docker compose -f infra/compose/docker-compose.api.yml up -d
 
 ```env
 PORT=3100
-DATABASE_URL="mysql://miniapp:miniapp@127.0.0.1:3306/miniapp_api"
+DATABASE_URL="mysql://miniapp:miniapp@127.0.0.1:3307/miniapp_api"
 ```
 
-> 注意：`apps/api/.env.example` 当前仍保留 root 连接示例，便于首轮排障；日常开发更推荐使用最小 app 用户。
+> 注意：`apps/api/.env.example` 当前已经对齐 app 用户默认连接；日常开发优先保持这套默认值，除非你的本机端口不是 `3307`。
 
 ---
 
