@@ -194,7 +194,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 把当前已手工执行的 smoke 固化为仓库内可复用脚本入口（便于后续重复验证）
-2. 继续补 `availability / create appointment` 等尚未迁入主链路的并行迁移与运行验证
-3. 在路由迁移过程中补兼容断言与切换检查表
+1. 继续补 `create appointment / availability` 等尚未迁入主链路的并行迁移与运行验证
+2. 在路由迁移过程中补兼容断言与切换检查表
+3. 待顾客侧主链路也迁入后，把 `smoke:parallel` 升级为“申请 -> 审核 -> 回查”完整闭环 smoke
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本
