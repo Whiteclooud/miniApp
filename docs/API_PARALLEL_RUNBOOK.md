@@ -112,22 +112,28 @@ architect 已在当前主仓完成以下验证：
    - 结果：`No pending migrations to apply`
 2. 启动 `apps/api`
    - 端口：`3100`
-3. 已完成运行级 smoke：
+3. 已将并行阶段 smoke 固化为仓库脚本：
+
+```bash
+cd apps/api
+npm run smoke:parallel
+```
+
+4. 当前 `smoke:parallel` 已覆盖：
    - `GET /health`
    - `GET /api/v1/gallery`
-   - `GET /api/v1/staff/booking-rules` 的未授权 / 已授权分支
-   - `GET /api/v1/my/appointments` 的未授权 / 已授权分支
-   - `GET /api/v1/staff/appointments` 的未授权 / 已授权分支
+   - `GET /api/v1/staff/booking-rules`
+   - `GET /api/v1/my/appointments`
+   - `GET /api/v1/staff/appointments?status=pending`
    - `GET /api/v1/staff/appointments/:id` 的 `404 + APPOINTMENT_NOT_FOUND`
    - `POST /api/v1/staff/appointments/:id/review` 的 `404 + APPOINTMENT_NOT_FOUND`
-4. 已完成基于真实数据库记录的 review 写链路验证：
    - `POST review -> approved` happy-path
-   - 重复审核返回 `409 + APPOINTMENT_ALREADY_REVIEWED`
-   - 同 slot 冲突返回 `409 + SLOT_OCCUPIED`
+   - `PATCH review -> APPOINTMENT_ALREADY_REVIEWED`
+   - `PATCH review -> SLOT_OCCUPIED`
 
-注意：
-- 以上 smoke 当前由 architect 通过临时本地脚本执行，**主仓里尚未固化为 `npm run smoke:parallel` 这类长期脚本入口**。
-- 在 availability / create appointment 等主链路尚未迁入前，`apps/api` 仍不应视为前端可切流基线。
+当前结论：
+- `apps/api` 已从“仅骨架可构建”推进到“本机可连库、可起服务、已迁入 staff 读写接口具备可重复 smoke 验证能力”。
+- 但在 availability / create appointment 等主链路尚未迁入前，仍不应把 `apps/api` 视为前端可切流基线。
 
 ---
 
@@ -180,7 +186,7 @@ npm run dev:server
 ## 6. 当前残余风险
 
 1. 当前 compose 只覆盖 MySQL，未把 `apps/api` 整体容器化运行验证也落一遍。
-2. 当前运行级 smoke 虽已实际执行，但仍未沉淀为仓库内可复用的固定脚本入口，后续复测仍有人工成本。
+2. `smoke:parallel` 当前已覆盖已迁入 staff 读写链路，但 `availability / create appointment` 仍未迁入，因此脚本覆盖面还不是完整主链路。
 3. 若本机已占用 `3307` 或 `3100`，需要手动调整 env / compose 端口。
 4. 当前迁移脚本仍是空白阶段，旧 SQLite 数据尚未导入 MySQL。
 

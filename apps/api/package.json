@@ -10,7 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "smoke:parallel": "node scripts/smoke-parallel-run.cjs"
+    "smoke:parallel": "node --env-file=.env scripts/smoke-parallel-run.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.2",
