@@ -5,6 +5,8 @@ export interface BookingRulesSnapshot {
   updatedAt: string;
 }
 
+export type BookingDateReasonCode = 'AVAILABLE' | 'DATE_CLOSED' | 'DATE_OUT_OF_RANGE';
+
 export const DEFAULT_BOOKING_RULE: Omit<BookingRulesSnapshot, 'updatedAt'> = {
   advanceOpenDays: 14,
   closedDates: [],
@@ -12,7 +14,12 @@ export const DEFAULT_BOOKING_RULE: Omit<BookingRulesSnapshot, 'updatedAt'> = {
 };
 
 export function isDateText(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = parseDateTextToUtc(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 export function isSlotText(value: string) {
@@ -75,4 +82,19 @@ export function isDateWithinAdvanceWindow(dateText: string, advanceOpenDays: num
   const maxDate = addDaysToDateText(today, Math.max(0, advanceOpenDays));
 
   return dateText >= today && dateText <= maxDate;
+}
+
+export function resolveBookingDateReasonCode(
+  dateText: string,
+  rules: Pick<BookingRulesSnapshot, 'advanceOpenDays' | 'closedDates'>
+): BookingDateReasonCode {
+  if (!isDateWithinAdvanceWindow(dateText, rules.advanceOpenDays)) {
+    return 'DATE_OUT_OF_RANGE';
+  }
+
+  if (rules.closedDates.includes(dateText)) {
+    return 'DATE_CLOSED';
+  }
+
+  return 'AVAILABLE';
 }

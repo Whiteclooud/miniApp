@@ -8,8 +8,8 @@ import {
 import { BookingRulesService } from '../booking-rules/booking-rules.service';
 import {
   isDateText,
-  isDateWithinAdvanceWindow,
-  isSlotText
+  isSlotText,
+  resolveBookingDateReasonCode
 } from '../booking-rules/booking-rules.shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiAppointmentItem, toApiAppointmentItem } from './appointment-response';
@@ -59,14 +59,16 @@ export class AppointmentsService {
 
     const bookingRules = await this.bookingRulesService.getBookingRules();
 
-    if (!isDateWithinAdvanceWindow(appointmentDate, bookingRules.advanceOpenDays)) {
+    const bookingDateReasonCode = resolveBookingDateReasonCode(appointmentDate, bookingRules);
+
+    if (bookingDateReasonCode === 'DATE_OUT_OF_RANGE') {
       throw new BadRequestException({
         error: 'Date out of range',
         code: 'DATE_OUT_OF_RANGE'
       });
     }
 
-    if (bookingRules.closedDates.includes(appointmentDate)) {
+    if (bookingDateReasonCode === 'DATE_CLOSED') {
       throw new BadRequestException({
         error: 'Date closed',
         code: 'DATE_CLOSED'

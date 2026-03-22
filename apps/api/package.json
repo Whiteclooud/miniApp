@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "smoke:availability": "node --env-file=.env scripts/availability-runtime-smoke.mjs",
     "smoke:create-appointment": "node --env-file=.env scripts/create-appointment-runtime-smoke.mjs",
     "smoke:parallel": "node --env-file=.env scripts/smoke-parallel-run.cjs"
   },
