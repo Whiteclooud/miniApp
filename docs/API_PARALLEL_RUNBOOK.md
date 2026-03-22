@@ -119,17 +119,16 @@ cd apps/api
 npm run smoke:parallel
 ```
 
-4. 当前 `smoke:parallel` 已覆盖：
+4. 当前 `smoke:parallel` 已升级为统一闭环 smoke，覆盖：
    - `GET /health`
    - `GET /api/v1/gallery`
    - `GET /api/v1/staff/booking-rules`
-   - `GET /api/v1/my/appointments`
-   - `GET /api/v1/staff/appointments?status=pending`
-   - `GET /api/v1/staff/appointments/:id` 的 `404 + APPOINTMENT_NOT_FOUND`
-   - `POST /api/v1/staff/appointments/:id/review` 的 `404 + APPOINTMENT_NOT_FOUND`
-   - `POST review -> approved` happy-path
-   - `PATCH review -> APPOINTMENT_ALREADY_REVIEWED`
-   - `PATCH review -> SLOT_OCCUPIED`
+   - `GET /api/v1/availability?date=...`
+   - `POST /api/v1/appointments` 的未授权 / happy-path / approved 冲突
+   - `GET /api/v1/my/appointments` 回查 pending 申请
+   - `POST /api/v1/staff/appointments/:id/review` happy-path
+   - `PATCH /api/v1/staff/appointments/:id/review` 重复审核拦截
+   - `GET /api/v1/availability?date=...` 对 approved / pending 的差异占位结果
 5. 当前已新增顾客创建预约专项 smoke：
 
 ```bash
@@ -163,8 +162,8 @@ npm run smoke:availability
    - `pending` 不占位、`approved` 才占位
 
 当前结论：
-- `apps/api` 已从“仅骨架可构建”推进到“本机可连库、可起服务、已迁入 availability + create appointment + staff 读写接口且具备可重复 smoke 验证能力”。
-- 当前主仓已具备“可约时段 -> 创建预约 -> 店员审核”三段主链路的运行级验证能力，但在前端尚未切到 `apps/api` 前，仍不应直接视为切流完成。
+- `apps/api` 已从“仅骨架可构建”推进到“本机可连库、可起服务、availability + create appointment + staff review 已具备统一闭环 smoke 验证能力”。
+- 当前主仓已具备“可约时段 -> 创建预约 -> 我的预约回查 -> 店员审核 -> 时段再次校验”的运行级闭环验证能力，但在前端尚未切到 `apps/api` 前，仍不应直接视为切流完成。
 
 ---
 
@@ -217,7 +216,7 @@ npm run dev:server
 ## 6. 当前残余风险
 
 1. 当前 compose 只覆盖 MySQL，未把 `apps/api` 整体容器化运行验证也落一遍。
-2. 当前虽已补 availability / create appointment / staff review 的专项 smoke，但尚未合并成单一“可约时段 -> 申请 -> 审核 -> 回查”统一闭环脚本。
+2. 当前虽已有统一闭环 smoke，但仍属于本机脚本级验证，尚未接入 CI / 持续流水线。
 3. 若本机已占用 `3307` 或 `3100`，需要手动调整 env / compose 端口。
 4. 当前迁移脚本仍是空白阶段，旧 SQLite 数据尚未导入 MySQL。
 
@@ -225,7 +224,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 评估是否把现有 `smoke:availability` / `smoke:create-appointment` / `smoke:staff-review` 合并为统一闭环脚本
-2. 在路由迁移过程中继续补兼容断言与切换检查表
-3. 结合前端接入节奏，准备 `apps/api` 切流前的最小联调清单
+1. 在路由迁移过程中继续补兼容断言与切换检查表
+2. 结合前端接入节奏，准备 `apps/api` 切流前的最小联调清单
+3. 评估是否把当前闭环 smoke 接入更稳定的 CI / 持续验证入口
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本
