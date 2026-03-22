@@ -104,14 +104,30 @@ npm run start:dev
 7. `POST` / `PATCH /api/v1/staff/appointments/:id/review`（带 `X-Staff-OpenId: staff-openid-demo`）
    - 预期：支持 `approved/rejected` 审核、重复审核拦截与 `SLOT_OCCUPIED` 冲突返回
 
-为避免每次手工逐条点接口，仓库内已补一条最小运行级脚本：
+### 3.6 当前已完成的本机验证（2026-03-22）
 
-```bash
-cd apps/api
-npm run smoke:parallel
-```
+architect 已在当前主仓完成以下验证：
 
-当前脚本覆盖：`/health`、`gallery`、`staff booking-rules`、`my appointments`、`staff appointments list`、`staff appointment detail(404)`、`staff appointment review(404)`。
+1. `npm run prisma:migrate:deploy`
+   - 结果：`No pending migrations to apply`
+2. 启动 `apps/api`
+   - 端口：`3100`
+3. 已完成运行级 smoke：
+   - `GET /health`
+   - `GET /api/v1/gallery`
+   - `GET /api/v1/staff/booking-rules` 的未授权 / 已授权分支
+   - `GET /api/v1/my/appointments` 的未授权 / 已授权分支
+   - `GET /api/v1/staff/appointments` 的未授权 / 已授权分支
+   - `GET /api/v1/staff/appointments/:id` 的 `404 + APPOINTMENT_NOT_FOUND`
+   - `POST /api/v1/staff/appointments/:id/review` 的 `404 + APPOINTMENT_NOT_FOUND`
+4. 已完成基于真实数据库记录的 review 写链路验证：
+   - `POST review -> approved` happy-path
+   - 重复审核返回 `409 + APPOINTMENT_ALREADY_REVIEWED`
+   - 同 slot 冲突返回 `409 + SLOT_OCCUPIED`
+
+注意：
+- 以上 smoke 当前由 architect 通过临时本地脚本执行，**主仓里尚未固化为 `npm run smoke:parallel` 这类长期脚本入口**。
+- 在 availability / create appointment 等主链路尚未迁入前，`apps/api` 仍不应视为前端可切流基线。
 
 ---
 
@@ -164,7 +180,7 @@ npm run dev:server
 ## 6. 当前残余风险
 
 1. 当前 compose 只覆盖 MySQL，未把 `apps/api` 整体容器化运行验证也落一遍。
-2. 当前 `apps/api` 虽已落下 `gallery`、`booking-rules`、`my appointments`、`staff appointments list/detail/review`，但仍缺少在可用 MySQL 环境下的统一运行级 smoke test 记录。
+2. 当前运行级 smoke 虽已实际执行，但仍未沉淀为仓库内可复用的固定脚本入口，后续复测仍有人工成本。
 3. 若本机已占用 `3307` 或 `3100`，需要手动调整 env / compose 端口。
 4. 当前迁移脚本仍是空白阶段，旧 SQLite 数据尚未导入 MySQL。
 
@@ -172,7 +188,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 在本机完成 `docker compose up -d` + `prisma migrate deploy` + `/health` 与已迁入 staff review 链路的运行验证
-2. 为已迁入的 `gallery / booking-rules / my appointments / staff appointments list/detail/review` 补统一 smoke test 记录
+1. 把当前已手工执行的 smoke 固化为仓库内可复用脚本入口（便于后续重复验证）
+2. 继续补 `availability / create appointment` 等尚未迁入主链路的并行迁移与运行验证
 3. 在路由迁移过程中补兼容断言与切换检查表
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本
