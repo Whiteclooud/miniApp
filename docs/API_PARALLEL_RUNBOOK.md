@@ -25,7 +25,7 @@
 - 技术栈：NestJS + Prisma + MySQL
 - 默认端口：`3100`
 - 启动命令：`npm run dev:api`
-- 当前仅保证：Nest skeleton + `/health` + Prisma v1 schema
+- 当前已落库能力：Nest skeleton + `/health` + Prisma v1 schema + `gallery` / `staff booking-rules` / `my appointments` / `staff appointments list` / `staff appointment detail` / `staff appointment review`
 
 ---
 
@@ -87,8 +87,22 @@ npm run start:dev
 
 ### 3.5 最小验证
 
-- 访问：`GET http://127.0.0.1:3100/health`
-- 预期：返回 `ok=true` 与 `service=miniapp-api`
+按下面顺序做最小 smoke test：
+
+1. `GET http://127.0.0.1:3100/health`
+   - 预期：返回 `ok=true` 与 `service=miniapp-api`
+2. `GET /api/v1/gallery`
+   - 预期：返回 `{ items: [...] }`，仅包含冻结契约字段
+3. `GET /api/v1/staff/booking-rules`（带 `X-Staff-OpenId: staff-openid-demo`）
+   - 预期：返回 `{ item: { advanceOpenDays, closedDates, dailySlots, updatedAt } }`
+4. `GET /api/v1/my/appointments`（带 `X-Customer-OpenId`）
+   - 预期：返回 `{ items: [...] }`
+5. `GET /api/v1/staff/appointments?status=pending`（带 `X-Staff-OpenId: staff-openid-demo`）
+   - 预期：返回 `{ items: [...] }`
+6. `GET /api/v1/staff/appointments/:id`（带 `X-Staff-OpenId: staff-openid-demo`）
+   - 预期：命中返回 `{ item }`，未命中返回 `404 + APPOINTMENT_NOT_FOUND`
+7. `POST` / `PATCH /api/v1/staff/appointments/:id/review`（带 `X-Staff-OpenId: staff-openid-demo`）
+   - 预期：支持 `approved/rejected` 审核、重复审核拦截与 `SLOT_OCCUPIED` 冲突返回
 
 ---
 
@@ -98,7 +112,7 @@ npm run start:dev
 
 当前阶段只允许：
 1. **旧服务继续承接前端默认流量**
-2. **新服务只做独立验证**（如 `/health`、后续迁入模块的接口验收）
+2. **新服务只做独立验证**（如 `/health`、已迁入读写模块的接口 smoke test）
 
 ### 当前不做的事
 - 不让前端默认直接切到 `apps/api`
@@ -141,7 +155,7 @@ npm run dev:server
 ## 6. 当前残余风险
 
 1. 当前 compose 只覆盖 MySQL，未把 `apps/api` 整体容器化运行验证也落一遍。
-2. 当前 `apps/api` 还只有 `/health` 和 Prisma 基线，业务路由兼容性尚未验证。
+2. 当前 `apps/api` 虽已落下 `gallery`、`booking-rules`、`my appointments`、`staff appointments list/detail/review`，但仍缺少在可用 MySQL 环境下的统一运行级 smoke test 记录。
 3. 若本机已占用 `3307` 或 `3100`，需要手动调整 env / compose 端口。
 4. 当前迁移脚本仍是空白阶段，旧 SQLite 数据尚未导入 MySQL。
 
@@ -149,7 +163,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 在本机完成 `docker compose up -d` + `prisma migrate deploy` + `/health` 运行验证
-2. 继续迁 `gallery -> booking-rules -> appointments -> staff` 模块
+1. 在本机完成 `docker compose up -d` + `prisma migrate deploy` + `/health` 与已迁入 staff review 链路的运行验证
+2. 为已迁入的 `gallery / booking-rules / my appointments / staff appointments list/detail/review` 补统一 smoke test 记录
 3. 在路由迁移过程中补兼容断言与切换检查表
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本
