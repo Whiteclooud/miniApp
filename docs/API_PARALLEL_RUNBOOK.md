@@ -224,7 +224,7 @@ npm run dev:server
 
 ## 7. 下一步建议
 
-1. 在路由迁移过程中继续补兼容断言与切换检查表
-2. 结合前端接入节奏，准备 `apps/api` 切流前的最小联调清单
+1. 在路由迁移过程中继续补兼容断言与切换检查表（当前清单见 `docs/API_CUTOVER_CHECKLIST.md`）
+2. 结合前端接入节奏，按 `docs/API_CUTOVER_CHECKLIST.md` 执行 `apps/api` 切流前的最小联调
 3. 评估是否把当前闭环 smoke 接入更稳定的 CI / 持续验证入口
 4. 待主链路迁完后，再决定是否增加 `apps/api` 容器化运行服务与更完整的切换脚本
