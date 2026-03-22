@@ -6,6 +6,8 @@
 
 如需单独查看 MySQL 版本、Docker 启动方式、本机直装步骤与最小验收清单，优先参考：`docs/MYSQL_SETUP.md`。
 
+如需查看前端后续切到 `apps/api` 前的最小门槛、验证顺序与回滚触发条件，参考：`docs/API_CUTOVER_CHECKLIST.md`。
+
 当前原则：
 - `apps/server` 继续作为已通过 UAT 的稳定基线
 - `apps/api` 只作为新后端并行演进骨架，不直接替代旧服务
