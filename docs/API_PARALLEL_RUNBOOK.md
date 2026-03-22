@@ -104,6 +104,15 @@ npm run start:dev
 7. `POST` / `PATCH /api/v1/staff/appointments/:id/review`（带 `X-Staff-OpenId: staff-openid-demo`）
    - 预期：支持 `approved/rejected` 审核、重复审核拦截与 `SLOT_OCCUPIED` 冲突返回
 
+为避免每次手工逐条点接口，仓库内已补一条最小运行级脚本：
+
+```bash
+cd apps/api
+npm run smoke:parallel
+```
+
+当前脚本覆盖：`/health`、`gallery`、`staff booking-rules`、`my appointments`、`staff appointments list`、`staff appointment detail(404)`、`staff appointment review(404)`。
+
 ---
 
 ## 4. 当前切换策略

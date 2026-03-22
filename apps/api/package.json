@@ -9,7 +9,8 @@
     "start:dev": "node --env-file=.env ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "smoke:parallel": "node scripts/smoke-parallel-run.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.2",
