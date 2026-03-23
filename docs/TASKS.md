@@ -2,7 +2,25 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-20 起，项目主线正式切换为“**Phase 0/1 增量重构落地**”。当前原则是：保留现有 `apps/weapp + apps/server` 可运行基线，不推倒重来，优先启动后端新架构并行骨架、环境基线、前端边界审查与任务分层，为后续 Phase 2~4 持续推进建立可并行、可回滚的执行面。
+截至 2026-03-24，Lan 已确认 `apps/api` 新服务可正常运行并通过页面验收；项目主线从“新旧后端并行 / 受控切流”切换为“**新基线收口 + 旧基线退场 + 业务逻辑补修**”。
+
+当前原则：
+- 以 `apps/api + apps/weapp` 作为唯一主线
+- 旧 `apps/server` 与围绕并行切换产生的过渡文档进入清理范围
+- 先修正两条明确业务逻辑问题（顾客未来日期窗口、店员月历常驻且覆盖全量状态）
+- 再做旧实现与旧文档清理，避免一边删一边口径漂移
+
+## 2026-03-24 新增收口任务
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-009 | architect | 冻结新基线并清理旧实现退场范围 | Lan 最新验收结论、当前主仓代码、`docs/*.md` | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、清理清单 | `apps/api` 已验收通过 | 明确 `apps/api` 为唯一后端基线，列清 `apps/server` 与过渡文档的删除范围和先后顺序 | 先删代码再删文档，导致团队对现行基线认知不一致 |
+| BE-020 | backend | 将 `apps/api` availability 升级为“规则窗口日期 + 单日时段”返回 | Lan 最新业务反馈、`docs/API.md`、现有 `apps/api` availability 逻辑 | `apps/api/src/availability/**`、回归自测结论 | ARCH-009 | `GET /api/v1/availability` 返回 `dateOptions + selectedDate + items`；顾客端能看到未来 `advanceOpenDays` 窗口内日期，而不是只停留在当天 | 若仅前端拼日期、后端不统一窗口口径，会继续出现规则与页面错位 |
+| FE-015 | frontend | 让顾客预约页按规则窗口展示未来日期，而不是只锁定当天 | Lan 最新业务反馈、`docs/API.md` availability 新口径、现有 `pages/booking/*` | `apps/weapp/pages/booking/*`、必要服务层适配、自测结论 | BE-020, ARCH-009 | 预约页可切换查看未来窗口日期；切换日期会拉取对应时段；不可预约原因展示不回退 | 若仍依赖“当天默认值 + 手工拼接”会导致 UAT 再次误判 |
+| BE-021 | backend | 将店员预约列表默认读取口径从“仅 pending”改为“全量状态 + 历史预约” | Lan 最新业务反馈、`docs/API.md`、现有 `apps/api` staff appointments 逻辑 | `apps/api/src/staff-appointments/**`、回归自测结论 | ARCH-009 | 未传 `status` 时，`GET /api/v1/staff/appointments` 返回 `pending / approved / rejected` 与历史预约，供月历聚合使用；传 `status` 时仍可筛选 | 若默认口径继续只看 pending，月历会持续失真 |
+| FE-016 | frontend | 让店员月历常驻显示，并基于全量预约数据展示当月/历史信息 | Lan 最新业务反馈、`docs/API.md`、现有 `pages/staff/appointments/*` | `apps/weapp/pages/staff/appointments/*`、必要服务层适配、自测结论 | BE-021, ARCH-009 | 即使没有待审核预约，月历也默认显示；日历与明细可查看已通过/已拒绝/历史预约 | 若只修接口不修空态分支，页面仍会把月历隐藏 |
+| BE-022 | backend | 删除旧 `apps/server` 并更新根脚本/引用到新基线 | Lan 明确授权删除旧 server、当前主仓、`package.json`、文档引用 | 删除 `apps/server/**`、更新根脚本/README/引用、自测结论 | ARCH-009 | 主仓不再保留 `apps/server`；根脚本、文档和引用全部切到 `apps/api` | 删除时遗漏脚本/引用会导致仓库不可用 |
+| ARCH-010 | architect | 清理 docs 下旧切流/并行阶段文档，保留当前主线文档集合 | Lan 明确授权清理旧文档、现有 docs 目录 | 删除/收口后的 docs 集合、清理说明 | ARCH-009 | docs 只保留对当前主线有价值的文档；过渡性 cutover/parallel runbook 文档完成退场 | 误删仍有引用的文档会导致交接断层 |
 
 ## 任务列表
 

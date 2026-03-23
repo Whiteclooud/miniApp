@@ -2,7 +2,14 @@
 
 ## Base URL
 
-开发环境：`http://127.0.0.1:3000`
+开发环境：`http://127.0.0.1:3100`
+
+## 当前基线调整（2026-03-24）
+
+- `apps/api` 已通过页面验收，当前对外开发基线切到 `http://127.0.0.1:3100`。
+- 旧 `apps/server` 相关脚本、目录与过渡文档进入清理范围，不再作为默认后端口径。
+- `GET /api/v1/availability` 需补充“规则窗口日期”表达，不能只让顾客看到当天。
+- `GET /api/v1/staff/appointments` 在默认店员工作台视图下需覆盖完整预约数据，而不是只返回 `pending`。
 
 ## 当前冻结契约（2026-03-16 复核）
 
@@ -95,6 +102,12 @@ V1 当前只允许以下接口对外使用：
 
 ```json
 {
+  "dateOptions": [
+    "2026-03-16",
+    "2026-03-17",
+    "2026-03-18"
+  ],
+  "selectedDate": "2026-03-16",
   "items": [
     {
       "date": "2026-03-16",
@@ -117,6 +130,8 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 当请求携带 `date` 时，服务端应返回该日期下所有应展示的时间段，而不只是可预约时段。
+- 返回体中的 `dateOptions` 表示当前规则窗口内顾客可切换查看的日期集合；至少应覆盖“今天起至 `advanceOpenDays` 上限”的未来日期窗口，而不是只返回当天。
+- `selectedDate` 表示本次 `items` 对应的日期；若请求未传 `date`，后端应自行选择默认日期并返回。
 - `status=active` 表示前端可点击选择；`status=disabled` 表示前端需灰显且不可点击。
 - `reasonCode` / `reasonText` 由后端直接提供，当前至少覆盖：`AVAILABLE`、`DATE_CLOSED`、`DATE_OUT_OF_RANGE`、`SLOT_OCCUPIED`；前端不得自行硬编码原因文案替代。
 - 前端可直接把 `reasonText` 渲染为时间段卡片的副文案；当 `status=active` 且 `reasonText` 为空时，前端可显示“可预约”等正向提示。
@@ -305,7 +320,7 @@ V1 当前只允许以下接口对外使用：
 
 ### Query
 
-- `status`：可选，建议默认 `pending`
+- `status`：可选；当未传时，默认返回完整预约数据集（覆盖 `pending` / `approved` / `rejected` 与历史预约），供店员月历聚合使用
 
 ### Response
 
@@ -333,6 +348,7 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 店员侧继续保留 `customerName` / `phone` 字段，便于识别顾客。
+- 店员月历 / 月视图默认依赖该接口做聚合，因此未传 `status` 时不得再只返回 `pending`。
 
 ## 9. 店员查看预约详情
 
