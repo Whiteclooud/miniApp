@@ -428,7 +428,7 @@ V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-
 
 - ARCH-007：已完成，`docs/REFACTOR_PLAN.md` 已落库，作为当前增量重构统一入口。
 - FE-013：已完成，前端边界审查结果已落为 `docs/WEAPP_REFACTOR_BOUNDARY.md`。
-- FE-014：architect 已于 2026-03-22 12:4x Asia/Shanghai 在当前主仓落下前端受控切流准备：`apps/weapp/app.js` 新增 `apiProfile` / `setApiProfile` / `resetApiProfile`，新增 `apps/weapp/utils/api-profile.js`，首页补“当前接口基线”与开发环境切流按钮；默认流量仍指向 `apps/server`，仅开发环境允许显式切到 `apps/api`。随后已在当前主仓执行 `npm run check:weapp-contract` 通过，说明本次切流准备未破坏现有冻结契约前端守卫。状态更新（2026-03-23 11:23 Asia/Shanghai）：architect 已按 `docs/API_CUTOVER_CHECKLIST.md` 重新向 frontend 派发 FE-014 mini-pass run，当前目标从“仅具备切流开关”推进到“完成最小链路联调与回滚验证”，待 frontend 回收 handoff 后再决定是否进入 architect 最终联调复核。
+- FE-014：architect 已于 2026-03-22 12:4x Asia/Shanghai 在当前主仓落下前端受控切流准备：`apps/weapp/app.js` 新增 `apiProfile` / `setApiProfile` / `resetApiProfile`，新增 `apps/weapp/utils/api-profile.js`，首页补“当前接口基线”与开发环境切流按钮；默认流量仍指向 `apps/server`，仅开发环境允许显式切到 `apps/api`。随后已在当前主仓执行 `npm run check:weapp-contract` 通过，说明本次切流准备未破坏现有冻结契约前端守卫。状态更新（2026-03-23 11:26 Asia/Shanghai）：architect 已按 `docs/API_CUTOVER_CHECKLIST.md` 再次向 frontend 派发 FE-014 mini-pass run，当前目标从“仅具备切流开关”推进到“完成最小链路联调与回滚验证”，待 frontend 回收 handoff 后再决定是否进入 architect 最终联调复核。
 - DEV-001：已完成第一版，`infra/compose/api-mysql.compose.yml` 与 `docs/API_PARALLEL_RUNBOOK.md` 已明确 MySQL 本地环境、并行运行与回滚路径。
 - BE-010 / BE-011：已由 architect 在当前主仓落下 `apps/api` 首轮 Nest + Prisma 骨架，并完成依赖安装、`prisma generate` 与 build 门槛验证；当前剩余门槛转为 MySQL / `DATABASE_URL` 运行级验证。
 - BE-012：backend worker 已在其 workspace 完成 gallery 读模块并提交 `a50dc92 feat: add gallery module to apps api`；当前待 architect 侧做统一合入 / 运行级验证。
