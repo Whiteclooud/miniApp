@@ -1,5 +1,12 @@
 # UAT Results
 
+## 当前状态（2026-03-23 15:55 Asia/Shanghai）
+
+项目主线已从“旧 `apps/server` 基线 UAT”推进到“`apps/api` 受控切流前最终页面验收准备”。architect 当前已在本机实际启动 `apps/api` 并执行 `npm run smoke:parallel` 通过，说明新后端运行级闭环可用；frontend 侧切流开关、请求层契约与回滚入口也已收口，并在当前主仓补齐了预约页对单日平铺 availability 时段数组的兼容处理。当前真正剩余的不是代码级阻塞，而是**需要在微信开发者工具中执行一次页面级 mini-pass**，确认切到 `apps/api` 后的首页返图、availability、创建预约、我的预约、店员审核与切回 `apps/server` 回滚都成立。
+
+- 当前页面级 cutover UAT 文档：`docs/UAT_APPS_API_CUTOVER.md`
+- 当前建议：以 GitHub 最新代码为准，由 Lan 在微信开发者工具执行本轮页面验收；如出现问题，再按该文档里的回传格式做定点修复。
+
 ## 当前状态（2026-03-20 17:32 Asia/Shanghai）
 
 本文件用于承接当前统一验收基线的真实页面 UAT 记录，并作为进入增量重构前的基线冻结说明。

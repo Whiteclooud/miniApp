@@ -121,9 +121,16 @@ function normalizeAvailability(data, requestedDate) {
         return;
       }
 
-      grouped[dateValue] = normalizeTimeSlots(entry.timeSlots || entry.availableSlots || entry.slots || []);
-      if (!grouped[dateValue].length && entry.timeSlot) {
-        grouped[dateValue] = [normalizeTimeSlotOption(entry, index)];
+      const normalizedSlots = normalizeTimeSlots(entry.timeSlots || entry.availableSlots || entry.slots || []);
+      if (normalizedSlots.length) {
+        grouped[dateValue] = (grouped[dateValue] || []).concat(normalizedSlots);
+        return;
+      }
+
+      if (entry.timeSlot) {
+        grouped[dateValue] = (grouped[dateValue] || []).concat([
+          normalizeTimeSlotOption(entry, index)
+        ]);
       }
     });
   } else if (source.timeSlotsByDate && typeof source.timeSlotsByDate === 'object') {
