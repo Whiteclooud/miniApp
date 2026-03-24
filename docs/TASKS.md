@@ -39,6 +39,8 @@
 > 状态更新（2026-03-24 10:47 Asia/Shanghai）：architect 已开始执行旧基线退场清理。`docs/API_PARALLEL_RUNBOOK.md` 与 `docs/API_CUTOVER_CHECKLIST.md` 已改为 Archived 占位，明确不再作为当前执行手册；backend 已收到 BE-022 任务，在其 workspace 中准备“删除 `apps/server` + 更新根脚本/README/引用”的可审阅补丁与交接材料，待回收后再由 architect 收口到主仓。
 >
 > 状态更新（2026-03-24 10:52 Asia/Shanghai）：architect 已继续完成退场前的主仓口径清理：根 `package.json` 已去掉旧 `apps/server` 脚本并补 `test:api`，`README.md` 已整体改写为 `apps/api + apps/weapp` 当前主线。当前唯一剩余动作是物理删除 `apps/server/**` 与 archived cutover 文档，但该删除操作在当前执行策略下被安全审批拦截；在获得删除批准前，BE-022 / ARCH-010 仍处于“已完成清理准备、待执行删除”的阻塞状态。
+>
+> 状态更新（2026-03-24 18:15 Asia/Shanghai）：Lan 已完成删除授权并在主仓实际执行旧基线删除；architect 随后已将 `apps/server/**`、`docs/API_PARALLEL_RUNBOOK.md`、`docs/API_CUTOVER_CHECKLIST.md` 纳入提交 `966ffbb chore: retire apps server baseline` 并 push 到 `origin/main`。判定：BE-022 / ARCH-010 已完成，项目主线正式收敛为 `apps/api + apps/weapp`；当前阶段已从“旧基线退场阻塞”切换为“页面级联调 / 验收确认 + 新主线后续维护”。
 
 ## 任务列表
 
