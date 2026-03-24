@@ -7,17 +7,17 @@
 围绕“单店、单员工、审批制预约”打通最小业务闭环：
 
 - 顾客查看门店氛围与返图案例
-- 顾客按规则选择日期 / 时间段并提交预约申请
-- 顾客按手机号查看自己的预约状态
+- 顾客按规则窗口选择日期 / 时间段并提交预约申请
+- 顾客按微信 OpenID 查看自己的预约状态
 - 店员配置预约规则
-- 店员审核预约申请（通过 / 拒绝）
-- 后端使用 SQLite 持久化返图、规则和预约数据
+- 店员通过月历 / 明细工作台查看并审核预约申请（通过 / 拒绝）
+- 后端以 `apps/api` 作为唯一运行基线
 
 ## 技术路线
 
-- 前端：原生微信小程序
-- 后端：Node.js 零依赖 HTTP API
-- 存储：SQLite
+- 前端：原生微信小程序（`apps/weapp`）
+- 后端：NestJS + Prisma（`apps/api`）
+- 存储：MySQL
 - 协作：文档优先，架构 / 接口 / 任务先行
 
 ## 目录结构
@@ -25,54 +25,47 @@
 ```text
 miniApp/
 ├── apps/
-│   ├── weapp/          # 微信小程序前端
-│   └── server/         # Node.js API + SQLite
+│   ├── api/            # 当前唯一后端 API 基线
+│   └── weapp/          # 微信小程序前端
 ├── docs/
 │   ├── PRD.md
 │   ├── ARCHITECTURE.md
 │   ├── API.md
 │   ├── TASKS.md
-│   ├── ENV.md
-│   ├── WORKFLOW.md
-│   └── UAT_GUIDE.md
+│   ├── UAT_GUIDE.md
+│   └── ...             # 仍对当前主线有价值的说明文档
 └── tools/
     └── check-docs.mjs
 ```
 
 ## 当前状态
 
-- V1 文档口径已统一到“单店、单员工、审批制预约”
-- 顾客端与店员端页面首版已落地
-- 后端 gallery / availability / appointments / staff rules / staff review 接口已落地
-- SQLite 持久化已接入，服务重启后数据可保留
-- 已完成首轮本地后端自测，待微信开发者工具侧人工验收
+- `apps/api` 已通过页面验收，并成为当前唯一后端基线
+- 顾客预约页已支持未来日期窗口与卡片式时间段选择
+- 店员预约页已支持月历常驻展示，并基于全量预约数据聚合
+- 当前项目处于“新基线收口完成，旧基线退场”阶段
 
 ## 本地启动
 
 ### 1. 启动后端
 
 ```bash
-npm run dev:server
+npm run start:api
 ```
 
-默认监听：`http://127.0.0.1:3000`
+默认监听：`http://127.0.0.1:3100`
 
-如需指定数据库文件路径：
+如需开发模式：
 
 ```bash
-SQLITE_PATH=/absolute/path/miniapp.sqlite npm run dev:server
+npm run dev:api
 ```
 
-如需指定店员 OpenID 白名单：
+### 2. 构建与自测后端
 
 ```bash
-STAFF_OPEN_IDS=staff-openid-demo npm run dev:server
-```
-
-### 2. 运行后端自测
-
-```bash
-npm run test:server
+npm run build:api
+npm run test:api
 ```
 
 ### 3. 打开微信开发者工具
@@ -83,14 +76,18 @@ npm run test:server
 apps/weapp
 ```
 
-联调前请参考：
-- `docs/ENV.md`
+联调与验收请参考：
+- `docs/PRD.md`
+- `docs/ARCHITECTURE.md`
+- `docs/API.md`
+- `docs/TASKS.md`
 - `docs/UAT_GUIDE.md`
 
 ## 关键页面
 
 ### 顾客端
 - `pages/home/index`
+- `pages/gallery-detail/index`
 - `pages/booking/index`
 - `pages/my-bookings/index`
 
@@ -100,11 +97,11 @@ apps/weapp
 
 ## 验收建议
 
-- 后端稳定性与持久化：先执行 `npm run test:server`
+- 后端运行级验证：先执行 `npm run test:api`
 - 页面与交互验收：按 `docs/UAT_GUIDE.md` 在微信开发者工具中逐步验证
 
 ## 说明
 
-- 本地开发默认请求 `http://127.0.0.1:3000`
+- 本地开发默认请求 `http://127.0.0.1:3100`
 - 真机调试和上线前，需要在微信公众平台配置合法域名
 - 当前 `AppID` 仍为占位值，真机调试 / 发布前需替换
