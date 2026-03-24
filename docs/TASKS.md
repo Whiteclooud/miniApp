@@ -35,6 +35,8 @@
 > 状态更新（2026-03-24 10:08 Asia/Shanghai）：architect 已基于 `.integration/frontend-d111d8a/` 的导出补丁，手工把 FE-015 / FE-016 收口到当前主仓：`pages/booking` 已优先消费 `availability => { dateOptions, selectedDate, items }`，`pages/staff/appointments` 已改为“月历常驻 + 默认全量 appointments 聚合 + 显式 status 筛选二次请求”，且 `npm run check:weapp-contract` 与关键 JS 语法检查已通过。当前统一基线剩余高优先级阻塞收敛为 backend 的 BE-020 / BE-021 真正落库与核验。
 >
 > 状态更新（2026-03-24 10:45 Asia/Shanghai）：architect 已在当前主仓直接完成 BE-020 / BE-021 收口：`apps/api` 中 `GET /api/v1/availability` 现按冻结契约返回 `{ dateOptions, selectedDate, items }`，并保持 `approved-only` 占位；`GET /api/v1/staff/appointments` 现改为“未传 `status` 返回全量预约、显式传 `status` 继续精确筛选”。同时已补 runtime smoke 覆盖新口径，并在当前主仓实际执行 `apps/api` 的 `npm run build`、启动本地 API 后执行 `npm test` 全部通过；前端侧 `npm run check:weapp-contract` 与关键页面 `node --check` 也已再次通过。判定：当前统一验收基线已回到“前后端主仓事实一致、可进入页面级联调 / 验收”的状态。
+>
+> 状态更新（2026-03-24 10:47 Asia/Shanghai）：architect 已开始执行旧基线退场清理。`docs/API_PARALLEL_RUNBOOK.md` 与 `docs/API_CUTOVER_CHECKLIST.md` 已改为 Archived 占位，明确不再作为当前执行手册；backend 已收到 BE-022 任务，在其 workspace 中准备“删除 `apps/server` + 更新根脚本/README/引用”的可审阅补丁与交接材料，待回收后再由 architect 收口到主仓。
 
 ## 任务列表
 
