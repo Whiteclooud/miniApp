@@ -108,7 +108,25 @@ function normalizeTimeSlots(items) {
 function normalizeAvailability(data, requestedDate) {
   const source = data.item || data.data || data || {};
   const grouped = {};
-  const groupedEntries = source.items || source.availability || source.dateSlots || source.dateTimeSlots || [];
+  const dateOptionMap = {};
+  const responseSelectedDate = normalizeText(
+    source.selectedDate || source.selected_date || source.currentDate || source.current_date
+  );
+  const hasSelectedDateContract = Array.isArray(source.dateOptions) || !!responseSelectedDate;
+  const groupedEntries = hasSelectedDateContract
+    ? (source.availability || source.dateSlots || source.dateTimeSlots || [])
+    : (source.items || source.availability || source.dateSlots || source.dateTimeSlots || []);
+
+  const seedDateOption = (rawItem, index) => {
+    const option = normalizeDateOption(rawItem, index);
+    if (!option.value || dateOptionMap[option.value]) {
+      return;
+    }
+
+    dateOptionMap[option.value] = option;
+  };
+
+  (source.dateOptions || source.availableDates || source.dates || []).forEach(seedDateOption);
 
   if (Array.isArray(groupedEntries) && groupedEntries.length) {
     groupedEntries.forEach((entry, index) => {
@@ -116,10 +134,12 @@ function normalizeAvailability(data, requestedDate) {
         return;
       }
 
-      const dateValue = entry.date || entry.value || entry.label || requestedDate || '';
+      const dateValue = entry.date || entry.value || entry.label || requestedDate || responseSelectedDate || '';
       if (!dateValue) {
         return;
       }
+
+      seedDateOption({ value: dateValue }, index);
 
       const normalizedSlots = normalizeTimeSlots(entry.timeSlots || entry.availableSlots || entry.slots || []);
       if (normalizedSlots.length) {
@@ -134,30 +154,29 @@ function normalizeAvailability(data, requestedDate) {
       }
     });
   } else if (source.timeSlotsByDate && typeof source.timeSlotsByDate === 'object') {
-    Object.keys(source.timeSlotsByDate).forEach((key) => {
+    Object.keys(source.timeSlotsByDate).forEach((key, index) => {
+      seedDateOption({ value: key }, index);
       grouped[key] = normalizeTimeSlots(source.timeSlotsByDate[key]);
     });
   }
 
-  let dateOptions = Object.keys(grouped).length
-    ? Object.keys(grouped)
-      .sort()
-      .map((value, index) => normalizeDateOption({ value }, index))
-    : (source.dateOptions || source.availableDates || source.dates || [])
-      .map((item, index) => normalizeDateOption(item, index))
-      .filter((item) => item.value);
+  let dateOptions = Object.keys(dateOptionMap)
+    .sort()
+    .map((value) => dateOptionMap[value]);
 
   if (!dateOptions.length && requestedDate) {
     dateOptions = [normalizeDateOption({ value: requestedDate }, 0)];
   }
 
-  const defaultTimeSlotOptions = normalizeTimeSlots(
-    source.timeSlotOptions || source.availableSlots || source.timeSlots || []
-  );
+  const defaultTimeSlotOptions = hasSelectedDateContract
+    ? normalizeTimeSlots(source.items || source.timeSlotOptions || source.availableSlots || source.timeSlots || [])
+    : normalizeTimeSlots(
+      source.timeSlotOptions || source.availableSlots || source.timeSlots || []
+    );
 
   const selectedDate = dateOptions.some((item) => item.value === requestedDate)
     ? requestedDate
-    : (dateOptions[0] && dateOptions[0].value) || requestedDate || '';
+    : responseSelectedDate || (dateOptions[0] && dateOptions[0].value) || requestedDate || '';
 
   return {
     dateOptions,

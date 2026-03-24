@@ -31,6 +31,8 @@
 > - 将剩余主线文档统一改写为 `apps/api + apps/weapp` 口径
 >
 > 状态更新（2026-03-24 10:06 Asia/Shanghai）：architect 在当前主仓直接复核时，发现 `apps/api` 与 `apps/weapp` 的 BE-020 / BE-021 / FE-015 / FE-016 收口结果仍未全部稳定落入统一验收基线。当前已确认 frontend 导出包 `.integration/frontend-d111d8a/` 可用于文件级审阅，但主仓中的 `pages/booking`、`pages/staff/appointments` 仍是旧口径；backend 声称已在主仓落库的 `4d8734f` 也未能在当前主仓 `git log` 中找到。判定：当前属于“worker 回报与 architect 主仓事实不一致”的基线漂移风险，项目仍处于统一审阅 / 纠偏阶段，暂不能宣告可联调 / 可验收。
+>
+> 状态更新（2026-03-24 10:08 Asia/Shanghai）：architect 已基于 `.integration/frontend-d111d8a/` 的导出补丁，手工把 FE-015 / FE-016 收口到当前主仓：`pages/booking` 已优先消费 `availability => { dateOptions, selectedDate, items }`，`pages/staff/appointments` 已改为“月历常驻 + 默认全量 appointments 聚合 + 显式 status 筛选二次请求”，且 `npm run check:weapp-contract` 与关键 JS 语法检查已通过。当前统一基线剩余高优先级阻塞收敛为 backend 的 BE-020 / BE-021 真正落库与核验。
 
 ## 任务列表
 

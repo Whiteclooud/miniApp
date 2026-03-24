@@ -243,6 +243,23 @@ const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
 });
 expectIncludes(staffAppointmentsPageText, "'approved'", staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, "'rejected'", staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'activeListFilter', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'detailFilters', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'onDetailFilterTap', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'buildCalendarState', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'historyAppointments', staffAppointmentsPagePath);
+expectRegex(
+  staffAppointmentsPageText,
+  /const response = await listStaffAppointments\(\);/,
+  `${staffAppointmentsPagePath}#loadData`,
+  'must request staff appointments without status by default'
+);
+expectRegex(
+  staffAppointmentsPageText,
+  /listStaffAppointments\(\{\s*status:\s*nextFilterKey\s*\}\)/,
+  `${staffAppointmentsPagePath}#loadDetailList`,
+  'must request staff appointments with explicit status when user filters'
+);
 
 const staffAppointmentsWxmlPath = 'apps/weapp/pages/staff/appointments/index.wxml';
 const staffAppointmentsWxmlText = readText(staffAppointmentsWxmlPath);
@@ -251,6 +268,8 @@ const staffAppointmentsWxmlText = readText(staffAppointmentsWxmlPath);
 });
 expectIncludes(staffAppointmentsWxmlText, '通过预约', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, '待审核', staffAppointmentsWxmlPath);
+expectIncludes(staffAppointmentsWxmlText, 'bindtap="onDetailFilterTap"', staffAppointmentsWxmlPath);
+expectIncludes(staffAppointmentsWxmlText, 'detail-filter-chip', staffAppointmentsWxmlPath);
 
 const staffRulesPagePath = 'apps/weapp/pages/staff/rules/index.js';
 const staffRulesPageText = readText(staffRulesPagePath);

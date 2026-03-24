@@ -25,7 +25,7 @@
 
   <view wx:if="{{pageState === 'loading'}}" class="card state-card">
     <view class="state-title">店员预约列表加载中</view>
-    <view class="state-desc">正在通过 X-Staff-OpenId 获取预约列表，请稍候。</view>
+    <view class="state-desc">正在通过 X-Staff-OpenId 获取默认未传 status 的预约列表，用于月历聚合，请稍候。</view>
   </view>
 
   <view wx:elif="{{pageState === 'error'}}" class="card state-card">
@@ -40,18 +40,12 @@
     <button class="button-secondary" bindtap="loadData">重新检查</button>
   </view>
 
-  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
-    <view class="state-title">暂无门店预约</view>
-    <view class="state-desc">{{stateMessage || 'staff/appointments 接口已返回，但当前没有预约数据。'}}</view>
-    <button class="button-secondary" bindtap="loadData">重新加载</button>
-  </view>
-
   <block wx:else>
     <view class="section-title">店员预约总览</view>
-    <view class="section-desc">在不新增接口的前提下，当前直接复用 staff appointments 数据做月历聚合与当天明细联动。</view>
+    <view class="section-desc">默认覆盖待审核 / 已通过 / 已拒绝 / 历史预约，并基于未传 status 的 staff appointments 数据在前端聚合出月历总览。</view>
 
     <view class="card summary-card">
-      <view class="summary-grid">
+      <view class="summary-grid summary-grid-quad">
         <view class="summary-item">
           <view class="summary-label">预约总数</view>
           <view class="summary-value">{{summary.total}}</view>
@@ -69,6 +63,7 @@
           <view class="summary-value">{{summary.rejected}}</view>
         </view>
       </view>
+      <view wx:if="{{stateMessage}}" class="helper-text summary-helper">{{stateMessage}}</view>
     </view>
 
     <view class="card calendar-card">
@@ -82,7 +77,7 @@
         <view wx:for="{{weekLabels}}" wx:key="*this" class="week-label">{{item}}</view>
       </view>
       <view wx:for="{{calendarWeeks}}" wx:key="index" class="calendar-week">
-        <view wx:for="{{item}}" wx:key="key" class="calendar-cell {{item.isCurrentMonth ? '' : 'calendar-cell-muted'}} {{item.isSelected ? 'calendar-cell-selected' : ''}}" data-date="{{item.date}}" bindtap="selectDate">
+        <view wx:for="{{item}}" wx:key="key" class="calendar-cell {{item.isCurrentMonth ? '' : 'calendar-cell-muted'}} {{item.isSelected ? 'calendar-cell-selected' : ''}}" data-date="{{item.date}}" bindtap="onCalendarDayTap">
           <view class="calendar-day-row">
             <text class="calendar-day-number {{item.isToday ? 'calendar-day-today' : ''}}">{{item.dayNumber}}</text>
             <text wx:if="{{item.total}}" class="calendar-count">{{item.total}}</text>
@@ -103,62 +98,47 @@
 
     <view wx:if="{{reviewMessage}}" class="inline-error">{{reviewMessage}}</view>
 
-    <view class="status-section">
-      <view class="section-subtitle">待审核</view>
-      <view wx:if="{{pendingAppointments.length}}">
-        <view wx:for="{{pendingAppointments}}" wx:key="id" class="card booking-card">
-          <view class="booking-header">
-            <view class="booking-title">{{item.customerName}}</view>
-            <view class="status-pill pending">{{item.statusText}}</view>
+    <view class="section-title">预约明细列表</view>
+    <view class="section-desc">{{detailSectionDesc}}</view>
+    <scroll-view class="detail-filter-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view class="detail-filter-row">
+        <block wx:for="{{detailFilters}}" wx:key="key">
+          <view class="detail-filter-chip {{item.isActive ? 'detail-filter-chip-active' : ''}}" bindtap="onDetailFilterTap" data-value="{{item.key}}">
+            <text class="detail-filter-label">{{item.label}}</text>
+            <text class="detail-filter-count">{{item.count}}</text>
           </view>
-          <view class="info-row"><view class="info-label">预约时间</view><view class="info-value">{{item.date}} {{item.timeSlot}}</view></view>
-          <view class="info-row"><view class="info-label">联系电话</view><view class="info-value">{{item.phone}}</view></view>
-          <view wx:if="{{item.note}}" class="info-row"><view class="info-label">备注</view><view class="info-value">{{item.note}}</view></view>
-          <view wx:if="{{item.createdAtText}}" class="info-row"><view class="info-label">提交时间</view><view class="info-value">{{item.createdAtText}}</view></view>
-          <view class="review-action-row">
-            <view class="helper-text">待审核预约可直接调用 `/api/v1/staff/appointments/:id/review` 完成审核。</view>
-            <view class="action-row">
-              <button class="button-primary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="approve" loading="{{reviewStateMap[item.id] === 'approving'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">通过预约</button>
-              <button class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="reject" loading="{{reviewStateMap[item.id] === 'rejecting'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">驳回预约</button>
-            </view>
-          </view>
-        </view>
+        </block>
       </view>
-      <view wx:else class="card empty-subcard">当前日期没有待审核预约。</view>
+    </scroll-view>
+
+    <view wx:if="{{listState === 'loading'}}" class="card state-card compact-state-card">
+      <view class="state-title">正在刷新筛选结果</view>
+      <view class="state-desc">已保留月历总览，当前按选中状态重新请求预约明细。</view>
     </view>
 
-    <view class="status-section">
-      <view class="section-subtitle">已通过</view>
-      <view wx:if="{{approvedAppointments.length}}">
-        <view wx:for="{{approvedAppointments}}" wx:key="id" class="card booking-card">
-          <view class="booking-header">
-            <view class="booking-title">{{item.customerName}}</view>
-            <view class="status-pill approved">{{item.statusText}}</view>
-          </view>
-          <view class="info-row"><view class="info-label">预约时间</view><view class="info-value">{{item.date}} {{item.timeSlot}}</view></view>
-          <view class="info-row"><view class="info-label">联系电话</view><view class="info-value">{{item.phone}}</view></view>
-          <view wx:if="{{item.note}}" class="info-row"><view class="info-label">备注</view><view class="info-value">{{item.note}}</view></view>
-          <view wx:if="{{item.reviewNote}}" class="info-row"><view class="info-label">审核说明</view><view class="info-value">{{item.reviewNote}}</view></view>
-        </view>
-      </view>
-      <view wx:else class="card empty-subcard">当前日期没有已通过预约。</view>
-    </view>
+    <view wx:if="{{detailListNotice}}" class="{{listState === 'error' ? 'inline-error' : 'helper-text detail-filter-helper'}}">{{detailListNotice}}</view>
 
-    <view class="status-section">
-      <view class="section-subtitle">已拒绝</view>
-      <view wx:if="{{rejectedAppointments.length}}">
-        <view wx:for="{{rejectedAppointments}}" wx:key="id" class="card booking-card">
-          <view class="booking-header">
-            <view class="booking-title">{{item.customerName}}</view>
-            <view class="status-pill rejected">{{item.statusText}}</view>
+    <block wx:if="{{listAppointments.length}}">
+      <view wx:for="{{listAppointments}}" wx:key="id" class="card booking-card">
+        <view class="booking-header">
+          <view class="booking-title">{{item.customerName}}</view>
+          <view class="status-pill {{item.status}}">{{item.statusText}}</view>
+        </view>
+        <view class="info-row"><view class="info-label">预约时间</view><view class="info-value">{{item.date}} {{item.timeSlot}}</view></view>
+        <view class="info-row"><view class="info-label">联系电话</view><view class="info-value">{{item.phone}}</view></view>
+        <view wx:if="{{item.note}}" class="info-row"><view class="info-label">备注</view><view class="info-value">{{item.note}}</view></view>
+        <view wx:if="{{item.createdAtText}}" class="info-row"><view class="info-label">提交时间</view><view class="info-value">{{item.createdAtText}}</view></view>
+        <view wx:if="{{item.reviewedAtText}}" class="info-row"><view class="info-label">审核时间</view><view class="info-value">{{item.reviewedAtText}}</view></view>
+        <view wx:if="{{item.reviewNote}}" class="info-row"><view class="info-label">审核说明</view><view class="info-value">{{item.reviewNote}}</view></view>
+        <view wx:if="{{item.canReview}}" class="review-action-row">
+          <view class="helper-text">待审核预约可直接调用 `/api/v1/staff/appointments/:id/review` 完成审核。</view>
+          <view class="action-row">
+            <button class="button-primary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="approve" loading="{{reviewStateMap[item.id] === 'approving'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">通过预约</button>
+            <button class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="reject" loading="{{reviewStateMap[item.id] === 'rejecting'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">驳回预约</button>
           </view>
-          <view class="info-row"><view class="info-label">预约时间</view><view class="info-value">{{item.date}} {{item.timeSlot}}</view></view>
-          <view class="info-row"><view class="info-label">联系电话</view><view class="info-value">{{item.phone}}</view></view>
-          <view wx:if="{{item.note}}" class="info-row"><view class="info-label">备注</view><view class="info-value">{{item.note}}</view></view>
-          <view wx:if="{{item.reviewNote}}" class="info-row"><view class="info-label">驳回原因</view><view class="info-value">{{item.reviewNote}}</view></view>
         </view>
       </view>
-      <view wx:else class="card empty-subcard">当前日期没有已拒绝预约。</view>
-    </view>
+    </block>
+    <view wx:else class="card empty-subcard">{{detailEmptyText}}</view>
   </block>
 </view>
