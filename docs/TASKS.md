@@ -22,6 +22,14 @@
 | BE-022 | backend | 删除旧 `apps/server` 并更新根脚本/引用到新基线 | Lan 明确授权删除旧 server、当前主仓、`package.json`、文档引用 | 删除 `apps/server/**`、更新根脚本/README/引用、自测结论 | ARCH-009 | 主仓不再保留 `apps/server`；根脚本、文档和引用全部切到 `apps/api` | 删除时遗漏脚本/引用会导致仓库不可用 |
 | ARCH-010 | architect | 清理 docs 下旧切流/并行阶段文档，保留当前主线文档集合 | Lan 明确授权清理旧文档、现有 docs 目录 | 删除/收口后的 docs 集合、清理说明 | ARCH-009 | docs 只保留对当前主线有价值的文档；过渡性 cutover/parallel runbook 文档完成退场 | 误删仍有引用的文档会导致交接断层 |
 
+> 状态更新（2026-03-24 09:10 Asia/Shanghai）：ARCH-009 已完成首轮冻结，`docs/PRD.md` / `docs/ARCHITECTURE.md` / `docs/API.md` / `docs/TASKS.md` 已明确 `apps/api` 为唯一后端基线，并固定旧基线退场顺序为“先修业务逻辑（BE-020 / FE-015 / BE-021 / FE-016）-> 再删 `apps/server` -> 最后清理过渡文档”。当前 `apps/server` 进入只读待退场状态，不再承接新增业务口径。
+>
+> 清理清单（待 BE-020 / FE-015 / BE-021 / FE-016 收口后执行）：
+> - 删除 `apps/server/**`
+> - 删除或改写根脚本中仍指向旧 server 的入口
+> - 清理 docs 中仅服务于并行切流 / rollback 旧基线的 runbook 与 checklist
+> - 将剩余主线文档统一改写为 `apps/api + apps/weapp` 口径
+
 ## 任务列表
 
 | ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |

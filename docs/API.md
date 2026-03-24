@@ -7,7 +7,8 @@
 ## 当前基线调整（2026-03-24）
 
 - `apps/api` 已通过页面验收，当前对外开发基线切到 `http://127.0.0.1:3100`。
-- 旧 `apps/server` 相关脚本、目录与过渡文档进入清理范围，不再作为默认后端口径。
+- 旧 `apps/server` 相关脚本、目录与过渡文档进入清理范围，不再作为默认后端口径，也不再承接新增接口改动。
+- 当前接口补修顺序固定为：先修 `availability` 的未来日期窗口表达与 staff appointments 的全量聚合口径，再执行旧 `apps/server` / cutover 文档清理。
 - `GET /api/v1/availability` 需补充“规则窗口日期”表达，不能只让顾客看到当天。
 - `GET /api/v1/staff/appointments` 在默认店员工作台视图下需覆盖完整预约数据，而不是只返回 `pending`。
 
