@@ -98,14 +98,21 @@ async function main() {
       return result.json.item;
     });
 
-    await runCase('GET /api/v1/availability?date=openDate -> AVAILABLE', async () => {
+    await runCase('GET /api/v1/availability?date=openDate -> dateOptions + selectedDate + AVAILABLE', async () => {
       const result = await request(`/api/v1/availability?date=${openDate}`);
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.dateOptions), 'expected dateOptions array');
+      assert(result.json?.selectedDate === openDate, 'expected selectedDate=openDate');
+      assert(result.json.dateOptions.includes(openDate), 'expected openDate in dateOptions');
       const items = result.json?.items || [];
       assert(items.length === 2, `expected 2 slots, got ${items.length}`);
       assert(items.every((item) => item.status === 'active'), 'expected all active');
       assert(items.every((item) => item.reasonCode === 'AVAILABLE'), 'expected AVAILABLE');
-      return items;
+      return {
+        selectedDate: result.json.selectedDate,
+        dateOptionsCount: result.json.dateOptions.length,
+        items
+      };
     });
 
     await runCase('POST /api/v1/appointments -> CUSTOMER_UNAUTHORIZED', async () => {
@@ -273,6 +280,7 @@ async function main() {
     await runCase('GET /api/v1/availability?date=occupiedDate -> approved disabled, pending active', async () => {
       const result = await request(`/api/v1/availability?date=${occupiedDate}`);
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.selectedDate === occupiedDate, 'expected occupiedDate selected');
       const items = result.json?.items || [];
       const slotAItem = findByTimeSlot(items, slotA);
       const slotBItem = findByTimeSlot(items, slotB);
@@ -281,6 +289,34 @@ async function main() {
       assert(slotBItem?.status === 'active', 'expected slotB active');
       assert(slotBItem?.reasonCode === 'AVAILABLE', 'expected slotB AVAILABLE');
       return { slotA: slotAItem, slotB: slotBItem };
+    });
+
+    await runCase('GET /api/v1/staff/appointments default -> full list', async () => {
+      const result = await request('/api/v1/staff/appointments', {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.items), 'expected items array');
+      assert(result.json.items.some((item) => item.id === ids.happy && item.status === 'approved'), 'expected approved item in default full list');
+      assert(result.json.items.some((item) => item.id === ids.occupiedPending && item.status === 'pending'), 'expected pending item in default full list');
+      return { count: result.json.items.length };
+    });
+
+    await runCase('GET /api/v1/staff/appointments?status=pending -> filtered list', async () => {
+      const result = await request('/api/v1/staff/appointments?status=pending', {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.items), 'expected items array');
+      assert(result.json.items.every((item) => item.status === 'pending'), 'expected only pending items');
+      assert(result.json.items.some((item) => item.id === ids.occupiedPending), 'expected pending item in filtered list');
+      return { count: result.json.items.length };
     });
 
     console.log(JSON.stringify({ ok: true, baseUrl: BASE_URL, cases }, null, 2));
