@@ -2,7 +2,45 @@
 
 ## 当前阶段
 
-V1 二次真实页面 UAT 主链路与接口口径已确认通过；从 2026-03-20 起，项目主线正式切换为“**Phase 0/1 增量重构落地**”。当前原则是：保留现有 `apps/weapp + apps/server` 可运行基线，不推倒重来，优先启动后端新架构并行骨架、环境基线、前端边界审查与任务分层，为后续 Phase 2~4 持续推进建立可并行、可回滚的执行面。
+截至 2026-03-24，Lan 已确认 `apps/api` 新服务可正常运行并通过页面验收；项目主线从“新旧后端并行 / 受控切流”切换为“**新基线收口 + 旧基线退场 + 业务逻辑补修**”。
+
+当前原则：
+- 以 `apps/api + apps/weapp` 作为唯一主线
+- 旧 `apps/server` 与围绕并行切换产生的过渡文档进入清理范围
+- 先修正两条明确业务逻辑问题（顾客未来日期窗口、店员月历常驻且覆盖全量状态）
+- 再做旧实现与旧文档清理，避免一边删一边口径漂移
+
+## 2026-03-24 新增收口任务
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-009 | architect | 冻结新基线并清理旧实现退场范围 | Lan 最新验收结论、当前主仓代码、`docs/*.md` | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、清理清单 | `apps/api` 已验收通过 | 明确 `apps/api` 为唯一后端基线，列清 `apps/server` 与过渡文档的删除范围和先后顺序 | 先删代码再删文档，导致团队对现行基线认知不一致 |
+| BE-020 | backend | 将 `apps/api` availability 升级为“规则窗口日期 + 单日时段”返回 | Lan 最新业务反馈、`docs/API.md`、现有 `apps/api` availability 逻辑 | `apps/api/src/availability/**`、回归自测结论 | ARCH-009 | `GET /api/v1/availability` 返回 `dateOptions + selectedDate + items`；顾客端能看到未来 `advanceOpenDays` 窗口内日期，而不是只停留在当天 | 若仅前端拼日期、后端不统一窗口口径，会继续出现规则与页面错位 |
+| FE-015 | frontend | 让顾客预约页按规则窗口展示未来日期，而不是只锁定当天 | Lan 最新业务反馈、`docs/API.md` availability 新口径、现有 `pages/booking/*` | `apps/weapp/pages/booking/*`、必要服务层适配、自测结论 | BE-020, ARCH-009 | 预约页可切换查看未来窗口日期；切换日期会拉取对应时段；不可预约原因展示不回退 | 若仍依赖“当天默认值 + 手工拼接”会导致 UAT 再次误判 |
+| BE-021 | backend | 将店员预约列表默认读取口径从“仅 pending”改为“全量状态 + 历史预约” | Lan 最新业务反馈、`docs/API.md`、现有 `apps/api` staff appointments 逻辑 | `apps/api/src/staff-appointments/**`、回归自测结论 | ARCH-009 | 未传 `status` 时，`GET /api/v1/staff/appointments` 返回 `pending / approved / rejected` 与历史预约，供月历聚合使用；传 `status` 时仍可筛选 | 若默认口径继续只看 pending，月历会持续失真 |
+| FE-016 | frontend | 让店员月历常驻显示，并基于全量预约数据展示当月/历史信息 | Lan 最新业务反馈、`docs/API.md`、现有 `pages/staff/appointments/*` | `apps/weapp/pages/staff/appointments/*`、必要服务层适配、自测结论 | BE-021, ARCH-009 | 即使没有待审核预约，月历也默认显示；日历与明细可查看已通过/已拒绝/历史预约 | 若只修接口不修空态分支，页面仍会把月历隐藏 |
+| BE-022 | backend | 删除旧 `apps/server` 并更新根脚本/引用到新基线 | Lan 明确授权删除旧 server、当前主仓、`package.json`、文档引用 | 删除 `apps/server/**`、更新根脚本/README/引用、自测结论 | ARCH-009 | 主仓不再保留 `apps/server`；根脚本、文档和引用全部切到 `apps/api` | 删除时遗漏脚本/引用会导致仓库不可用 |
+| ARCH-010 | architect | 清理 docs 下旧切流/并行阶段文档，保留当前主线文档集合 | Lan 明确授权清理旧文档、现有 docs 目录 | 删除/收口后的 docs 集合、清理说明 | ARCH-009 | docs 只保留对当前主线有价值的文档；过渡性 cutover/parallel runbook 文档完成退场 | 误删仍有引用的文档会导致交接断层 |
+
+> 状态更新（2026-03-24 09:10 Asia/Shanghai）：ARCH-009 已完成首轮冻结，`docs/PRD.md` / `docs/ARCHITECTURE.md` / `docs/API.md` / `docs/TASKS.md` 已明确 `apps/api` 为唯一后端基线，并固定旧基线退场顺序为“先修业务逻辑（BE-020 / FE-015 / BE-021 / FE-016）-> 再删 `apps/server` -> 最后清理过渡文档”。当前 `apps/server` 进入只读待退场状态，不再承接新增业务口径。
+>
+> 清理清单（待 BE-020 / FE-015 / BE-021 / FE-016 收口后执行）：
+> - 删除 `apps/server/**`
+> - 删除或改写根脚本中仍指向旧 server 的入口
+> - 清理 docs 中仅服务于并行切流 / rollback 旧基线的 runbook 与 checklist
+> - 将剩余主线文档统一改写为 `apps/api + apps/weapp` 口径
+>
+> 状态更新（2026-03-24 10:06 Asia/Shanghai）：architect 在当前主仓直接复核时，发现 `apps/api` 与 `apps/weapp` 的 BE-020 / BE-021 / FE-015 / FE-016 收口结果仍未全部稳定落入统一验收基线。当前已确认 frontend 导出包 `.integration/frontend-d111d8a/` 可用于文件级审阅，但主仓中的 `pages/booking`、`pages/staff/appointments` 仍是旧口径；backend 声称已在主仓落库的 `4d8734f` 也未能在当前主仓 `git log` 中找到。判定：当前属于“worker 回报与 architect 主仓事实不一致”的基线漂移风险，项目仍处于统一审阅 / 纠偏阶段，暂不能宣告可联调 / 可验收。
+>
+> 状态更新（2026-03-24 10:08 Asia/Shanghai）：architect 已基于 `.integration/frontend-d111d8a/` 的导出补丁，手工把 FE-015 / FE-016 收口到当前主仓：`pages/booking` 已优先消费 `availability => { dateOptions, selectedDate, items }`，`pages/staff/appointments` 已改为“月历常驻 + 默认全量 appointments 聚合 + 显式 status 筛选二次请求”，且 `npm run check:weapp-contract` 与关键 JS 语法检查已通过。当前统一基线剩余高优先级阻塞收敛为 backend 的 BE-020 / BE-021 真正落库与核验。
+>
+> 状态更新（2026-03-24 10:45 Asia/Shanghai）：architect 已在当前主仓直接完成 BE-020 / BE-021 收口：`apps/api` 中 `GET /api/v1/availability` 现按冻结契约返回 `{ dateOptions, selectedDate, items }`，并保持 `approved-only` 占位；`GET /api/v1/staff/appointments` 现改为“未传 `status` 返回全量预约、显式传 `status` 继续精确筛选”。同时已补 runtime smoke 覆盖新口径，并在当前主仓实际执行 `apps/api` 的 `npm run build`、启动本地 API 后执行 `npm test` 全部通过；前端侧 `npm run check:weapp-contract` 与关键页面 `node --check` 也已再次通过。判定：当前统一验收基线已回到“前后端主仓事实一致、可进入页面级联调 / 验收”的状态。
+>
+> 状态更新（2026-03-24 10:47 Asia/Shanghai）：architect 已开始执行旧基线退场清理。`docs/API_PARALLEL_RUNBOOK.md` 与 `docs/API_CUTOVER_CHECKLIST.md` 已改为 Archived 占位，明确不再作为当前执行手册；backend 已收到 BE-022 任务，在其 workspace 中准备“删除 `apps/server` + 更新根脚本/README/引用”的可审阅补丁与交接材料，待回收后再由 architect 收口到主仓。
+>
+> 状态更新（2026-03-24 10:52 Asia/Shanghai）：architect 已继续完成退场前的主仓口径清理：根 `package.json` 已去掉旧 `apps/server` 脚本并补 `test:api`，`README.md` 已整体改写为 `apps/api + apps/weapp` 当前主线。当前唯一剩余动作是物理删除 `apps/server/**` 与 archived cutover 文档，但该删除操作在当前执行策略下被安全审批拦截；在获得删除批准前，BE-022 / ARCH-010 仍处于“已完成清理准备、待执行删除”的阻塞状态。
+>
+> 状态更新（2026-03-24 18:15 Asia/Shanghai）：Lan 已完成删除授权并在主仓实际执行旧基线删除；architect 随后已将 `apps/server/**`、`docs/API_PARALLEL_RUNBOOK.md`、`docs/API_CUTOVER_CHECKLIST.md` 纳入提交 `966ffbb chore: retire apps server baseline` 并 push 到 `origin/main`。判定：BE-022 / ARCH-010 已完成，项目主线正式收敛为 `apps/api + apps/weapp`；当前阶段已从“旧基线退场阻塞”切换为“页面级联调 / 验收确认 + 新主线后续维护”。
 
 ## 任务列表
 

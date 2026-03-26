@@ -42,10 +42,10 @@ function findItem(items, timeSlot) {
 
 async function main() {
   const today = shanghaiDateText();
-  const openDate = '2030-03-22';
-  const closedDate = '2030-03-23';
-  const occupiedDate = '2030-03-24';
-  const outOfRangeDate = '2050-03-22';
+  const openDate = addDays(today, 1);
+  const closedDate = addDays(today, 2);
+  const occupiedDate = addDays(today, 3);
+  const outOfRangeDate = addDays(today, 8);
   const bookingRuleId = `availability-rule-${runId}`;
   const approvedId = `availability-approved-${runId}`;
   const pendingId = `availability-pending-${runId}`;
@@ -60,7 +60,7 @@ async function main() {
     await prisma.bookingRule.create({
       data: {
         id: bookingRuleId,
-        advanceOpenDays: 5000,
+        advanceOpenDays: 7,
         closedDatesJson: JSON.stringify([closedDate]),
         dailySlotsJson: JSON.stringify(['10:00-11:00', '14:00-15:00'])
       }
@@ -89,12 +89,19 @@ async function main() {
       }
     });
 
-    await runCase('default date falls back to today', async () => {
+    await runCase('default date falls back to today and returns window options', async () => {
       const result = await request('/api/v1/availability');
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.dateOptions), 'expected dateOptions array');
+      assert(result.json?.selectedDate === today, 'expected selectedDate=today');
+      assert(result.json.dateOptions[0] === today, 'expected first date option to be today');
       assert(Array.isArray(result.json?.items), 'expected items array');
       assert(result.json.items.every((item) => item.date === today), 'expected today fallback');
-      return { count: result.json.items.length, date: today };
+      return {
+        selectedDate: result.json.selectedDate,
+        dateOptionsCount: result.json.dateOptions.length,
+        count: result.json.items.length
+      };
     });
 
     await runCase('invalid date -> INVALID_DATE', async () => {
@@ -104,9 +111,12 @@ async function main() {
       return result.json;
     });
 
-    await runCase('available date -> AVAILABLE', async () => {
+    await runCase('available date -> AVAILABLE with selectedDate and dateOptions', async () => {
       const result = await request(`/api/v1/availability?date=${openDate}`);
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.dateOptions), 'expected dateOptions array');
+      assert(result.json?.selectedDate === openDate, 'expected selectedDate=openDate');
+      assert(result.json.dateOptions.includes(openDate), 'expected openDate in dateOptions');
       const items = result.json?.items || [];
       assert(items.length === 2, `expected 2 slots, got ${items.length}`);
       assert(items.every((item) => item.status === 'active'), 'expected all active');
@@ -117,6 +127,7 @@ async function main() {
     await runCase('closed date -> DATE_CLOSED', async () => {
       const result = await request(`/api/v1/availability?date=${closedDate}`);
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.selectedDate === closedDate, 'expected selectedDate=closedDate');
       const items = result.json?.items || [];
       assert(items.every((item) => item.status === 'disabled'), 'expected all disabled');
       assert(items.every((item) => item.reasonCode === 'DATE_CLOSED'), 'expected DATE_CLOSED');
@@ -126,6 +137,7 @@ async function main() {
     await runCase('out of range date -> DATE_OUT_OF_RANGE', async () => {
       const result = await request(`/api/v1/availability?date=${outOfRangeDate}`);
       assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.selectedDate === outOfRangeDate, 'expected selectedDate=outOfRangeDate');
       const items = result.json?.items || [];
       assert(items.every((item) => item.status === 'disabled'), 'expected all disabled');
       assert(items.every((item) => item.reasonCode === 'DATE_OUT_OF_RANGE'), 'expected DATE_OUT_OF_RANGE');

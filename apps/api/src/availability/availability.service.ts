@@ -3,6 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { BookingRulesService } from '../booking-rules/booking-rules.service';
 import {
   BookingDateReasonCode,
+  addDaysToDateText,
   getTodayTextInShanghai,
   isDateText,
   resolveBookingDateReasonCode
@@ -15,6 +16,12 @@ export interface AvailabilityItem {
   status: 'active' | 'disabled';
   reasonCode: 'AVAILABLE' | 'DATE_CLOSED' | 'DATE_OUT_OF_RANGE' | 'SLOT_OCCUPIED';
   reasonText: string;
+}
+
+export interface AvailabilityResponse {
+  dateOptions: string[];
+  selectedDate: string;
+  items: AvailabilityItem[];
 }
 
 function toReasonText(reasonCode: AvailabilityItem['reasonCode']) {
@@ -31,6 +38,13 @@ function toReasonText(reasonCode: AvailabilityItem['reasonCode']) {
   }
 }
 
+function buildDateOptions(advanceOpenDays: number, today: string) {
+  const safeAdvanceOpenDays = Math.max(0, Number(advanceOpenDays) || 0);
+  return Array.from({ length: safeAdvanceOpenDays + 1 }, (_value, index) =>
+    addDaysToDateText(today, index)
+  );
+}
+
 @Injectable()
 export class AvailabilityService {
   constructor(
@@ -38,10 +52,11 @@ export class AvailabilityService {
     private readonly bookingRulesService: BookingRulesService
   ) {}
 
-  async getAvailability(date?: string) {
-    const normalizedDate = `${date || ''}`.trim() || getTodayTextInShanghai();
+  async getAvailability(date?: string): Promise<AvailabilityResponse> {
+    const requestedDate = `${date || ''}`.trim();
+    const today = getTodayTextInShanghai();
 
-    if (!isDateText(normalizedDate)) {
+    if (requestedDate && !isDateText(requestedDate)) {
       throw new BadRequestException({
         error: 'Invalid date',
         code: 'INVALID_DATE'
@@ -49,11 +64,13 @@ export class AvailabilityService {
     }
 
     const bookingRules = await this.bookingRulesService.getBookingRules();
-    const bookingDateReasonCode = resolveBookingDateReasonCode(normalizedDate, bookingRules);
+    const dateOptions = buildDateOptions(bookingRules.advanceOpenDays, today);
+    const selectedDate = requestedDate || dateOptions[0] || today;
+    const bookingDateReasonCode = resolveBookingDateReasonCode(selectedDate, bookingRules);
 
     const approvedAppointments = await this.prisma.appointment.findMany({
       where: {
-        date: normalizedDate,
+        date: selectedDate,
         status: AppointmentStatus.APPROVED
       },
       select: {
@@ -62,10 +79,15 @@ export class AvailabilityService {
     });
 
     const approvedSlots = new Set(approvedAppointments.map((item) => item.timeSlot));
-
-    return bookingRules.dailySlots.map((timeSlot) =>
-      this.toAvailabilityItem(normalizedDate, timeSlot, bookingDateReasonCode, approvedSlots)
+    const items = bookingRules.dailySlots.map((timeSlot) =>
+      this.toAvailabilityItem(selectedDate, timeSlot, bookingDateReasonCode, approvedSlots)
     );
+
+    return {
+      dateOptions,
+      selectedDate,
+      items
+    };
   }
 
   private toAvailabilityItem(

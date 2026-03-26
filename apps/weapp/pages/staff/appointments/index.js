@@ -12,6 +12,13 @@ const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+const DETAIL_FILTER_DEFINITIONS = [
+  { key: 'all', label: '全部预约' },
+  { key: 'pending', label: '待审核' },
+  { key: 'approved', label: '已通过' },
+  { key: 'rejected', label: '已拒绝' },
+  { key: 'history', label: '历史预约' }
+];
 
 function formatStatus(status) {
   const map = {
@@ -47,6 +54,10 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function isDateText(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(`${value || ''}`);
+}
+
 function formatMonthLabel(cursor) {
   const [year, month] = `${cursor}`.split('-');
   return `${year} 年 ${Number(month)} 月`;
@@ -74,7 +85,13 @@ function shiftMonthCursor(cursor, delta) {
   return createMonthCursor(new Date(firstDate.getFullYear(), firstDate.getMonth() + delta, 1));
 }
 
+function isStatusFilterKey(value) {
+  return value === 'pending' || value === 'approved' || value === 'rejected';
+}
+
 function normalizeAppointments(items) {
+  const today = getTodayKey();
+
   return (items || []).map((item, index) => {
     const status = item.status || 'pending';
     const date = item.appointmentDate || item.date || '-';
@@ -90,7 +107,8 @@ function normalizeAppointments(items) {
       statusText: formatStatus(status),
       createdAtText: formatTime(item.createdAt),
       reviewedAtText: formatTime(item.reviewedAt),
-      canReview: status === 'pending'
+      canReview: status === 'pending',
+      isHistory: isDateText(date) && date < today
     };
   }).sort((left, right) => {
     const dateCompare = `${left.date}`.localeCompare(`${right.date}`);
@@ -121,20 +139,30 @@ function groupAppointmentsByDate(appointments) {
 }
 
 function buildDayStat(items) {
-  const total = items.length;
-  const pending = items.filter((item) => item.status === 'pending').length;
-  const approved = items.filter((item) => item.status === 'approved').length;
-  const rejected = items.filter((item) => item.status === 'rejected').length;
-  return { total, pending, approved, rejected };
+  return {
+    total: items.length,
+    pending: items.filter((item) => item.status === 'pending').length,
+    approved: items.filter((item) => item.status === 'approved').length,
+    rejected: items.filter((item) => item.status === 'rejected').length
+  };
 }
 
-function buildCalendar(cursor, groupedAppointments, selectedDate) {
+function buildCalendarState(appointments, cursor, preferredDate) {
+  const groupedAppointments = groupAppointmentsByDate(appointments);
   const todayKey = getTodayKey();
   const { firstDate, lastDate } = getMonthDateRange(cursor);
   const startDate = new Date(firstDate);
   startDate.setDate(firstDate.getDate() - firstDate.getDay());
   const endDate = new Date(lastDate);
   endDate.setDate(lastDate.getDate() + (6 - lastDate.getDay()));
+
+  const monthDates = Object.keys(groupedAppointments)
+    .filter((date) => date >= formatDateKey(firstDate) && date <= formatDateKey(lastDate))
+    .sort();
+
+  const selectedDate = preferredDate
+    || monthDates[0]
+    || (todayKey >= formatDateKey(firstDate) && todayKey <= formatDateKey(lastDate) ? todayKey : formatDateKey(firstDate));
 
   const cells = [];
   for (let current = new Date(startDate); current <= endDate; current.setDate(current.getDate() + 1)) {
@@ -159,51 +187,101 @@ function buildCalendar(cursor, groupedAppointments, selectedDate) {
     });
   }
 
-  const weeks = [];
+  const calendarWeeks = [];
   for (let index = 0; index < cells.length; index += 7) {
-    weeks.push(cells.slice(index, index + 7));
+    calendarWeeks.push(cells.slice(index, index + 7));
   }
-  return weeks;
+
+  const selectedItems = groupedAppointments[selectedDate] || [];
+  return {
+    monthCursor: cursor,
+    monthLabel: formatMonthLabel(cursor),
+    calendarWeeks,
+    selectedDate,
+    selectedDateMeta: {
+      label: selectedDate || '请选择日期',
+      totalText: selectedItems.length ? `当天共 ${selectedItems.length} 条预约` : '当天暂无预约'
+    },
+    dayAppointments: selectedItems
+  };
 }
 
-function buildSelectedDateMeta(selectedDate, items) {
-  if (!selectedDate) {
+function buildStatusLists(appointments) {
+  return {
+    pendingAppointments: appointments.filter((item) => item.status === 'pending'),
+    approvedAppointments: appointments.filter((item) => item.status === 'approved'),
+    rejectedAppointments: appointments.filter((item) => item.status === 'rejected'),
+    historyAppointments: appointments.filter((item) => item.isHistory)
+  };
+}
+
+function buildDetailFilters(activeKey, summary, historyCount) {
+  const counts = {
+    all: summary.total,
+    pending: summary.pending,
+    approved: summary.approved,
+    rejected: summary.rejected,
+    history: historyCount
+  };
+
+  return DETAIL_FILTER_DEFINITIONS.map((item) => ({
+    key: item.key,
+    label: item.label,
+    count: counts[item.key] || 0,
+    isActive: item.key === activeKey
+  }));
+}
+
+function buildDetailListView(filterKey, allAppointments, remoteAppointments) {
+  const appointments = allAppointments || [];
+
+  if (filterKey === 'pending') {
     return {
-      label: '请选择日期',
-      totalText: '点击月历中的日期后查看当天预约明细。'
+      title: '待审核列表',
+      description: '显式筛选“待审核”时会按 status=pending 重新请求明细；月历与当天明细仍基于默认全量列表。',
+      items: Array.isArray(remoteAppointments) ? remoteAppointments : appointments.filter((item) => item.status === 'pending'),
+      emptyText: '当前没有待审核预约。',
+      noticeText: Array.isArray(remoteAppointments) ? '当前筛选已按 status=pending 重新请求 staff appointments 列表。' : ''
+    };
+  }
+
+  if (filterKey === 'approved') {
+    return {
+      title: '已通过列表',
+      description: '显式筛选“已通过”时会按 status=approved 重新请求明细；便于回看已确认安排。',
+      items: Array.isArray(remoteAppointments) ? remoteAppointments : appointments.filter((item) => item.status === 'approved'),
+      emptyText: '当前没有已通过预约。',
+      noticeText: Array.isArray(remoteAppointments) ? '当前筛选已按 status=approved 重新请求 staff appointments 列表。' : ''
+    };
+  }
+
+  if (filterKey === 'rejected') {
+    return {
+      title: '已拒绝列表',
+      description: '显式筛选“已拒绝”时会按 status=rejected 重新请求明细；便于复盘异常预约。',
+      items: Array.isArray(remoteAppointments) ? remoteAppointments : appointments.filter((item) => item.status === 'rejected'),
+      emptyText: '当前没有已拒绝预约。',
+      noticeText: Array.isArray(remoteAppointments) ? '当前筛选已按 status=rejected 重新请求 staff appointments 列表。' : ''
+    };
+  }
+
+  if (filterKey === 'history') {
+    return {
+      title: '历史预约',
+      description: '历史预约基于默认未传 status 的完整列表聚合，用于回看已发生日期的全部预约信息。',
+      items: appointments.filter((item) => item.isHistory),
+      emptyText: '当前没有历史预约记录。',
+      noticeText: '历史预约与月历总览都基于默认未传 status 的完整 staff appointments 列表。'
     };
   }
 
   return {
-    label: selectedDate,
-    totalText: items.length ? `当天共 ${items.length} 条预约` : '当天暂无预约'
+    title: '全部预约',
+    description: '默认展示未传 status 的完整预约列表；切换到待审核 / 已通过 / 已拒绝时，再按 status 重新请求明细。',
+    items: appointments,
+    emptyText: '当前暂无门店预约记录。',
+    noticeText: '月历与当天明细始终基于默认未传 status 的完整 staff appointments 列表聚合。'
   };
-}
-
-function splitAppointments(items) {
-  return {
-    pendingAppointments: items.filter((item) => item.status === 'pending'),
-    approvedAppointments: items.filter((item) => item.status === 'approved'),
-    rejectedAppointments: items.filter((item) => item.status === 'rejected')
-  };
-}
-
-function pickDefaultSelectedDate(cursor, groupedAppointments) {
-  const { firstDate, lastDate } = getMonthDateRange(cursor);
-  const monthDates = Object.keys(groupedAppointments)
-    .filter((date) => date >= formatDateKey(firstDate) && date <= formatDateKey(lastDate))
-    .sort();
-
-  if (monthDates.length) {
-    return monthDates[0];
-  }
-
-  const today = getTodayKey();
-  if (today >= formatDateKey(firstDate) && today <= formatDateKey(lastDate)) {
-    return today;
-  }
-
-  return formatDateKey(firstDate);
 }
 
 function getStaffIdentityMeta() {
@@ -255,12 +333,36 @@ function formatReviewErrorMessage(error, actionText) {
   return getErrorMessage(error, `${actionText}失败，请稍后重试。`);
 }
 
+function getEmptyDashboardState(filterKey = 'all') {
+  const summary = { total: 0, pending: 0, approved: 0, rejected: 0 };
+  const detailView = buildDetailListView(filterKey, []);
+  const calendarState = buildCalendarState([], createMonthCursor(new Date()), '');
+  return {
+    appointments: [],
+    summary,
+    pendingAppointments: [],
+    approvedAppointments: [],
+    rejectedAppointments: [],
+    historyAppointments: [],
+    activeListFilter: filterKey,
+    detailFilters: buildDetailFilters(filterKey, summary, 0),
+    listAppointments: detailView.items,
+    listState: 'idle',
+    detailSectionTitle: detailView.title,
+    detailSectionDesc: detailView.description,
+    detailListNotice: detailView.noticeText,
+    detailEmptyText: detailView.emptyText,
+    ...calendarState
+  };
+}
+
 Page({
   data: {
     pageState: 'loading',
     stateMessage: '',
     reviewMessage: '',
     reviewStateMap: {},
+    listState: 'idle',
     staffIdentity: {
       openId: '',
       label: '未设置店员 OpenID',
@@ -270,25 +372,8 @@ Page({
       sourceText: ''
     },
     staffOpenIdInput: '',
-    appointments: [],
-    summary: {
-      total: 0,
-      pending: 0,
-      approved: 0,
-      rejected: 0
-    },
     weekLabels: WEEK_LABELS,
-    monthCursor: createMonthCursor(new Date()),
-    monthLabel: formatMonthLabel(createMonthCursor(new Date())),
-    calendarWeeks: [],
-    selectedDate: '',
-    selectedDateMeta: {
-      label: '请选择日期',
-      totalText: '点击月历中的日期后查看当天预约明细。'
-    },
-    pendingAppointments: [],
-    approvedAppointments: [],
-    rejectedAppointments: []
+    ...getEmptyDashboardState('all')
   },
 
   onLoad() {
@@ -345,18 +430,11 @@ Page({
     this.refreshStaffIdentity();
     this.setData({
       staffOpenIdInput: '',
-      appointments: [],
       reviewStateMap: {},
       reviewMessage: '',
-      summary: { total: 0, pending: 0, approved: 0, rejected: 0 },
-      calendarWeeks: [],
-      selectedDate: '',
-      selectedDateMeta: buildSelectedDateMeta('', []),
-      pendingAppointments: [],
-      approvedAppointments: [],
-      rejectedAppointments: [],
       pageState: 'unauthorized',
-      stateMessage: '店员 OpenID 已清空，店员页不会再静默请求 staff 接口。'
+      stateMessage: '店员 OpenID 已清空，店员页不会再静默请求 staff 接口。',
+      ...getEmptyDashboardState(this.data.activeListFilter || 'all')
     });
     wx.showToast({ title: '已清空店员 OpenID', icon: 'none' });
   },
@@ -370,34 +448,91 @@ Page({
   changeMonth(event) {
     const { delta } = event.currentTarget.dataset;
     const nextCursor = shiftMonthCursor(this.data.monthCursor, Number(delta || 0));
-    this.updateCalendarView(this.data.appointments, nextCursor, '');
+    const calendarState = buildCalendarState(this.data.appointments || [], nextCursor, '');
+    this.setData(calendarState);
   },
 
   resetToCurrentMonth() {
-    this.updateCalendarView(this.data.appointments, createMonthCursor(new Date()), '');
+    const calendarState = buildCalendarState(this.data.appointments || [], createMonthCursor(new Date()), '');
+    this.setData(calendarState);
   },
 
-  selectDate(event) {
+  onCalendarDayTap(event) {
     const { date } = event.currentTarget.dataset;
-    this.updateCalendarView(this.data.appointments, this.data.monthCursor, date);
+    const calendarState = buildCalendarState(this.data.appointments || [], this.data.monthCursor, date);
+    this.setData(calendarState);
   },
 
-  updateCalendarView(appointments, nextCursor, preferredDate) {
-    const groupedAppointments = groupAppointmentsByDate(appointments);
-    const selectedDate = preferredDate || pickDefaultSelectedDate(nextCursor, groupedAppointments);
-    const selectedItems = groupedAppointments[selectedDate] || [];
-    const split = splitAppointments(selectedItems);
+  async onDetailFilterTap(event) {
+    const filterKey = event.currentTarget.dataset.value || 'all';
+    if (filterKey === this.data.activeListFilter && this.data.listState !== 'error') {
+      return;
+    }
 
+    await this.loadDetailList(filterKey);
+  },
+
+  async loadDetailList(filterKey, options = {}) {
+    const nextFilterKey = DETAIL_FILTER_DEFINITIONS.some((item) => item.key === filterKey) ? filterKey : 'all';
+    const appointments = options.appointments || this.data.appointments || [];
+    const summary = options.summary || this.data.summary || buildSummary(appointments);
+    const historyAppointments = options.historyAppointments || this.data.historyAppointments || [];
+    const detailFilters = buildDetailFilters(nextFilterKey, summary, historyAppointments.length);
+
+    if (!isStatusFilterKey(nextFilterKey)) {
+      const detailView = buildDetailListView(nextFilterKey, appointments);
+      this.setData({
+        activeListFilter: nextFilterKey,
+        detailFilters,
+        listAppointments: detailView.items,
+        listState: 'ready',
+        detailSectionTitle: detailView.title,
+        detailSectionDesc: detailView.description,
+        detailListNotice: detailView.noticeText,
+        detailEmptyText: detailView.emptyText
+      });
+      return;
+    }
+
+    const loadingView = buildDetailListView(nextFilterKey, appointments);
     this.setData({
-      monthCursor: nextCursor,
-      monthLabel: formatMonthLabel(nextCursor),
-      calendarWeeks: buildCalendar(nextCursor, groupedAppointments, selectedDate),
-      selectedDate,
-      selectedDateMeta: buildSelectedDateMeta(selectedDate, selectedItems),
-      pendingAppointments: split.pendingAppointments,
-      approvedAppointments: split.approvedAppointments,
-      rejectedAppointments: split.rejectedAppointments
+      activeListFilter: nextFilterKey,
+      detailFilters,
+      listAppointments: loadingView.items,
+      listState: 'loading',
+      detailSectionTitle: loadingView.title,
+      detailSectionDesc: loadingView.description,
+      detailListNotice: `正在按 status=${nextFilterKey} 刷新预约明细；月历与当天明细仍基于完整列表展示。`,
+      detailEmptyText: loadingView.emptyText
     });
+
+    try {
+      const response = await listStaffAppointments({ status: nextFilterKey });
+      const remoteAppointments = normalizeAppointments(response.items || []);
+      const detailView = buildDetailListView(nextFilterKey, appointments, remoteAppointments);
+      this.setData({
+        activeListFilter: nextFilterKey,
+        detailFilters,
+        listAppointments: detailView.items,
+        listState: 'ready',
+        detailSectionTitle: detailView.title,
+        detailSectionDesc: detailView.description,
+        detailListNotice: detailView.noticeText,
+        detailEmptyText: detailView.emptyText
+      });
+    } catch (error) {
+      const fallbackView = buildDetailListView(nextFilterKey, appointments);
+      this.setData({
+        activeListFilter: nextFilterKey,
+        detailFilters,
+        listAppointments: fallbackView.items,
+        listState: 'error',
+        detailSectionTitle: fallbackView.title,
+        detailSectionDesc: fallbackView.description,
+        detailListNotice: `${formatPageErrorMessage(error, `按状态筛选 ${fallbackView.title} 失败。`)} 当前先展示基于完整列表的本地筛选结果。`,
+        detailEmptyText: fallbackView.emptyText
+      });
+    }
   },
 
   async loadData() {
@@ -405,20 +540,13 @@ Page({
     if (!staffIdentity.canUse) {
       this.setData({
         staffIdentity,
-        appointments: [],
         reviewStateMap: {},
         reviewMessage: '',
-        summary: { total: 0, pending: 0, approved: 0, rejected: 0 },
-        calendarWeeks: [],
-        selectedDate: '',
-        selectedDateMeta: buildSelectedDateMeta('', []),
-        pendingAppointments: [],
-        approvedAppointments: [],
-        rejectedAppointments: [],
         pageState: 'unauthorized',
         stateMessage: staffIdentity.isDevelopEnv
           ? '未获取到店员 OpenID。开发环境请先填写或生成模拟 OpenID，再查询店员预约列表。'
-          : '未获取到店员 OpenID，当前无法查询店员页。'
+          : '未获取到店员 OpenID，当前无法查询店员页。',
+        ...getEmptyDashboardState(this.data.activeListFilter || 'all')
       });
       return;
     }
@@ -428,32 +556,42 @@ Page({
       pageState: 'loading',
       stateMessage: '',
       reviewMessage: '',
-      reviewStateMap: {}
+      reviewStateMap: {},
+      listState: 'loading',
+      detailListNotice: ''
     });
 
     try {
       const response = await listStaffAppointments();
       const appointments = normalizeAppointments(response.items || []);
+      const summary = buildSummary(appointments);
+      const statusLists = buildStatusLists(appointments);
+      const calendarState = buildCalendarState(appointments, this.data.monthCursor, this.data.selectedDate);
+
       this.setData({
         appointments,
-        summary: buildSummary(appointments),
-        pageState: appointments.length ? 'ready' : 'empty',
-        stateMessage: appointments.length ? '' : '当前暂无门店预约记录。'
+        summary,
+        pendingAppointments: statusLists.pendingAppointments,
+        approvedAppointments: statusLists.approvedAppointments,
+        rejectedAppointments: statusLists.rejectedAppointments,
+        historyAppointments: statusLists.historyAppointments,
+        pageState: 'ready',
+        stateMessage: appointments.length ? '' : '当前暂无门店预约记录，月历仍保持可查看状态。',
+        ...calendarState
       });
-      this.updateCalendarView(appointments, this.data.monthCursor, this.data.selectedDate);
+
+      await this.loadDetailList(this.data.activeListFilter || 'all', {
+        appointments,
+        summary,
+        historyAppointments: statusLists.historyAppointments
+      });
     } catch (error) {
       this.setData({
-        appointments: [],
         reviewStateMap: {},
-        summary: { total: 0, pending: 0, approved: 0, rejected: 0 },
-        calendarWeeks: [],
-        selectedDate: '',
-        selectedDateMeta: buildSelectedDateMeta('', []),
-        pendingAppointments: [],
-        approvedAppointments: [],
-        rejectedAppointments: [],
+        reviewMessage: '',
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',
-        stateMessage: formatPageErrorMessage(error, '店员预约列表加载失败，请稍后重试。')
+        stateMessage: formatPageErrorMessage(error, '店员预约列表加载失败，请稍后重试。'),
+        ...getEmptyDashboardState(this.data.activeListFilter || 'all')
       });
     }
   },

@@ -17,7 +17,7 @@
 
   <view wx:if="{{pageState === 'loading'}}" class="card state-card">
     <view class="state-title">预约数据加载中</view>
-    <view class="state-desc">正在获取 availability?date=YYYY-MM-DD 对应的可预约时段，请稍候。</view>
+    <view class="state-desc">正在获取 availability 返回的可预约日期窗口与当前日期时段，请稍候。</view>
   </view>
 
   <view wx:elif="{{pageState === 'error'}}" class="card state-card">

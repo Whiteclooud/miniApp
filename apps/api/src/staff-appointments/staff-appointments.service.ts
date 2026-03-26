@@ -5,14 +5,9 @@ import {
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
-import {
-  ApiAppointmentItem,
-  mapAppointmentStatus,
-  toApiAppointmentItem
-} from '../appointments/appointment-response';
+import { ApiAppointmentItem, toApiAppointmentItem } from '../appointments/appointment-response';
 import { PrismaService } from '../prisma/prisma.service';
 
-const DEFAULT_STATUS = 'pending';
 const ALLOWED_STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
 type ListStatus = (typeof ALLOWED_STATUS_VALUES)[number];
@@ -29,8 +24,12 @@ function resolveAllowedStaffIds(): string[] {
   return [...new Set(values)];
 }
 
-function toPrismaAppointmentStatus(status: string | undefined): AppointmentStatus {
-  const normalizedStatus = `${status || DEFAULT_STATUS}`.trim().toLowerCase();
+function toPrismaAppointmentStatus(status?: string): AppointmentStatus | undefined {
+  const normalizedStatus = `${status || ''}`.trim().toLowerCase();
+
+  if (!normalizedStatus) {
+    return undefined;
+  }
 
   if (!ALLOWED_STATUS_VALUES.includes(normalizedStatus as ListStatus)) {
     throw new BadRequestException({
@@ -73,9 +72,11 @@ export class StaffAppointmentsService {
     const normalizedStatus = toPrismaAppointmentStatus(status);
 
     const rows = await this.prisma.appointment.findMany({
-      where: {
-        status: normalizedStatus
-      },
+      where: normalizedStatus
+        ? {
+            status: normalizedStatus
+          }
+        : undefined,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
     });
 

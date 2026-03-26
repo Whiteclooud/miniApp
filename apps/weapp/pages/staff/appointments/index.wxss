@@ -43,6 +43,10 @@
   gap: 16rpx;
 }
 
+.summary-grid-quad {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .summary-item {
   padding: 20rpx;
   border-radius: 20rpx;
@@ -59,6 +63,10 @@
   font-size: 34rpx;
   font-weight: 700;
   color: #3d2d28;
+}
+
+.summary-helper {
+  margin-top: 16rpx;
 }
 
 .calendar-header,
@@ -183,8 +191,55 @@
   color: #b24444;
 }
 
-.status-section {
-  margin-bottom: 24rpx;
+.detail-filter-scroll {
+  margin-top: 18rpx;
+  white-space: nowrap;
+}
+
+.detail-filter-row {
+  display: inline-flex;
+  gap: 16rpx;
+  padding-bottom: 6rpx;
+}
+
+.detail-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 16rpx 22rpx;
+  border-radius: 999rpx;
+  background: #fff8f3;
+  border: 2rpx solid transparent;
+  color: #8a6a5c;
+}
+
+.detail-filter-chip-active {
+  background: #fff1ea;
+  border-color: #ff8f87;
+  color: #cc5d67;
+  box-shadow: 0 10rpx 24rpx rgba(204, 93, 103, 0.12);
+}
+
+.detail-filter-label {
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.detail-filter-count {
+  min-width: 36rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: center;
+  font-size: 22rpx;
+}
+
+.detail-filter-helper {
+  margin-top: 14rpx;
+}
+
+.compact-state-card {
+  margin-top: 18rpx;
 }
 
 .booking-header,

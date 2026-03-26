@@ -4,12 +4,10 @@
   "version": "0.1.0",
   "description": "OpenClaw mini app workspace",
   "scripts": {
-    "dev:server": "node apps/server/src/server.mjs",
-    "start:server": "node apps/server/src/server.mjs",
-    "test:server": "node apps/server/src/server.mjs --self-test",
     "dev:api": "npm --prefix apps/api run start:dev",
     "start:api": "npm --prefix apps/api run start",
     "build:api": "npm --prefix apps/api run build",
+    "test:api": "npm --prefix apps/api run test",
     "check:docs": "node tools/check-docs.mjs",
     "check:weapp-contract": "node apps/weapp/scripts/contract-selfcheck.mjs"
   }

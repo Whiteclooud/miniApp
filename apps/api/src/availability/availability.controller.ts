@@ -8,7 +8,6 @@ export class AvailabilityController {
 
   @Get()
   async getAvailability(@Query() query: GetAvailabilityQuery = {}) {
-    const items = await this.availabilityService.getAvailability(query.date);
-    return { items };
+    return this.availabilityService.getAvailability(query.date);
   }
 }
