@@ -46,6 +46,16 @@
 - backend：继续在 `apps/api` 上补模块边界、测试能力与运行稳态
 - architect：维护任务板，把“已完成的旧基线退场任务”和“下一阶段增量任务”分层管理
 
+## 当前执行边界（2026-03-26）
+
+为避免后续 heartbeat 被历史任务噪音干扰，当前统一约定：
+
+- **本文件真正的当前执行面板以上方“当前有效任务视图（2026-03-25）”为准。**
+- **自 `## 2026-03-24 新增收口任务` 往下的内容，默认视为历史任务与审计记录，不再作为日常派工入口。**
+- 若没有新的页面级 UAT 结果回填，不新增 frontend / backend 代码任务；优先保持 README、PRD、ARCHITECTURE、API、TASKS、UAT_GUIDE、UAT_RESULTS 之间事实一致。
+- 当前唯一高优先级外部动作仍是：在微信开发者工具完成页面级 UAT，并把结果回填 `docs/UAT_RESULTS.md`。
+- 一旦 UAT 回填出现明确缺陷，再从“当前有效任务视图”上方重新生成新的 active task 包，不直接回滚到旧 server / cutover / 并行阶段任务池。
+
 ## 2026-03-24 新增收口任务
 
 | ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
