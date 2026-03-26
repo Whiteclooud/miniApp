@@ -1,42 +1,15 @@
 const { listGallery } = require('../../services/appointment');
 const { normalizeGalleryItems } = require('../../utils/gallery');
 
-function getApiProfileState() {
-  const app = getApp();
-  const apiProfile = app.getApiProfile();
-
-  return {
-    apiProfileLabel: apiProfile.label,
-    apiProfileBaseUrl: apiProfile.baseUrl,
-    apiProfileKey: apiProfile.key,
-    canSwitchApiProfile: apiProfile.canSwitch,
-    isDevelopEnv: apiProfile.isDevelopEnv
-  };
-}
-
 Page({
   data: {
     galleryItems: [],
     loading: true,
-    hasError: false,
-    apiProfileLabel: '',
-    apiProfileBaseUrl: '',
-    apiProfileKey: 'api',
-    canSwitchApiProfile: false,
-    isDevelopEnv: false
+    hasError: false
   },
 
   onLoad() {
-    this.syncApiProfileState();
     this.loadData();
-  },
-
-  onShow() {
-    this.syncApiProfileState();
-  },
-
-  syncApiProfileState() {
-    this.setData(getApiProfileState());
   },
 
   async onPullDownRefresh() {

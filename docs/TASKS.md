@@ -2,60 +2,80 @@
 
 ## 当前阶段
 
-截至 2026-03-25，项目主线已经明确收敛为：
+截至 2026-03-27，项目主线仍为：
 
 - 前端：`apps/weapp`
 - 后端：`apps/api`
 - 旧 `apps/server`：已退场，不再作为联调、验收或回滚默认目标
 
-当前阶段不再是“是否继续切流”，而是：
+当前阶段已经从“等待页面级 UAT 执行”切换为：
 
-> **唯一主线页面级 UAT + 主线文档收口 + 下一阶段稳态任务整理**
+> **基于 2026-03-27 页面级 UAT 问题的主线缺陷收口 + 文档更新 + 前后端重新派工**
 
-当前原则：
-- 以 `apps/api + apps/weapp` 作为唯一有效主线
-- 历史并行/cutover/旧 server 任务保留作审计记录，但不再作为当前执行面板
-- 当前优先级先看页面级 UAT 与文档事实是否一致，再进入后续维护/演进任务
+当前明确问题已收敛为 4 类：
+- 首页返图当前在真实页面环境中未显示，直接落到空态
+- 顾客预约未来日期窗口在真实页面环境中仍表现为“只能看今天”
+- 店员规则保存 `PUT /api/v1/staff/booking-rules` 返回 `404`
+- 店员月历虽已常驻，但还缺“顾客可视化 + 选中日期具体时段明细”
 
-## 当前有效任务视图（2026-03-25）
+## 当前有效任务视图（2026-03-27）
 
-### P0：当前唯一主线页面级 UAT（待执行）
-- 按 `docs/UAT_GUIDE.md` 在微信开发者工具执行当前主线回归验收
-- 核对范围：
-  - 首页返图封面 -> 详情多图
-  - 顾客预约未来日期窗口 + 不可预约原因展示
-  - 我的预约回查
-  - 店员规则结构化配置
-  - 店员月历常驻 + 全量预约聚合
-  - 店员审核 / 驳回 / 顾客侧结果回查
-- 完成定义：回填 `docs/UAT_RESULTS.md`，并明确“通过 / 不通过 / 问题记录”
-- 备注：该项主要依赖微信开发者工具真实页面环境，当前属于外部执行项
+### P0：收口本轮页面级 UAT 并冻结修复范围（进行中）
+- 将 Lan 本轮 UAT 结果写回 `docs/UAT_RESULTS.md`
+- 同步更新 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`
+- 输出新的 frontend / backend task brief，而不是继续沿用“待执行 UAT”状态
+- 完成定义：团队对当前问题范围、接口口径与下一步 owner 形成单一事实源
 
-### P1：主线文档收口（进行中）
-- 清理 `UAT_RESULTS.md`、`UAT_GUIDE.md`、`TASKS.md` 中仍残留的旧 server / cutover 叙述
-- 保留历史任务作审计记录，同时补一层“当前有效任务视图”
-- 完成定义：新成员只看 README + PRD / ARCHITECTURE / API / TASKS / UAT_GUIDE，就能理解当前主线与下一步
+### P0：恢复店员规则保存链路（backend）
+- 补齐 `PUT /api/v1/staff/booking-rules`
+- 保持与冻结契约一致：`advanceOpenDays`、`closedDates`、`dailySlots`
+- 补参数校验、持久化与最小 smoke / 自测
+- 完成定义：店员规则页保存不再返回 `404`，保存后重进页面可读回相同结果
 
-### P1：新主线稳态检查（待持续维护）
-- 确认 README、根脚本、开发说明全部以 `apps/api + apps/weapp` 为准
-- 当前页面验收说明统一以 `docs/UAT_GUIDE.md` 为入口
-- 若文档与主仓事实再出现偏差，architect 需优先修正文档而不是继续扩散任务
+### P0：复核并修正“顾客预约只显示今天”问题（frontend + backend）
+- backend 复核真实 `availability.dateOptions` 返回与当前规则数据
+- frontend 复核日期条渲染、切日交互与当前环境是否正确消费 `dateOptions + selectedDate + items`
+- 默认先依赖“规则保存链路恢复”后的真实数据再回归，不把静态代码表象当作问题已关闭
+- 完成定义：顾客端能看到未来预约窗口，并能切换查看未来日期对应时段
 
-### P2：下一阶段任务池（待 P0 完成后展开）
-- frontend：在不破坏现有页面的前提下，继续做 services / types / TypeScript 边界收口
-- backend：继续在 `apps/api` 上补模块边界、测试能力与运行稳态
-- architect：维护任务板，把“已完成的旧基线退场任务”和“下一阶段增量任务”分层管理
+### P1：补齐首页返图 UAT 可见基线（backend）
+- 为 `apps/api` 提供最小可见返图演示数据或等价初始化策略
+- 目标不是新增后台，而是保证 fresh DB / 当前开发环境下首页不会默认只剩“整理中”空态
+- 完成定义：首页至少能展示 1 组返图封面，详情页可进入并有多图或封面兜底
 
-## 当前执行边界（2026-03-26）
+### P1：增强店员月历工作台可读性（frontend）
+- 月历格尽量展示已预约顾客姓名/简称，不只显示数量
+- 选中日期后，下方模块按时间段列出具体预约明细（时间段 + 顾客 + 状态 + 必要备注）
+- 保持基于现有 `GET /api/v1/staff/appointments` 聚合，不额外发明新接口
+- 完成定义：店员能直接用月历查看未来安排，不必再从“当天共几条”倒推具体工作内容
 
-为避免后续 heartbeat 被历史任务噪音干扰，当前统一约定：
+### P1：删除首页开发环境切流展示（frontend）
+- 删除首页“当前接口基线 / 当前执行口径”等开发态展示卡片
+- 保留真实业务内容：品牌说明、返图封面、预约 CTA、店员入口
+- 完成定义：首页不再暴露开发环境切流信息，不影响当前默认仍对接 `apps/api`
 
-- **本文件真正的当前执行面板以上方“当前有效任务视图（2026-03-25）”为准。**
+### P1：回归验证（frontend + backend）
+- 最少回归：首页返图、未来日期窗口、规则保存、月历增强、审核后顾客回查
+- 完成定义：`docs/UAT_RESULTS.md` 形成新一轮明确通过 / 不通过结论
+
+## 当前执行边界（2026-03-27）
+
+- **本文件真正的当前执行面板以上方“当前有效任务视图（2026-03-27）”为准。**
 - **自 `## 2026-03-24 新增收口任务` 往下的内容，默认视为历史任务与审计记录，不再作为日常派工入口。**
-- 若没有新的页面级 UAT 结果回填，不新增 frontend / backend 代码任务；优先保持 README、PRD、ARCHITECTURE、API、TASKS、UAT_GUIDE、UAT_RESULTS 之间事实一致。
-- 当前唯一高优先级外部动作仍是：在微信开发者工具完成页面级 UAT，并把结果回填 `docs/UAT_RESULTS.md`。
-- 一旦 UAT 回填出现明确缺陷，再从“当前有效任务视图”上方重新生成新的 active task 包，不直接回滚到旧 server / cutover / 并行阶段任务池。
-- 状态更新（2026-03-26 19:31 Asia/Shanghai）：architect 在持续稳态检查中发现 `apps/weapp` 仍残留 `apiProfile` 默认指向 `apps/server:3000` 的旧切流配置，与 README / PRD / ARCHITECTURE / API / UAT 文档中的“`apps/api` 唯一主线”事实不一致。已直接收口前端全局默认基线为 `apps/api:3100`，移除首页对旧 `apps/server` 的切换文案，并补 `contract-selfcheck` 守卫，防止该类旧基线入口再次回退。
+- 本轮已经有新的页面级 UAT 结果，因此允许重新生成 frontend / backend active task 包，不再停留在“只维护文档一致性、不新增代码任务”的状态。
+- 当前派工顺序固定为：先补规则保存 404 -> 再回归未来日期窗口 -> 同步补首页返图基线 -> 最后收口店员月历增强与整体验收。
+- 状态更新（2026-03-27）：architect 已直接代码复核确认 `apps/api/src/booking-rules/booking-rules.controller.ts` 缺少 `PUT` 路由，这是本轮 `404` 的直接原因；同时 `gallery` 当前纯读 DB，当前开发库若无种子数据会稳定触发首页空态，因此首页返图问题不能只按“前端页面渲染异常”理解。
+
+## 2026-03-27 页面级 UAT 收口任务
+
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-011 | architect | 收口 2026-03-27 页面级 UAT 结果并冻结本轮修复范围 | Lan 最新 UAT 反馈、当前主仓代码、`docs/UAT_RESULTS.md` | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、frontend/backend 派工 brief | 无 | 当前问题范围被明确收敛为“返图可见基线、未来日期窗口、规则保存 404、月历增强”四块，不再混入旧基线话题 | 若范围不先冻结，前后端会各自猜测原因并继续发散 |
+| BE-023 | backend | 补齐 `PUT /api/v1/staff/booking-rules` 写接口并恢复规则保存 | Lan 本轮报错栈、`docs/API.md`、现有 `apps/api/src/booking-rules/**` | `apps/api/src/booking-rules/**`、必要 DTO / 校验 / 自测结论 | ARCH-011 | 店员规则保存不再返回 `404`；规则可按 `advanceOpenDays / closedDates / dailySlots` 成功保存并读回 | 若只补路由不补校验/持久化，问题会从 404 变成脏数据 |
+| QA-005 | frontend/backend | 复核并关闭“顾客预约只显示今天”问题 | Lan 本轮 UAT 反馈、`docs/API.md`、当前规则数据、`availability` 运行结果 | 复现说明、修复提交或判定结论、回归记录 | ARCH-011, BE-023 | 能明确说明根因是规则未保存、运行数据异常，还是页面消费 `dateOptions` 仍有缺陷；关闭后顾客可切换未来日期 | 若只看静态代码不看真实接口返回，会再次误判问题已关 |
+| BE-024 | backend | 提供首页返图最小可见基线数据 | Lan 本轮首页反馈、`docs/API.md` gallery 契约、现有 `apps/api/src/gallery/**` | seed / 初始化策略 / 自测说明 | ARCH-011 | fresh DB 或当前 UAT 环境下首页至少可见 1 组返图封面，详情页可进入且多图或封面兜底正常 | 若继续依赖人工补库，UAT 每次都可能误判为“首页能力失效” |
+| FE-017 | frontend | 增强店员月历：格内展示顾客摘要 + 选中日期展示具体时段明细 | Lan 本轮新增诉求、`docs/PRD.md`、`docs/API.md`、现有 `pages/staff/appointments/*` | `apps/weapp/pages/staff/appointments/*`、必要样式/脚本、自测结论 | ARCH-011 | 月历格可读性提升；选中日期后列出时间段、顾客、状态与必要备注，不只显示总数 | 若前端为了省事只补文案不补明细结构，店员仍无法拿月历排工作 |
+| QA-006 | frontend/backend | 本轮缺陷收口后的页面级回归 UAT | `docs/UAT_GUIDE.md`、`docs/UAT_RESULTS.md`、BE-023 / QA-005 / BE-024 / FE-017 结果 | 回填后的 `docs/UAT_RESULTS.md`、通过/不通过结论 | BE-023, QA-005, BE-024, FE-017 | 首页返图、未来日期窗口、规则保存、月历增强、审核后顾客回查五条链路重新拿到明确结论 | 若只修单点不做整体验收，仍可能把回归问题带入下一轮 |
 
 ## 2026-03-24 新增收口任务
 

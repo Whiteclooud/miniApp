@@ -39,47 +39,6 @@
   color: #c05d76;
 }
 
-.api-profile-card,
-.api-switch-card {
-  margin-top: 24rpx;
-}
-
-.api-profile-label {
-  color: #a26773;
-  font-size: 22rpx;
-  font-weight: 600;
-}
-
-.api-profile-title {
-  margin-top: 12rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-}
-
-.api-profile-url,
-.api-switch-desc {
-  margin-top: 10rpx;
-  color: #7d5b4c;
-  font-size: 24rpx;
-  line-height: 1.6;
-  word-break: break-all;
-}
-
-.api-switch-actions {
-  margin-top: 18rpx;
-}
-
-.switch-button {
-  margin-top: 12rpx;
-}
-
-.switch-link {
-  margin-top: 8rpx;
-  padding-left: 0;
-  text-align: left;
-  font-size: 24rpx;
-}
-
 .section-header {
   margin: 36rpx 0 18rpx;
 }

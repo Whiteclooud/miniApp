@@ -11,17 +11,6 @@
     </view>
   </view>
 
-  <view class="card api-profile-card">
-    <view class="api-profile-label">当前接口基线</view>
-    <view class="api-profile-title">{{apiProfileLabel}}</view>
-    <view class="api-profile-url">Base URL：{{apiProfileBaseUrl}}</view>
-  </view>
-
-  <view class="card api-switch-card">
-    <view class="api-profile-label">当前执行口径</view>
-    <view class="api-switch-desc">当前小程序页面默认对接唯一主线 apps/api，本轮页面级 UAT 也以这条基线为准。</view>
-  </view>
-
   <view class="section-header">
     <view class="section-title">返图灵感</view>
     <view class="section-subtitle">首页只展示封面图，点击卡片可查看详情多图</view>
