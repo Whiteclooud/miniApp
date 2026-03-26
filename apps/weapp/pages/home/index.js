@@ -21,10 +21,9 @@ Page({
     hasError: false,
     apiProfileLabel: '',
     apiProfileBaseUrl: '',
-    apiProfileKey: 'legacy',
+    apiProfileKey: 'api',
     canSwitchApiProfile: false,
-    isDevelopEnv: false,
-    switchingApiProfile: false
+    isDevelopEnv: false
   },
 
   onLoad() {
@@ -65,44 +64,6 @@ Page({
         icon: 'none'
       });
     }
-  },
-
-  async applyApiProfile(profileKey, successText) {
-    if (this.data.switchingApiProfile) {
-      return;
-    }
-
-    const app = getApp();
-    this.setData({ switchingApiProfile: true });
-
-    try {
-      if (profileKey) {
-        app.setApiProfile(profileKey);
-      } else {
-        app.resetApiProfile();
-      }
-
-      this.syncApiProfileState();
-      await this.loadData();
-      wx.showToast({
-        title: successText,
-        icon: 'none'
-      });
-    } finally {
-      this.setData({ switchingApiProfile: false });
-    }
-  },
-
-  switchToApiProfile() {
-    this.applyApiProfile('api', '已切到 apps/api');
-  },
-
-  switchToLegacyProfile() {
-    this.applyApiProfile('legacy', '已切到 apps/server');
-  },
-
-  resetApiProfile() {
-    this.applyApiProfile('', '已恢复默认基线');
   },
 
   goGalleryDetail(event) {

@@ -14,15 +14,15 @@ const {
 App({
   globalData: {
     appName: '美甲预约',
-    apiBaseUrl: 'http://127.0.0.1:3000',
+    apiBaseUrl: 'http://127.0.0.1:3100',
     apiProfile: {
-      key: 'legacy',
-      label: '稳定基线 · apps/server',
-      shortLabel: 'apps/server',
-      baseUrl: 'http://127.0.0.1:3000',
+      key: 'api',
+      label: '当前主线 · apps/api',
+      shortLabel: 'apps/api',
+      baseUrl: 'http://127.0.0.1:3100',
       isDefault: true,
       isDevelopEnv: true,
-      canSwitch: true,
+      canSwitch: false,
       source: 'default'
     },
     customerIdentity: {

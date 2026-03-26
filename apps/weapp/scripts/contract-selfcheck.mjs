@@ -175,11 +175,34 @@ expectRegex(
 );
 expectExcludes(appointmentServiceText, '/api/v1/staff/rules', appointmentServicePath);
 
+const appJsPath = 'apps/weapp/app.js';
+const appJsText = readText(appJsPath);
+expectIncludes(appJsText, "apiBaseUrl: 'http://127.0.0.1:3100'", appJsPath);
+expectIncludes(appJsText, "key: 'api'", appJsPath);
+expectExcludes(appJsText, '127.0.0.1:3000', appJsPath);
+expectExcludes(appJsText, 'apps/server', appJsPath);
+
+const apiProfilePath = 'apps/weapp/utils/api-profile.js';
+const apiProfileText = readText(apiProfilePath);
+expectIncludes(apiProfileText, "const DEFAULT_PROFILE = 'api'", apiProfilePath);
+expectIncludes(apiProfileText, "baseUrl: 'http://127.0.0.1:3100'", apiProfilePath);
+expectExcludes(apiProfileText, 'apps/server', apiProfilePath);
+expectExcludes(apiProfileText, '127.0.0.1:3000', apiProfilePath);
+expectExcludes(apiProfileText, "'legacy'", apiProfilePath);
+
 const homePagePath = 'apps/weapp/pages/home/index.js';
 const homePageText = readText(homePagePath);
 expectIncludes(homePageText, 'goGalleryDetail', homePagePath);
 expectIncludes(homePageText, '/pages/gallery-detail/index?id=', homePagePath);
 expectIncludes(homePageText, 'normalizeGalleryItems', homePagePath);
+expectExcludes(homePageText, 'switchToLegacyProfile', homePagePath);
+expectExcludes(homePageText, 'applyApiProfile', homePagePath);
+
+const homeWxmlPath = 'apps/weapp/pages/home/index.wxml';
+const homeWxmlText = readText(homeWxmlPath);
+expectIncludes(homeWxmlText, '唯一主线 apps/api', homeWxmlPath);
+expectExcludes(homeWxmlText, 'apps/server', homeWxmlPath);
+expectExcludes(homeWxmlText, '开发环境切流开关', homeWxmlPath);
 
 const galleryDetailPagePath = 'apps/weapp/pages/gallery-detail/index.js';
 const galleryDetailPageText = readText(galleryDetailPagePath);

@@ -55,6 +55,7 @@
 - 若没有新的页面级 UAT 结果回填，不新增 frontend / backend 代码任务；优先保持 README、PRD、ARCHITECTURE、API、TASKS、UAT_GUIDE、UAT_RESULTS 之间事实一致。
 - 当前唯一高优先级外部动作仍是：在微信开发者工具完成页面级 UAT，并把结果回填 `docs/UAT_RESULTS.md`。
 - 一旦 UAT 回填出现明确缺陷，再从“当前有效任务视图”上方重新生成新的 active task 包，不直接回滚到旧 server / cutover / 并行阶段任务池。
+- 状态更新（2026-03-26 19:31 Asia/Shanghai）：architect 在持续稳态检查中发现 `apps/weapp` 仍残留 `apiProfile` 默认指向 `apps/server:3000` 的旧切流配置，与 README / PRD / ARCHITECTURE / API / UAT 文档中的“`apps/api` 唯一主线”事实不一致。已直接收口前端全局默认基线为 `apps/api:3100`，移除首页对旧 `apps/server` 的切换文案，并补 `contract-selfcheck` 守卫，防止该类旧基线入口再次回退。
 
 ## 2026-03-24 新增收口任务
 

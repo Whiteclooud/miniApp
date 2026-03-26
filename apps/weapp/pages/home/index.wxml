@@ -17,14 +17,9 @@
     <view class="api-profile-url">Base URL：{{apiProfileBaseUrl}}</view>
   </view>
 
-  <view wx:if="{{canSwitchApiProfile}}" class="card api-switch-card">
-    <view class="api-profile-label">开发环境切流开关</view>
-    <view class="api-switch-desc">默认仍使用 apps/server；只有你显式切换时，才会把当前设备流量导向 apps/api。</view>
-    <view class="api-switch-actions">
-      <button class="button-secondary switch-button" bindtap="switchToApiProfile" loading="{{switchingApiProfile}}" disabled="{{switchingApiProfile || apiProfileKey === 'api'}}">切到 apps/api</button>
-      <button class="button-secondary switch-button" bindtap="switchToLegacyProfile" loading="{{switchingApiProfile}}" disabled="{{switchingApiProfile || apiProfileKey === 'legacy'}}">使用 apps/server</button>
-      <button class="button-plain switch-link" bindtap="resetApiProfile" disabled="{{switchingApiProfile}}">恢复默认基线</button>
-    </view>
+  <view class="card api-switch-card">
+    <view class="api-profile-label">当前执行口径</view>
+    <view class="api-switch-desc">当前小程序页面默认对接唯一主线 apps/api，本轮页面级 UAT 也以这条基线为准。</view>
   </view>
 
   <view class="section-header">
