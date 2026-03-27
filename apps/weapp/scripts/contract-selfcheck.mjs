@@ -200,9 +200,14 @@ expectExcludes(homePageText, 'applyApiProfile', homePagePath);
 
 const homeWxmlPath = 'apps/weapp/pages/home/index.wxml';
 const homeWxmlText = readText(homeWxmlPath);
-expectIncludes(homeWxmlText, '唯一主线 apps/api', homeWxmlPath);
+expectIncludes(homeWxmlText, '返图灵感', homeWxmlPath);
 expectExcludes(homeWxmlText, 'apps/server', homeWxmlPath);
+expectExcludes(homeWxmlText, '当前接口基线', homeWxmlPath);
+expectExcludes(homeWxmlText, '当前执行口径', homeWxmlPath);
 expectExcludes(homeWxmlText, '开发环境切流开关', homeWxmlPath);
+expectExcludes(homeWxmlText, '切到 apps/api', homeWxmlPath);
+expectExcludes(homeWxmlText, '使用 apps/server', homeWxmlPath);
+expectExcludes(homeWxmlText, '恢复默认基线', homeWxmlPath);
 
 const galleryDetailPagePath = 'apps/weapp/pages/gallery-detail/index.js';
 const galleryDetailPageText = readText(galleryDetailPagePath);

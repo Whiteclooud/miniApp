@@ -122,7 +122,7 @@
 
 .calendar-cell {
   flex: 1;
-  min-height: 140rpx;
+  min-height: 180rpx;
   padding: 16rpx 12rpx;
   border-radius: 18rpx;
   background: #fff8f4;
@@ -163,6 +163,27 @@
   flex-direction: column;
   gap: 8rpx;
   margin-top: 12rpx;
+}
+
+.calendar-customers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.calendar-customer {
+  max-width: 100%;
+  padding: 4rpx 10rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.84);
+  color: #6d4f43;
+  font-size: 20rpx;
+  line-height: 1.4;
+}
+
+.calendar-customer.more {
+  color: #c35e72;
 }
 
 .calendar-badge {
@@ -236,6 +257,40 @@
 
 .detail-filter-helper {
   margin-top: 14rpx;
+}
+
+.day-detail-list {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.day-detail-item {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f3;
+}
+
+.day-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.day-detail-slot {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.day-detail-meta,
+.day-detail-note {
+  margin-top: 12rpx;
+  color: #6d4f43;
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 
 .compact-state-card {

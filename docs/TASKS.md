@@ -65,6 +65,7 @@
 - 本轮已经有新的页面级 UAT 结果，因此允许重新生成 frontend / backend active task 包，不再停留在“只维护文档一致性、不新增代码任务”的状态。
 - 当前派工顺序固定为：先补规则保存 404 -> 再回归未来日期窗口 -> 同步补首页返图基线 -> 最后收口店员月历增强与整体验收。
 - 状态更新（2026-03-27）：architect 已直接代码复核确认 `apps/api/src/booking-rules/booking-rules.controller.ts` 缺少 `PUT` 路由，这是本轮 `404` 的直接原因；同时 `gallery` 当前纯读 DB，当前开发库若无种子数据会稳定触发首页空态，因此首页返图问题不能只按“前端页面渲染异常”理解。
+- 状态更新（2026-03-27 09:4x Asia/Shanghai）：architect 已在当前主仓直接补齐 `PUT /api/v1/staff/booking-rules` 与基础校验/持久化，新增 `apps/api/scripts/booking-rules-gallery-smoke.mjs` 并通过 `npm run smoke:booking-rules`；同时已把 booking 页“显式选未来日期却被接口 selectedDate 拉回今天”的前端防回退处理、店员月历顾客摘要/按日时段明细、首页开发态文案自检，以及 gallery 无 active 数据时的 fallback 一并收口到当前主仓。当前统一基线已再次通过 `npm run check:weapp-contract`、关键页面 `node --check`、`apps/api npm run build` 与 `npm run smoke:booking-rules`，下一步回到页面级回归验证，而不是继续猜测 `404` 或首页空态原因。
 
 ## 2026-03-27 页面级 UAT 收口任务
 

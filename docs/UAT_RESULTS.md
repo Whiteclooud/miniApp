@@ -44,9 +44,11 @@
 
 ### 架构侧代码复核结论
 
-- `apps/api/src/booking-rules/booking-rules.controller.ts` 当前仅实现 `GET /api/v1/staff/booking-rules`，未实现 `PUT`，可直接解释本轮 `404`。
-- `apps/api/src/gallery/gallery.service.ts` 当前为纯数据库读取；若 `gallery_items` 为空，首页会稳定进入“返图内容整理中”空态，因此当前 UAT 基线还缺少可见返图演示数据。
-- “未来日期只显示今天”的现象仍需按真实运行数据继续复核；在 `PUT /api/v1/staff/booking-rules` 修复前，不再把顾客预约未来日期窗口视为已关闭问题。
+- 首轮复核时，`apps/api/src/booking-rules/booking-rules.controller.ts` 确认只实现了 `GET /api/v1/staff/booking-rules`，未实现 `PUT`，这就是本轮 `404` 的直接原因。
+- 首轮复核时，`apps/api/src/gallery/gallery.service.ts` 也确认是纯数据库读取；若 `gallery_items` 没有 active 数据，首页会稳定进入“返图内容整理中”空态，因此首页返图问题不能只按“前端没渲染”理解。
+- 2026-03-27 09:4x Asia/Shanghai：architect 已直接在当前主仓补齐 `PUT /api/v1/staff/booking-rules`、基础校验与持久化，并新增 `apps/api/scripts/booking-rules-gallery-smoke.mjs` 完成主线验证；当前已实际通过 `npm run smoke:booking-rules`，确认规则可保存、可读回，并能联动 `availability.dateOptions`。
+- 同轮主仓收口还包含：booking 页对 `selectedDate` 异常回退的前端防守、店员月历格顾客摘要与按日时段明细、首页开发态文案防回退自检，以及 gallery 在“无 active 数据”时的 fallback 基线。
+- 因此当前页面 UAT 的剩余重点已经从“确认 404 是否真实存在”切回“再次在真实页面环境确认未来日期窗口、返图展示与月历增强是否符合预期”。
 
 ---
 
