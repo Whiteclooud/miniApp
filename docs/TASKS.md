@@ -61,6 +61,10 @@
 > 状态更新（2026-03-29 14:23 Asia/Shanghai）：因当前已无活跃 worker、且前端剩余工作边界清晰，architect 将按既有冻结范围重新派发 frontend run，并优先要求其直接消费主仓已落库的后端契约，不新增文档或后端改动；在这轮结果回收前，项目仍处于“前端实施中，待回收结果”的状态。
 >
 > 状态更新（2026-03-29 14:29 Asia/Shanghai）：architect 已再次向 `miniapp-frontend` 派发 run `fe-20260329-experience-upgrade-1429`，任务范围继续严格收敛为 FE-018 / FE-019 / FE-020 / FE-021，并显式要求只在前端 workspace 内直接实现、直接消费当前主仓后端契约、禁止再扩 docs / backend 范围。当前项目重新进入“frontend worker 实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 14:32 Asia/Shanghai）：frontend 已回收有效候选提交 `c2b57bc feat(weapp): polish gallery and booking experience` 与补丁 `281d5b1 fix(weapp): normalize gallery publish timestamp`，覆盖 FE-018 / FE-019 / FE-020 / FE-021：首页返图“查看全部”与列表信息增强、顾客预约页继续沿用月历选期并补状态图例、店员返图管理页最小闭环、店员审核结果改判提示。frontend 回报已通过语法检查与 `git diff --check`，但这批改动尚未导入 architect 主仓，因此当前最高优先级已从“继续前端实现”切换为“导出可审阅材料并做 architect 收口”。
+>
+> 状态更新（2026-03-29 14:33 Asia/Shanghai）：architect 已重新派发短任务 `fe-20260329-export-281d5b1`，只要求 frontend 把 `c2b57bc / 281d5b1` 的 patch、MANIFEST 与最终文件快照导出到 architect 工作区 `.integration/`，不再新增业务改动。当前阶段收敛为“等待前端交接材料 -> architect 审阅并决定是否合入主仓”。
 
 ## 当前执行边界（2026-03-29）
 
