@@ -53,6 +53,8 @@
 > 状态更新（2026-03-29 13:32 Asia/Shanghai）：backend run 已完成并回收候选 commit `7e15ac5`，实现范围覆盖 BE-025 / BE-026 / BE-027 / BE-028：`GET /api/v1/gallery` 扩展到首页 3 条 / 全量列表 / 详情多图、店员图片上传与返图管理、`GET /api/v1/availability` 新增 `calendarDays`、店员审核结果支持再次修改且重算占用逻辑；backend 回报 `npm run build`、gallery / availability / review smoke 与测试均通过。当前最高优先级已从“等待 backend 完成”切换为“architect 先审这版后端候选补丁是否完全符合冻结范围，再在运行时条件允许时重新派发 frontend FE-018 / FE-019 / FE-021”。
 >
 > 状态更新（2026-03-29 13:46 Asia/Shanghai）：architect 已在当前主仓直接复跑 backend 候选改动：先修正 `uploads.controller.ts` 的类型问题，再把 `apps/api/scripts/smoke-parallel-run.cjs` 从旧的“重复审核=409”断言更新为当前冻结的“审核结果可修改、以最新状态为准”语义；随后已在 `apps/api` 实际通过 `npm run build` 与 `npm test`，并以提交 `934090f feat: land backend experience upgrade baseline` 收口到主仓。判定：backend 这轮体验优化结果已不再是当前阶段阻塞，唯一未完成的实施面收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
+>
+> 状态更新（2026-03-29 13:49 Asia/Shanghai）：architect 已基于当前主仓后端提交重新派发 frontend run `fe-20260329-experience-upgrade-final-rerun`，任务边界只保留 FE-018 / FE-019 / FE-020 / FE-021，并明确要求直接消费已经落库的 gallery / uploads / staff gallery / availability.calendarDays / review 新口径，不再额外扩 docs 或后端范围。当前阶段重新进入“前端 worker 实施中，待回收结果”的状态。
 
 ## 当前执行边界（2026-03-29）
 
