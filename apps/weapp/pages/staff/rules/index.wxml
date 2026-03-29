@@ -17,8 +17,9 @@
 
   <view class="card nav-card">
     <view class="nav-title">店员工作台</view>
-    <view class="action-row">
+    <view class="action-row action-row-wrap">
       <button class="button-primary compact-button">预约规则</button>
+      <button class="button-secondary compact-button" bindtap="goGallery">返图管理</button>
       <button class="button-secondary compact-button" bindtap="goAppointments">预约列表</button>
     </view>
   </view>

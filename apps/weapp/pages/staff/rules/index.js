@@ -390,6 +390,12 @@ Page({
     });
   },
 
+  goGallery() {
+    wx.redirectTo({
+      url: '/pages/staff/gallery/index'
+    });
+  },
+
   changeAdvanceOpenDays(value) {
     const nextValue = `${Math.max(0, Number(value) || 0)}`;
     const nextForm = {

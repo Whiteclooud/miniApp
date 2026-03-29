@@ -5,6 +5,7 @@
 .nav-card,
 .state-card,
 .summary-card,
+.review-notice-card,
 .calendar-card,
 .detail-card,
 .booking-card,
@@ -69,6 +70,22 @@
   margin-top: 16rpx;
 }
 
+.review-notice-card {
+  background: #fff8f3;
+}
+
+.review-notice-title {
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.review-notice-text {
+  margin-top: 10rpx;
+  color: #7d5b4c;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
 .calendar-header,
 .calendar-week,
 .action-row,
@@ -77,6 +94,10 @@
 .calendar-day-row,
 .calendar-badges {
   display: flex;
+}
+
+.action-row-wrap {
+  flex-wrap: wrap;
 }
 
 .calendar-header {

@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="section-card card">
+    <view class="section-title">全部返图灵感</view>
+    <view class="section-desc">按发布时间倒序展示全部已发布返图；列表只展示封面图，点击后进入详情查看多图。</view>
+  </view>
+
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">返图列表加载中...</view>
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">{{stateMessage}}</view>
+  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">{{stateMessage}}</view>
+  <view wx:else class="gallery-grid">
+    <view wx:for="{{galleryItems}}" wx:key="id" class="gallery-card" data-id="{{item.id}}" bindtap="goGalleryDetail">
+      <image wx:if="{{item.imageUrl}}" class="gallery-image" mode="aspectFill" src="{{item.imageUrl}}" />
+      <view class="gallery-body">
+        <view class="gallery-title">{{item.title}}</view>
+        <view wx:if="{{item.description}}" class="gallery-desc">{{item.description}}</view>
+        <view wx:if="{{item.tags.length}}" class="gallery-tags">
+          <text wx:for="{{item.tags}}" wx:key="*this" class="tag">#{{item}}</text>
+        </view>
+        <view class="gallery-footer">
+          <text class="gallery-time">{{item.publishedAtText || '待发布'}}</text>
+          <text class="detail-link">查看详情</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

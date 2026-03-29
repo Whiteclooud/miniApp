@@ -39,6 +39,14 @@
 - 驳回备注 `reviewNote` 继续沿用现有数据模型，不新增字段；若店员填写，顾客侧可直接复用现有预约详情/列表渲染展示。
 - 新增店员侧体验要求：`pages/staff/appointments` 需支持“月历 / 月视图”总览当月日程。默认优先复用现有 staff appointments 数据在前端做月历聚合；若现有接口不足以支撑月视图，再由 architect 单独补 backend 契约，不允许前端自行发明接口。
 
+## 本轮体验优化补充（2026-03-29）
+
+- 首页返图灵感从“首页封面 + 详情多图”升级为“首页最近 3 条 + 全部返图列表 + 详情多图”三级结构：首页只负责最近内容与入口，`pages/gallery-list` 承担历史内容浏览，详情仍复用 gallery 数据，不新增独立 detail 接口。
+- 顾客预约页的日期选择组件改为复用 / 适配店员端月历能力，因此 `availability` 除 `dateOptions` 外，还需提供可支撑月历格渲染的日期状态信息（如可约、已满、闭店、超窗）。
+- 店员端新增返图内容管理能力；架构上拆为“图片上传能力 + 返图内容元数据管理”两层，避免把二进制上传与返图业务字段耦合成一个超大接口。
+- 店员审核从“一次性 review”改为“可修改最终结果”的 set-status 语义：最新一次审核结果生效；当状态改回 `approved` 时，仍需重新校验 slot 冲突；从 `approved` 改回 `rejected` 时，需要立即释放该时段占用。
+- 前端需要抽共享日历组件或共享日历渲染层，供 `pages/staff/appointments` 与 `pages/booking` 共用，避免后续两套日期状态口径再次漂移。
+
 ## 为什么当前这样做
 
 - 微信单端项目中，原生小程序调试路径最短，仍适合当前 V1 收口阶段。
@@ -72,19 +80,25 @@
 ### 前端模块
 
 - 首页 `pages/home`
+- 返图列表页 `pages/gallery-list`
 - 返图详情页 `pages/gallery-detail`
 - 预约页 `pages/booking`
 - 我的预约 `pages/my-bookings`
 - 店员规则配置 `pages/staff/rules`
+- 店员返图管理 `pages/staff/gallery`
 - 店员预约审核 `pages/staff/appointments`
+- 共享月历组件 / 渲染层（供顾客预约与店员月历复用）
 - 请求封装 `utils/request.js`
 - 顾客预约相关服务 `services/appointment.js`
+- 返图内容相关服务 `services/gallery.js`
 
 ### 后端模块
 
 - 健康检查 `/health`
-- 首页图库 `/api/v1/gallery`
+- 首页 / 全部返图库 `/api/v1/gallery`
 - 返图详情仍复用 `/api/v1/gallery` 返回的案例明细（V1 不新增独立详情接口）
+- 店员图片上传 `/api/v1/staff/uploads/images`
+- 店员返图管理 `GET/POST/PATCH /api/v1/staff/gallery`
 - 可预约时段 `/api/v1/availability`
 - 顾客创建预约 `POST /api/v1/appointments`
 - 顾客查询我的预约 `GET /api/v1/my/appointments`
@@ -93,15 +107,17 @@
 - 店员预约详情 `/api/v1/staff/appointments/:id`
 - 店员审核预约 `POST/PATCH /api/v1/staff/appointments/:id/review`
 
-## 接口冻结说明（2026-03-16 复核）
+## 接口冻结说明（2026-03-16 复核，2026-03-29 增补）
 
 - 当前顾客身份主键固定为 `customerOpenId`。
 - 顾客侧身份统一从请求头 `X-Customer-OpenId` 读取。
 - 店员侧身份统一从请求头 `X-Staff-OpenId` 读取。
 - 顾客预约页以“可预约日期 + 时间段”为核心，不再要求先选服务项目。
 - 首页展示实体固定为 `gallery`，不再引入 `hot-styles`、`artists`、`services` 作为当前 V1 主链路接口。
-- `GET /api/v1/gallery` 可直接承载首页封面图与详情多图字段（`imageUrl` + `imageUrls`），V1 不新增独立详情接口。
-- `GET /api/v1/availability?date=...` 需要返回该日应展示的全部时段，并同时携带 `status`、`reasonCode`、`reasonText` 供前端做卡片化禁用提示。
+- `GET /api/v1/gallery` 同时承载首页最近 3 条、全部返图列表与详情多图字段（`imageUrl` + `imageUrls`），通过排序 / limit 控制不同页面视图，V1 不新增独立详情接口。
+- 店员返图维护走 `/api/v1/staff/uploads/images` + `/api/v1/staff/gallery` 两段式契约：先上传图片，再保存返图元数据。
+- `GET /api/v1/availability?date=...` 需要返回该日应展示的全部时段，并同时携带 `status`、`reasonCode`、`reasonText` 供前端做卡片化禁用提示；为支持顾客端月历组件，还需补充日期级状态数据。
+- 店员审核接口从“一次性 review”改为“最终状态可修改”，最新审核结果生效；改回 `approved` 时仍需校验冲突。
 - 本地 UAT 默认店员身份固定包含 `staff-openid-demo`，避免文档环境与服务默认白名单漂移。
 - 旧接口 `GET /api/v1/services`、`GET /api/v1/hot-styles`、`GET /api/v1/artists`、旧版 `GET /api/v1/appointments` 不再属于当前冻结契约。
 
@@ -113,14 +129,18 @@
 - `title`
 - `imageUrl`
 - `imageUrls`
+- `description`
 - `tags`
+- `publishedAt`
 - `sortOrder`
 - `status`
+- `createdBy`
 
 说明：
 - `GalleryItem` 用于首页返图 / 案例展示。
 - `imageUrl` 作为首页封面图；`imageUrls` 作为详情页多图数组，若缺失则前端以前台封面图兜底。
-- V1 先支持静态种子或轻量维护，不扩展为复杂内容管理系统。
+- `description` 承载店员填写的文字说明；`tags` 承载返图标签；`publishedAt` 用于顾客侧列表按时间倒序展示。
+- V1 支持店员端轻量维护，不扩展为复杂内容管理系统。
 
 ### BookingRule
 
@@ -154,6 +174,7 @@
 - `id` 是预约主键；`customerOpenId` 是顾客身份键，一个顾客可有多条预约记录。
 - `customerName` / `phone` 仅作联系补充信息，不再作为“我的预约”主查询条件。
 - `status` 仅允许：`pending`、`approved`、`rejected`。
+- 审核结果允许被后续店员操作覆盖，系统以最新一次 `status / reviewedAt / reviewedBy / reviewNote` 为准。
 - 单员工模式下，同一 `date + timeSlot` 最多只能有 1 条 `approved` 预约。
 
 ## 接口边界与兼容策略
@@ -171,12 +192,12 @@
 
 ### 顾客侧
 
-1. 首页只承载品牌展示、返图封面展示、顾客入口 / 店员入口分流与预约 CTA。
-2. 预约页只承载“选择日期 -> 以时段卡片展示可选/不可选时间段 -> 填写补充联系信息 -> 提交申请”。
+1. 首页只承载品牌展示、返图封面展示、顾客入口 / 店员入口分流与预约 CTA；返图区默认只显示最近 3 条内容，并提供“查看全部返图灵感”入口。
+2. 预约页只承载“在月历中选择日期 -> 以时段卡片展示可选/不可选时间段 -> 填写补充联系信息 -> 提交申请”。
 3. “我的预约”只按当前顾客 OpenID 查询。
 4. 页面必须对 loading / empty / error / unauthorized 给出显性反馈。
-5. 返图卡片支持点击进入详情页查看多图，不在首页直接展开全部明细图。
-6. 预约页的日期选择采用横向日期条：每个日期单元至少展示“日期 + 星期 + 状态文案”；当前选中日期需高亮并有明显选中态（如下划线/主题色）。
+5. 返图卡片支持点击进入详情页查看多图；列表页负责浏览全部历史返图，不在首页直接展开全部明细图。
+6. 预约页日期选择改为月历视图：日期格至少需标记可约、已满、闭店、超窗等状态；当前选中日期需高亮并与下方时段区联动。
 7. 预约页的时间段以卡片/按钮式网格展示，优先两列布局：卡片主文案为 `timeSlot`，副文案为可预约说明或不可预约原因。
 8. `status=active` 的时间段卡片可点选；非可约状态灰显、不可点击，并展示原因文案（如 `满`、`剩余0`、`未开放`、`当日关闭`）。
 9. 参考图只约束预约页的信息结构与交互反馈，不约束整体视觉皮肤；前端应继续沿用当前项目既有配色、圆角、留白与品牌感样式。
@@ -185,10 +206,11 @@
 
 1. 规则页负责维护 `advanceOpenDays`、`closedDates`、`dailySlots`。
 2. 规则页前端交互使用结构化控件完成配置：开放天数用选择控件，闭店日期用日期选择 / 已选列表，时间段用可增删的独立项；不直接暴露原始文本编辑作为主交互。
-3. 审核页默认聚焦 `pending` 列表，并支持 approve / reject。
-4. 审核页补充月历 / 月视图能力：按月展示日期格、日程摘要、状态标记，并支持点击日期联动当日预约明细；V1 不做拖拽排期、周视图 / 日视图 / 多资源排班。
-5. 若店员填写 `reviewNote`，顾客侧允许直接展示该审核说明 / 驳回原因。
-6. 店员端不暴露给普通顾客作为常规 tab；通过首页受控入口进入。
+3. 店员返图管理页负责图片上传与返图元数据维护，最小字段包括封面 / 多图、标签、文字说明与发布时间。
+4. 审核页默认聚焦 `pending` 列表，但也要允许进入已审核记录并修改最终状态。
+5. 审核页补充月历 / 月视图能力：按月展示日期格、日程摘要、状态标记，并支持点击日期联动当日预约明细；V1 不做拖拽排期、周视图 / 日视图 / 多资源排班。
+6. 若店员填写 `reviewNote`，顾客侧允许直接展示该审核说明 / 驳回原因。
+7. 店员端不暴露给普通顾客作为常规 tab；通过首页受控入口进入。
 
 ## 增量重构方向（2026-03-20）
 

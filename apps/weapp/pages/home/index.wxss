@@ -43,6 +43,13 @@
   margin: 36rpx 0 18rpx;
 }
 
+.section-header-inline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
 .section-title {
   font-size: 34rpx;
   font-weight: 700;
@@ -54,9 +61,20 @@
   font-size: 24rpx;
 }
 
+.view-all-button {
+  flex-shrink: 0;
+  padding-right: 0;
+  font-size: 24rpx;
+}
+
+.gallery-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
 .gallery-card {
   overflow: hidden;
-  margin-bottom: 22rpx;
   padding: 0;
 }
 
@@ -70,9 +88,23 @@
   padding: 24rpx 24rpx 28rpx;
 }
 
+.gallery-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+  align-items: flex-start;
+}
+
 .gallery-title {
+  flex: 1;
   font-size: 32rpx;
   font-weight: 600;
+}
+
+.gallery-time {
+  flex-shrink: 0;
+  color: #a08578;
+  font-size: 22rpx;
 }
 
 .gallery-tags {

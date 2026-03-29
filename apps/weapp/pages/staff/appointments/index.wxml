@@ -17,8 +17,9 @@
 
   <view class="card nav-card">
     <view class="nav-title">店员工作台</view>
-    <view class="action-row">
+    <view class="action-row action-row-wrap">
       <button class="button-secondary compact-button" bindtap="goRules">预约规则</button>
+      <button class="button-secondary compact-button" bindtap="goGallery">返图管理</button>
       <button class="button-primary compact-button">预约列表</button>
     </view>
   </view>
@@ -43,6 +44,10 @@
   <block wx:else>
     <view class="section-title">店员预约总览</view>
     <view class="section-desc">默认覆盖待审核 / 已通过 / 已拒绝 / 历史预约，并基于未传 status 的 staff appointments 数据在前端聚合出月历总览。</view>
+    <view class="card review-notice-card">
+      <view class="review-notice-title">审核口径</view>
+      <view class="review-notice-text">当前支持对已审核结果再次修改，系统以最新审核结果为准；改回通过时仍会校验时段冲突。</view>
+    </view>
 
     <view class="card summary-card">
       <view class="summary-grid summary-grid-quad">
@@ -147,10 +152,10 @@
         <view wx:if="{{item.reviewedAtText}}" class="info-row"><view class="info-label">审核时间</view><view class="info-value">{{item.reviewedAtText}}</view></view>
         <view wx:if="{{item.reviewNote}}" class="info-row"><view class="info-label">审核说明</view><view class="info-value">{{item.reviewNote}}</view></view>
         <view wx:if="{{item.canReview}}" class="review-action-row">
-          <view class="helper-text">待审核预约可直接调用 `/api/v1/staff/appointments/:id/review` 完成审核。</view>
-          <view class="action-row">
-            <button class="button-primary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="approve" loading="{{reviewStateMap[item.id] === 'approving'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">通过预约</button>
-            <button class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="reject" loading="{{reviewStateMap[item.id] === 'rejecting'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">驳回预约</button>
+          <view class="helper-text">{{item.reviewHint}}</view>
+          <view class="action-row action-row-wrap">
+            <button wx:if="{{item.showApproveAction}}" class="button-primary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="approve" loading="{{reviewStateMap[item.id] === 'approving'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">{{item.approveActionText}}</button>
+            <button wx:if="{{item.showRejectAction}}" class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="reject" loading="{{reviewStateMap[item.id] === 'rejecting'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">{{item.rejectActionText}}</button>
           </view>
         </view>
       </view>

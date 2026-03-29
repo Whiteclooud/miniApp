@@ -1,0 +1,118 @@
+<view class="container">
+  <view class="card identity-card">
+    <view class="identity-label">店员身份主键</view>
+    <view class="identity-value">{{staffIdentity.openId || staffIdentity.label}}</view>
+    <view class="helper-text">{{staffIdentity.sourceText}}</view>
+  </view>
+
+  <view wx:if="{{staffIdentity.isDevelopEnv}}" class="card dev-card">
+    <view class="identity-label">开发环境模拟店员 OpenID</view>
+    <input class="field-input" value="{{staffOpenIdInput}}" bindinput="onStaffOpenIdInput" placeholder="填写店员 mock OpenID，便于联调 staff 接口" />
+    <view class="action-row action-row-wrap">
+      <button class="button-primary compact-button" bindtap="applyStaffOpenId">保存并查询</button>
+      <button class="button-secondary compact-button" bindtap="generateStaffOpenId">生成模拟 OpenID</button>
+      <button class="button-ghost compact-button" bindtap="clearStaffOpenId">清空店员 OpenID</button>
+    </view>
+  </view>
+
+  <view class="card nav-card">
+    <view class="nav-title">店员工作台</view>
+    <view class="action-row action-row-wrap">
+      <button class="button-secondary compact-button" bindtap="goRules">预约规则</button>
+      <button class="button-primary compact-button">返图管理</button>
+      <button class="button-secondary compact-button" bindtap="goAppointments">预约列表</button>
+    </view>
+  </view>
+
+  <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+    <view class="state-title">返图管理加载中</view>
+    <view class="state-desc">正在读取店员返图内容与已发布数据，请稍候。</view>
+  </view>
+
+  <view wx:elif="{{pageState === 'error'}}" class="card state-card">
+    <view class="state-title">返图管理页加载失败</view>
+    <view class="state-desc">{{stateMessage}}</view>
+    <button class="button-secondary" bindtap="loadData">重新加载</button>
+  </view>
+
+  <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+    <view class="state-title">店员身份不可用</view>
+    <view class="state-desc">{{stateMessage}}</view>
+    <button class="button-secondary" bindtap="loadData">重新检查</button>
+  </view>
+
+  <block wx:else>
+    <view class="card editor-card">
+      <view class="editor-header">
+        <view>
+          <view class="section-title">{{editingId ? '编辑返图内容' : '新建返图内容'}}</view>
+          <view class="helper-text">支持多图上传、默认/手动封面、标签、说明、发布时间与草稿/发布状态。</view>
+        </view>
+        <button class="button-secondary compact-button" bindtap="startCreate">新建</button>
+      </view>
+
+      <view class="field-label">返图标题</view>
+      <input class="field-input" data-field="title" value="{{form.title}}" bindinput="onInput" placeholder="例如：极光猫眼" />
+
+      <view class="field-label">图片</view>
+      <button class="button-secondary compact-button" bindtap="addImages" loading="{{uploadState === 'uploading'}}">上传图片</button>
+      <view wx:if="{{uploadMessage}}" class="inline-error">{{uploadMessage}}</view>
+      <view wx:if="{{form.imageUrls.length}}" class="image-grid">
+        <view wx:for="{{form.imageUrls}}" wx:key="*this" class="image-card">
+          <image class="image-thumb" mode="aspectFill" src="{{item}}" />
+          <view class="image-actions">
+            <button class="mini-button {{index === form.coverIndex ? 'mini-button-active' : ''}}" data-index="{{index}}" bindtap="chooseCover">{{index === form.coverIndex ? '当前封面' : '设为封面'}}</button>
+            <button class="mini-button danger" data-index="{{index}}" bindtap="removeImage">删除</button>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="helper-text">当前还没有图片，至少上传 1 张后再保存。</view>
+
+      <view class="field-label">标签</view>
+      <input class="field-input" data-field="tagsText" value="{{form.tagsText}}" bindinput="onInput" placeholder="多个标签用逗号分隔，例如：猫眼, 通勤, 热门" />
+
+      <view class="field-label">文字说明</view>
+      <textarea class="field-textarea" data-field="description" value="{{form.description}}" bindinput="onInput" placeholder="补充返图风格、适合场景或亮点描述" />
+
+      <view class="field-label">发布时间</view>
+      <view class="picker-grid">
+        <picker mode="date" value="{{form.publishDate}}" bindchange="onPublishDateChange">
+          <view class="picker-trigger">{{form.publishDate}}</view>
+        </picker>
+        <picker mode="time" value="{{form.publishTime}}" bindchange="onPublishTimeChange">
+          <view class="picker-trigger">{{form.publishTime}}</view>
+        </picker>
+      </view>
+      <button class="button-ghost compact-button" bindtap="setPublishNow">使用当前时间</button>
+
+      <view class="field-label">发布状态</view>
+      <view class="status-chip-row">
+        <view class="status-chip {{form.status === 'active' ? 'status-chip-active' : ''}}" data-status="active" bindtap="setStatus">立即发布</view>
+        <view class="status-chip {{form.status === 'inactive' ? 'status-chip-active' : ''}}" data-status="inactive" bindtap="setStatus">保存草稿</view>
+      </view>
+
+      <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>
+      <button class="button-primary" bindtap="submit" loading="{{saveState === 'submitting'}}">{{editingId ? '保存修改' : '创建返图'}}</button>
+    </view>
+
+    <view class="section-title list-title">已维护返图</view>
+    <view wx:if="{{items.length}}" class="gallery-list">
+      <view wx:for="{{items}}" wx:key="id" class="card list-card">
+        <image wx:if="{{item.imageUrl}}" class="list-cover" mode="aspectFill" src="{{item.imageUrl}}" />
+        <view class="list-body">
+          <view class="list-head">
+            <view class="list-name">{{item.title}}</view>
+            <view class="status-pill {{item.status}}">{{item.statusText}}</view>
+          </view>
+          <view wx:if="{{item.description}}" class="list-desc">{{item.description}}</view>
+          <view wx:if="{{item.tags.length}}" class="tag-list">
+            <text wx:for="{{item.tags}}" wx:key="*this" class="tag-item">#{{item}}</text>
+          </view>
+          <view class="helper-text">发布时间：{{item.publishedAtText || '未设置'}} · 图片 {{item.imageUrls.length}} 张</view>
+          <button class="button-secondary compact-button" data-id="{{item.id}}" bindtap="startEdit">编辑</button>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="card state-card">{{stateMessage || '当前还没有返图内容，先创建第一条灵感内容吧。'}}</view>
+  </block>
+</view>

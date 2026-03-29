@@ -2,70 +2,98 @@
 
 ## 当前阶段
 
-截至 2026-03-27，项目主线仍为：
+截至 2026-03-29，项目主线仍为：
 
 - 前端：`apps/weapp`
 - 后端：`apps/api`
 - 旧 `apps/server`：已退场，不再作为联调、验收或回滚默认目标
 
-当前阶段已经从“等待页面级 UAT 执行”切换为：
+当前阶段已从“P0 主链路修缺陷”切换为：
 
-> **基于 2026-03-27 页面级 UAT 问题的主线缺陷收口 + 文档更新 + 前后端重新派工**
+> **P0 UAT 6 项已通过，当前进入“体验升级 + 店员运营能力补齐”的执行阶段。**
 
-当前明确问题已收敛为 4 类：
-- 首页返图当前在真实页面环境中未显示，直接落到空态
-- 顾客预约未来日期窗口在真实页面环境中仍表现为“只能看今天”
-- 店员规则保存 `PUT /api/v1/staff/booking-rules` 返回 `404`
-- 店员月历虽已常驻，但还缺“顾客可视化 + 选中日期具体时段明细”
+这轮新增范围已经明确收敛为 4 块：
+- 返图灵感从“首页 3 条”扩展到“全部返图列表 + 详情多图”
+- 店员端新增返图上传 / 标签 / 文字说明管理能力
+- 顾客预约日期组件改为复用店员端月历能力
+- 店员审核结果支持再次修改，并以最新结果为准
 
-## 当前有效任务视图（2026-03-27）
+## 当前有效任务视图（2026-03-29）
 
-### P0：收口本轮页面级 UAT 并冻结修复范围（进行中）
-- 将 Lan 本轮 UAT 结果写回 `docs/UAT_RESULTS.md`
-- 同步更新 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`
-- 输出新的 frontend / backend task brief，而不是继续沿用“待执行 UAT”状态
-- 完成定义：团队对当前问题范围、接口口径与下一步 owner 形成单一事实源
+### P0：冻结体验优化范围并同步文档（architect）
+- 已将本轮新增需求回写 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`
+- 继续补齐 `docs/TASKS.md` 并作为 frontend / backend 派工基线
+- 完成定义：团队对“做什么 / 不做什么 / 接口边界”只有一份事实源
 
-### P0：恢复店员规则保存链路（backend）
-- 补齐 `PUT /api/v1/staff/booking-rules`
-- 保持与冻结契约一致：`advanceOpenDays`、`closedDates`、`dailySlots`
-- 补参数校验、持久化与最小 smoke / 自测
-- 完成定义：店员规则页保存不再返回 `404`，保存后重进页面可读回相同结果
+### P0：Frontend 实施包
+- 首页返图灵感区保留最近 3 条，并新增“查看全部返图灵感”入口
+- 新增 `pages/gallery-list`，按时间倒序展示全部已发布返图，列表风格参考小红书式双列封面卡片
+- 顾客预约页复用 / 适配店员端月历组件，替换原横向日期条
+- 新增 / 改造店员返图管理页面，支持上传多图、填写标签与文字说明
+- 店员审核页支持对已审核记录再次修改结果
+- 完成定义：相关页面交互闭环可自测，且不自行发明后端字段
 
-### P0：复核并修正“顾客预约只显示今天”问题（frontend + backend）
-- backend 复核真实 `availability.dateOptions` 返回与当前规则数据
-- frontend 复核日期条渲染、切日交互与当前环境是否正确消费 `dateOptions + selectedDate + items`
-- 默认先依赖“规则保存链路恢复”后的真实数据再回归，不把静态代码表象当作问题已关闭
-- 完成定义：顾客端能看到未来预约窗口，并能切换查看未来日期对应时段
+### P0：Backend 实施包
+- 扩展 `GET /api/v1/gallery` 以支撑首页 3 条、全部返图列表、详情多图三种视图
+- 新增店员图片上传与返图内容管理接口：`/api/v1/staff/uploads/images`、`/api/v1/staff/gallery`
+- 扩展 `GET /api/v1/availability` 返回 `calendarDays`，支撑顾客端月历日期状态展示
+- 调整审核接口语义为“可修改最终审核状态”，并处理改回通过 / 改回拒绝时的占用逻辑
+- 完成定义：接口契约、自测与数据约束闭环成立，且不回退当前主链路
 
-### P1：补齐首页返图 UAT 可见基线（backend）
-- 为 `apps/api` 提供最小可见返图演示数据或等价初始化策略
-- 目标不是新增后台，而是保证 fresh DB / 当前开发环境下首页不会默认只剩“整理中”空态
-- 完成定义：首页至少能展示 1 组返图封面，详情页可进入并有多图或封面兜底
+### P1：页面级回归 UAT（本轮体验优化完成后）
+- 重点确认：首页 3 条返图、全部返图列表、返图详情多图、顾客月历选日期、店员上传返图、审核结果修改
+- 完成定义：`docs/UAT_RESULTS.md` 补出新一轮通过 / 不通过结论
 
-### P1：增强店员月历工作台可读性（frontend）
-- 月历格尽量展示已预约顾客姓名/简称，不只显示数量
-- 选中日期后，下方模块按时间段列出具体预约明细（时间段 + 顾客 + 状态 + 必要备注）
-- 保持基于现有 `GET /api/v1/staff/appointments` 聚合，不额外发明新接口
-- 完成定义：店员能直接用月历查看未来安排，不必再从“当天共几条”倒推具体工作内容
+> 状态更新（2026-03-29 13:0x Asia/Shanghai）：architect 已完成 2026-03-29 新阶段文档收口，并已分别向 `miniapp-frontend` / `miniapp-backend` 派发本轮体验优化 run；当前项目状态已从“待继续定义任务”推进到“worker 正在按冻结范围实施”，下一次高价值动作将是回收实现结果并组织本轮页面级体验 UAT。
+>
+> 状态更新（2026-03-29 13:26 Asia/Shanghai）：frontend 首轮 run 因 `stream_read_error` 中断，未形成可审阅交付；architect 已按更窄范围重新派发 frontend run，优先收口 FE-018 / FE-019 / FE-021，backend run 继续执行中。当前阶段判断仍为“worker 实施中，待回收结果”，暂不对外宣告里程碑或阻塞。
+>
+> 状态更新（2026-03-29 13:28 Asia/Shanghai）：frontend 第二次重派工未进入实现阶段，运行时直接返回 `Concurrency limit exceeded for account, please retry later`，且错误信息同时暴露其在读取外部 skill 路径时命中 sandbox root 限制；因此当前前端阻塞被收敛为“运行时并发额度 / 子任务启动环境问题”，不是已确认的业务实现偏航。backend run 仍在继续；下一步按 heartbeat 纪律等待当前 backend run 回收后，再重新派发 frontend FE-018 / FE-019 / FE-021，不在此时重复并发重试制造噪音。
+>
+> 状态更新（2026-03-29 13:32 Asia/Shanghai）：backend run 已完成并回收候选 commit `7e15ac5`，实现范围覆盖 BE-025 / BE-026 / BE-027 / BE-028：`GET /api/v1/gallery` 扩展到首页 3 条 / 全量列表 / 详情多图、店员图片上传与返图管理、`GET /api/v1/availability` 新增 `calendarDays`、店员审核结果支持再次修改且重算占用逻辑；backend 回报 `npm run build`、gallery / availability / review smoke 与测试均通过。当前最高优先级已从“等待 backend 完成”切换为“architect 先审这版后端候选补丁是否完全符合冻结范围，再在运行时条件允许时重新派发 frontend FE-018 / FE-019 / FE-021”。
+>
+> 状态更新（2026-03-29 13:46 Asia/Shanghai）：architect 已在当前主仓直接复跑 backend 候选改动：先修正 `uploads.controller.ts` 的类型问题，再把 `apps/api/scripts/smoke-parallel-run.cjs` 从旧的“重复审核=409”断言更新为当前冻结的“审核结果可修改、以最新状态为准”语义；随后已在 `apps/api` 实际通过 `npm run build` 与 `npm test`，并以提交 `934090f feat: land backend experience upgrade baseline` 收口到主仓。判定：backend 这轮体验优化结果已不再是当前阶段阻塞，唯一未完成的实施面收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
+>
+> 状态更新（2026-03-29 13:49 Asia/Shanghai）：architect 已基于当前主仓后端提交重新派发 frontend run `fe-20260329-experience-upgrade-final-rerun`，任务边界只保留 FE-018 / FE-019 / FE-020 / FE-021，并明确要求直接消费已经落库的 gallery / uploads / staff gallery / availability.calendarDays / review 新口径，不再额外扩 docs 或后端范围。当前阶段重新进入“前端 worker 实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 13:52 Asia/Shanghai）：frontend 这轮 final rerun 未产出代码交付，运行时直接返回临时服务不可用；判定为运行时可用性问题，而不是已确认的前端实现偏航。backend 基线仍维持已落主仓状态，当前唯一未完成面继续收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
+>
+> 状态更新（2026-03-29 14:23 Asia/Shanghai）：因当前已无活跃 worker、且前端剩余工作边界清晰，architect 将按既有冻结范围重新派发 frontend run，并优先要求其直接消费主仓已落库的后端契约，不新增文档或后端改动；在这轮结果回收前，项目仍处于“前端实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 14:29 Asia/Shanghai）：architect 已再次向 `miniapp-frontend` 派发 run `fe-20260329-experience-upgrade-1429`，任务范围继续严格收敛为 FE-018 / FE-019 / FE-020 / FE-021，并显式要求只在前端 workspace 内直接实现、直接消费当前主仓后端契约、禁止再扩 docs / backend 范围。当前项目重新进入“frontend worker 实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 14:32 Asia/Shanghai）：frontend 已回收有效候选提交 `c2b57bc feat(weapp): polish gallery and booking experience` 与补丁 `281d5b1 fix(weapp): normalize gallery publish timestamp`，覆盖 FE-018 / FE-019 / FE-020 / FE-021：首页返图“查看全部”与列表信息增强、顾客预约页继续沿用月历选期并补状态图例、店员返图管理页最小闭环、店员审核结果改判提示。frontend 回报已通过语法检查与 `git diff --check`，但这批改动尚未导入 architect 主仓，因此当前最高优先级已从“继续前端实现”切换为“导出可审阅材料并做 architect 收口”。
+>
+> 状态更新（2026-03-29 14:33 Asia/Shanghai）：architect 已重新派发短任务 `fe-20260329-export-281d5b1`，只要求 frontend 把 `c2b57bc / 281d5b1` 的 patch、MANIFEST 与最终文件快照导出到 architect 工作区 `.integration/`，不再新增业务改动。当前阶段收敛为“等待前端交接材料 -> architect 审阅并决定是否合入主仓”。
+>
+> 状态更新（2026-03-29 15:3x Asia/Shanghai）：architect 已在当前主仓直接完成 FE-018 / FE-019 / FE-020 / FE-021 收口：补齐 `pages/gallery-list`、`pages/staff/gallery`、首页“查看全部返图灵感”入口、顾客预约月历选期、店员返图管理最小闭环、店员审核结果改判提示，并同步更新 `apps/weapp/scripts/contract-selfcheck.mjs`。当前已在主仓实际通过前端关键页面 `node --check`、`node apps/weapp/scripts/contract-selfcheck.mjs` 与 `git diff --check -- apps/weapp`；判定：本轮体验优化的前后端主仓实现已重新收敛，下一步最高优先级切换为 QA-007 页面级回归 UAT，而不是继续追加 frontend/backend 开发任务。
 
-### P1：删除首页开发环境切流展示（frontend）
-- 删除首页“当前接口基线 / 当前执行口径”等开发态展示卡片
-- 保留真实业务内容：品牌说明、返图封面、预约 CTA、店员入口
-- 完成定义：首页不再暴露开发环境切流信息，不影响当前默认仍对接 `apps/api`
+## 当前执行边界（2026-03-29）
 
-### P1：回归验证（frontend + backend）
-- 最少回归：首页返图、未来日期窗口、规则保存、月历增强、审核后顾客回查
-- 完成定义：`docs/UAT_RESULTS.md` 形成新一轮明确通过 / 不通过结论
+- **本文件真正的当前执行面板以上方“当前有效任务视图（2026-03-29）”为准。**
+- **自 `## 2026-03-27 页面级 UAT 收口任务` 往下的内容，默认视为历史任务与审计记录，不再作为本轮日常派工入口。**
+- 本轮不新增复杂 CMS、返图审核后台、多员工排班或操作日志系统。
+- 本轮默认继续沿用 `apps/api + apps/weapp` 主线，不回退历史实现。
+- 顾客月历与店员月历必须共享同一套日期状态口径；若前端复用组件时发现当前接口不足，再由 architect 补契约，不允许前端自行猜测日期状态。
 
-## 当前执行边界（2026-03-27）
+## 2026-03-29 体验优化执行任务
 
-- **本文件真正的当前执行面板以上方“当前有效任务视图（2026-03-27）”为准。**
-- **自 `## 2026-03-24 新增收口任务` 往下的内容，默认视为历史任务与审计记录，不再作为日常派工入口。**
-- 本轮已经有新的页面级 UAT 结果，因此允许重新生成 frontend / backend active task 包，不再停留在“只维护文档一致性、不新增代码任务”的状态。
-- 当前派工顺序固定为：先补规则保存 404 -> 再回归未来日期窗口 -> 同步补首页返图基线 -> 最后收口店员月历增强与整体验收。
-- 状态更新（2026-03-27）：architect 已直接代码复核确认 `apps/api/src/booking-rules/booking-rules.controller.ts` 缺少 `PUT` 路由，这是本轮 `404` 的直接原因；同时 `gallery` 当前纯读 DB，当前开发库若无种子数据会稳定触发首页空态，因此首页返图问题不能只按“前端页面渲染异常”理解。
-- 状态更新（2026-03-27 09:4x Asia/Shanghai）：architect 已在当前主仓直接补齐 `PUT /api/v1/staff/booking-rules` 与基础校验/持久化，新增 `apps/api/scripts/booking-rules-gallery-smoke.mjs` 并通过 `npm run smoke:booking-rules`；同时已把 booking 页“显式选未来日期却被接口 selectedDate 拉回今天”的前端防回退处理、店员月历顾客摘要/按日时段明细、首页开发态文案自检，以及 gallery 无 active 数据时的 fallback 一并收口到当前主仓。当前统一基线已再次通过 `npm run check:weapp-contract`、关键页面 `node --check`、`apps/api npm run build` 与 `npm run smoke:booking-rules`，下一步回到页面级回归验证，而不是继续猜测 `404` 或首页空态原因。
+| ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ARCH-012 | architect | 冻结 2026-03-29 新增体验优化范围并下发执行 brief | Lan 最新需求、当前主仓文档、现有页面结构 | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、frontend/backend brief | 无 | 新范围被明确收敛为“返图列表、店员返图管理、顾客月历、审核结果可修改”四块，不继续发散到范围外 | 若不先冻结，前后端会自行猜字段和页面职责 |
+| FE-018 | frontend | 首页返图灵感区增加“查看全部”入口并新增全部返图列表页 | `docs/PRD.md`、`docs/API.md`、现有 `pages/home/*`、`pages/gallery-detail/*` | `pages/home/*`、新增 `pages/gallery-list/*`、相关服务/样式、自测结论 | ARCH-012 | 首页仅展示最近 3 条；可跳转列表页；列表页按时间倒序展示全部已发布返图；点击后可进入现有详情页 | 若列表页与首页各自消费不同字段，会再次造成口径漂移 |
+| FE-019 | frontend | 顾客预约页复用 / 适配店员端月历组件作为日期选择器 | `docs/PRD.md`、`docs/API.md` availability 新口径、现有 `pages/booking/*`、`pages/staff/appointments/*` | `pages/booking/*`、共享月历组件/工具层、自测结论 | ARCH-012 | 顾客可在月历中清晰看到可约/不可约日期并完成选日；不再依赖旧横向日期条；日期状态直接消费后端口径 | 若前端只复制 UI 不复用状态逻辑，会产生两套日期判断 |
+| FE-020 | frontend | 新增店员返图管理页，支持上传多图、标签、文字说明 | `docs/PRD.md`、`docs/API.md`、现有 staff 页面结构 | 新增 `pages/staff/gallery/*`、上传/表单交互、自测结论 | ARCH-012, BE-025 | 店员可完成图片上传、封面选择/默认封面、标签输入、文字说明填写与发布；顾客侧可读取已发布内容 | 若上传与保存拆分不清，前端容易把临时文件状态与业务记录混淆 |
+| FE-021 | frontend | 店员审核页支持修改已审核结果 | `docs/PRD.md`、`docs/API.md` review 新语义、现有 `pages/staff/appointments/*` | `pages/staff/appointments/*`、必要交互与提示、自测结论 | ARCH-012, BE-028 | 已通过可改拒绝、已拒绝可改通过；冲突与结果变更提示清晰；不回退当前月历能力 | 若页面仍默认“已审核不可操作”，会与后端新语义脱节 |
+| BE-025 | backend | 新增店员图片上传接口并确定图片存储策略 | `docs/API.md`、现有 `apps/api` 模块结构 | `apps/api/src/**`、上传接口、自测结论 | ARCH-012 | `POST /api/v1/staff/uploads/images` 可返回可持久化图片 URL；校验最小可用且不影响现有接口 | 若直接把二进制与返图业务模型强耦合，后续维护成本高 |
+| BE-026 | backend | 扩展 gallery 数据模型与查询口径，支撑首页 3 条 / 列表 / 详情 | `docs/API.md`、现有 `apps/api/src/gallery/**` | `gallery` 模块与必要 schema/seed、自测结论 | ARCH-012 | `GET /api/v1/gallery` 可按 `publishedAt` 稳定返回已发布内容，并包含 `description` / `publishedAt` / `imageUrls` | 若仍只按旧 sortOrder 或缺失发布时间，列表排序会不稳定 |
+| BE-027 | backend | 新增店员返图管理接口 | `docs/API.md`、现有 `apps/api` 模块结构 | `/api/v1/staff/gallery` 读写接口、自测结论 | ARCH-012, BE-025, BE-026 | 店员可创建 / 编辑返图内容，字段至少覆盖标题、封面、多图、标签、说明、发布时间、状态 | 若写接口校验过松，会把无封面/空图内容发布到顾客侧 |
+| BE-028 | backend | 扩展 availability 与 review 语义，支持顾客月历与审核结果修改 | `docs/API.md`、现有 `apps/api/src/availability/**`、`staff-appointments/**` | `calendarDays` 返回、review 逻辑调整、自测结论 | ARCH-012 | availability 返回日期级状态；审核结果可修改且占用逻辑正确；改回通过时冲突校验、改回拒绝时释放占用 | 若只改接口返回不改占用逻辑，会造成日历与真实可约状态不一致 |
+| QA-007 | frontend/backend | 本轮体验优化完成后的页面级回归 UAT | `docs/UAT_RESULTS.md`、本轮 frontend/backend 结果 | 回填后的 UAT 结论、残余问题清单 | FE-018, FE-019, FE-020, FE-021, BE-025, BE-026, BE-027, BE-028 | 首页返图、列表页、详情、多图、顾客月历、店员上传、审核结果修改全部形成明确结论 | 若只做局部自测不做整体验收，会把联动回归带到下一轮 |
+
+> 状态更新（2026-03-29 16:40 Asia/Shanghai）：frontend 体验升级基线已落入当前主仓并形成提交 `94fefa9 feat: land weapp experience upgrade baseline`；当前前端已具备首页最近 3 条返图、全部返图列表页、顾客月历选日期、店员返图管理页、店员审核结果可改判等能力，`npm run check:weapp-contract` 已通过。
+>
+> 状态更新（2026-03-29 16:40 Asia/Shanghai）：backend 体验升级基线已落入当前主仓并形成提交 `934090f feat: land backend experience upgrade baseline`；当前后端已具备 `GET /api/v1/gallery?limit=3`、`calendarDays`、店员返图上传 / 管理接口，以及“审核结果可修改”的 review 语义。architect 已在当前主仓实际执行 `apps/api npm run build`、`npm run smoke:parallel`，并追加运行店员上传返图 / 店员返图创建编辑 / `calendarDays` 运行级 smoke，结果通过。当前阶段已从“前后端实现中”推进到“等待真实页面 UAT 回填 QA-007”。
 
 ## 2026-03-27 页面级 UAT 收口任务
 

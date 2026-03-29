@@ -5,9 +5,11 @@
   <view wx:else class="detail-wrapper">
     <view class="card detail-card">
       <view class="detail-title">{{item.title}}</view>
-      <view class="detail-tags">
+      <view wx:if="{{item.publishedAtText}}" class="detail-time">发布时间：{{item.publishedAtText}}</view>
+      <view wx:if="{{item.tags.length}}" class="detail-tags">
         <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
       </view>
+      <view wx:if="{{item.description}}" class="detail-desc">{{item.description}}</view>
       <view class="detail-helper">点击图片可预览大图；若后端未提供多图，前端会自动使用封面图兜底。</view>
     </view>
 

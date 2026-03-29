@@ -67,6 +67,14 @@
           <view class="info-label">提交时间</view>
           <view class="info-value">{{item.createdAtText}}</view>
         </view>
+        <view wx:if="{{item.reviewedAtText}}" class="info-row">
+          <view class="info-label">审核时间</view>
+          <view class="info-value">{{item.reviewedAtText}}</view>
+        </view>
+        <view wx:if="{{item.reviewNote}}" class="info-row">
+          <view class="info-label">审核说明</view>
+          <view class="info-value">{{item.reviewNote}}</view>
+        </view>
       </view>
     </block>
   </block>

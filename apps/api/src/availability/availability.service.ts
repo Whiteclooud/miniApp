@@ -18,13 +18,21 @@ export interface AvailabilityItem {
   reasonText: string;
 }
 
+export interface AvailabilityCalendarDay {
+  date: string;
+  status: 'active' | 'disabled';
+  reasonCode: 'AVAILABLE' | 'DATE_CLOSED' | 'DATE_OUT_OF_RANGE' | 'SLOT_OCCUPIED';
+  reasonText: string;
+}
+
 export interface AvailabilityResponse {
   dateOptions: string[];
+  calendarDays: AvailabilityCalendarDay[];
   selectedDate: string;
   items: AvailabilityItem[];
 }
 
-function toReasonText(reasonCode: AvailabilityItem['reasonCode']) {
+function toSlotReasonText(reasonCode: AvailabilityItem['reasonCode']) {
   switch (reasonCode) {
     case 'DATE_CLOSED':
       return '当日关闭';
@@ -38,10 +46,38 @@ function toReasonText(reasonCode: AvailabilityItem['reasonCode']) {
   }
 }
 
+function toCalendarReasonText(reasonCode: AvailabilityCalendarDay['reasonCode']) {
+  switch (reasonCode) {
+    case 'DATE_CLOSED':
+      return '门店休息';
+    case 'DATE_OUT_OF_RANGE':
+      return '超出开放窗口';
+    case 'SLOT_OCCUPIED':
+      return '当日已满';
+    case 'AVAILABLE':
+    default:
+      return '可预约';
+  }
+}
+
 function buildDateOptions(advanceOpenDays: number, today: string) {
   const safeAdvanceOpenDays = Math.max(0, Number(advanceOpenDays) || 0);
   return Array.from({ length: safeAdvanceOpenDays + 1 }, (_value, index) =>
     addDaysToDateText(today, index)
+  );
+}
+
+function buildMonthDates(dateText: string) {
+  const [yearText, monthText] = dateText.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const firstDate = `${yearText}-${monthText}-01`;
+  const nextMonthFirst = month === 12 ? `${year + 1}-01-01` : `${yearText}-${`${month + 1}`.padStart(2, '0')}-01`;
+  const lastDate = addDaysToDateText(nextMonthFirst, -1);
+  const totalDays = Number(lastDate.slice(-2));
+
+  return Array.from({ length: totalDays }, (_value, index) =>
+    addDaysToDateText(firstDate, index)
   );
 }
 
@@ -66,25 +102,44 @@ export class AvailabilityService {
     const bookingRules = await this.bookingRulesService.getBookingRules();
     const dateOptions = buildDateOptions(bookingRules.advanceOpenDays, today);
     const selectedDate = requestedDate || dateOptions[0] || today;
-    const bookingDateReasonCode = resolveBookingDateReasonCode(selectedDate, bookingRules);
+    const monthDates = buildMonthDates(selectedDate);
 
     const approvedAppointments = await this.prisma.appointment.findMany({
       where: {
-        date: selectedDate,
-        status: AppointmentStatus.APPROVED
+        status: AppointmentStatus.APPROVED,
+        date: {
+          in: monthDates
+        }
       },
       select: {
+        date: true,
         timeSlot: true
       }
     });
 
-    const approvedSlots = new Set(approvedAppointments.map((item) => item.timeSlot));
+    const approvedSlotsByDate = approvedAppointments.reduce<Record<string, Set<string>>>((result, item) => {
+      if (!result[item.date]) {
+        result[item.date] = new Set<string>();
+      }
+      result[item.date].add(item.timeSlot);
+      return result;
+    }, {});
+
+    const bookingDateReasonCode = resolveBookingDateReasonCode(selectedDate, bookingRules);
+    const selectedDateApprovedSlots = approvedSlotsByDate[selectedDate] || new Set<string>();
     const items = bookingRules.dailySlots.map((timeSlot) =>
-      this.toAvailabilityItem(selectedDate, timeSlot, bookingDateReasonCode, approvedSlots)
+      this.toAvailabilityItem(selectedDate, timeSlot, bookingDateReasonCode, selectedDateApprovedSlots)
     );
+
+    const calendarDays = monthDates.map((dateText) => {
+      const dateReasonCode = resolveBookingDateReasonCode(dateText, bookingRules);
+      const approvedSlots = approvedSlotsByDate[dateText] || new Set<string>();
+      return this.toCalendarDay(dateText, dateReasonCode, bookingRules.dailySlots, approvedSlots);
+    });
 
     return {
       dateOptions,
+      calendarDays,
       selectedDate,
       items
     };
@@ -102,7 +157,7 @@ export class AvailabilityService {
         timeSlot,
         status: 'disabled',
         reasonCode: bookingDateReasonCode,
-        reasonText: toReasonText(bookingDateReasonCode)
+        reasonText: toSlotReasonText(bookingDateReasonCode)
       };
     }
 
@@ -112,7 +167,7 @@ export class AvailabilityService {
         timeSlot,
         status: 'disabled',
         reasonCode: 'SLOT_OCCUPIED',
-        reasonText: toReasonText('SLOT_OCCUPIED')
+        reasonText: toSlotReasonText('SLOT_OCCUPIED')
       };
     }
 
@@ -121,7 +176,40 @@ export class AvailabilityService {
       timeSlot,
       status: 'active',
       reasonCode: 'AVAILABLE',
-      reasonText: toReasonText('AVAILABLE')
+      reasonText: toSlotReasonText('AVAILABLE')
+    };
+  }
+
+  private toCalendarDay(
+    date: string,
+    bookingDateReasonCode: BookingDateReasonCode,
+    dailySlots: string[],
+    approvedSlots: Set<string>
+  ): AvailabilityCalendarDay {
+    if (bookingDateReasonCode !== 'AVAILABLE') {
+      return {
+        date,
+        status: 'disabled',
+        reasonCode: bookingDateReasonCode,
+        reasonText: toCalendarReasonText(bookingDateReasonCode)
+      };
+    }
+
+    const hasAvailableSlot = dailySlots.some((timeSlot) => !approvedSlots.has(timeSlot));
+    if (!hasAvailableSlot) {
+      return {
+        date,
+        status: 'disabled',
+        reasonCode: 'SLOT_OCCUPIED',
+        reasonText: toCalendarReasonText('SLOT_OCCUPIED')
+      };
+    }
+
+    return {
+      date,
+      status: 'active',
+      reasonCode: 'AVAILABLE',
+      reasonText: toCalendarReasonText('AVAILABLE')
     };
   }
 }

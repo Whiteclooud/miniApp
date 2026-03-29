@@ -17,7 +17,7 @@
 
   <view wx:if="{{pageState === 'loading'}}" class="card state-card">
     <view class="state-title">预约数据加载中</view>
-    <view class="state-desc">正在获取 availability 返回的可预约日期窗口与当前日期时段，请稍候。</view>
+    <view class="state-desc">正在获取 availability 返回的月历日期状态与当前日期时段，请稍候。</view>
   </view>
 
   <view wx:elif="{{pageState === 'error'}}" class="card state-card">
@@ -39,22 +39,40 @@
   </view>
 
   <view wx:else class="card form-card">
-    <view class="field-label">日期</view>
-    <scroll-view class="date-scroll" scroll-x enable-flex show-scrollbar="false">
-      <view class="date-chip-row">
-        <view
-          wx:for="{{dateOptions}}"
-          wx:key="id"
-          class="date-chip {{index === dateIndex ? 'selected' : ''}}"
-          data-index="{{index}}"
-          bindtap="onDateChange"
-        >
-          <view class="date-chip-title">{{item.label}}</view>
-          <view class="date-chip-value">{{item.value}}</view>
+    <view class="field-label">选择日期</view>
+    <view class="calendar-card">
+      <view class="calendar-header">
+        <button class="calendar-switch" data-delta="-1" bindtap="changeMonth">上月</button>
+        <view class="calendar-title">{{monthLabel}}</view>
+        <button class="calendar-switch" data-delta="1" bindtap="changeMonth">下月</button>
+      </view>
+      <button class="button-secondary compact-button today-button" bindtap="resetToCurrentMonth">回到本月</button>
+      <view class="calendar-legend-row">
+        <view wx:for="{{calendarLegend}}" wx:key="key" class="legend-item">
+          <text class="legend-dot legend-{{item.status}} legend-{{item.key}}"></text>
+          <text class="legend-text">{{item.label}}</text>
         </view>
       </view>
-    </scroll-view>
-    <view class="helper-text">切换日期时会重新调用 availability 接口，并使用固定 query key：date。</view>
+      <view class="week-label-row">
+        <view wx:for="{{weekLabels}}" wx:key="*this" class="week-label">{{item}}</view>
+      </view>
+      <view wx:for="{{calendarWeeks}}" wx:key="index" class="calendar-week">
+        <view
+          wx:for="{{item}}"
+          wx:key="key"
+          class="calendar-cell {{item.isCurrentMonth ? '' : 'calendar-cell-muted'}} {{item.isSelected ? 'calendar-cell-selected' : ''}} {{item.status === 'active' ? 'calendar-cell-active' : 'calendar-cell-disabled'}}"
+          data-date="{{item.date}}"
+          data-can-tap="{{item.canTap}}"
+          bindtap="onCalendarDayTap"
+        >
+          <view class="calendar-day-row">
+            <text class="calendar-day-number {{item.isToday ? 'calendar-day-today' : ''}}">{{item.dayNumber}}</text>
+          </view>
+          <view class="calendar-reason">{{item.reasonText}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{selectedCalendarDay}}" class="helper-text">已选日期：{{selectedCalendarDay.date}} · {{selectedCalendarDay.reasonText}}</view>
     <view wx:if="{{availabilityNoticeText}}" class="helper-text warning-text">{{availabilityNoticeText}}</view>
 
     <view class="field-label">可预约时间段</view>

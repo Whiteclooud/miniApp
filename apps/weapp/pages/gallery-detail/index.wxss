@@ -11,6 +11,12 @@
   font-weight: 700;
 }
 
+.detail-time {
+  margin-top: 12rpx;
+  color: #a08578;
+  font-size: 22rpx;
+}
+
 .detail-tags {
   margin-top: 16rpx;
 }
@@ -24,6 +30,13 @@
   background: #fff1ee;
   color: #a45f67;
   font-size: 22rpx;
+}
+
+.detail-desc {
+  margin-top: 12rpx;
+  color: #5c463b;
+  font-size: 26rpx;
+  line-height: 1.7;
 }
 
 .detail-helper {

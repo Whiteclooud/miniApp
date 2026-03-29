@@ -62,8 +62,6 @@ export class StaffAppointmentReviewService {
         });
       }
 
-      this.assertPendingReviewable(appointment);
-
       if (targetStatus === AppointmentStatus.APPROVED) {
         await this.assertSlotNotOccupied(tx, appointment);
       }
@@ -100,15 +98,6 @@ export class StaffAppointmentReviewService {
       error: 'Invalid review status',
       code: 'INVALID_REVIEW_STATUS'
     });
-  }
-
-  private assertPendingReviewable(appointment: Appointment) {
-    if (appointment.status !== AppointmentStatus.PENDING) {
-      throw new ConflictException({
-        error: 'Appointment already reviewed',
-        code: 'APPOINTMENT_ALREADY_REVIEWED'
-      });
-    }
   }
 
   private async assertSlotNotOccupied(tx: Prisma.TransactionClient, appointment: Appointment) {

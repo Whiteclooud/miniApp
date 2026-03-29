@@ -93,6 +93,22 @@ function isUnauthorizedResponse(statusCode, payload) {
   return code === 'STAFF_UNAUTHORIZED' || code === 'CUSTOMER_UNAUTHORIZED';
 }
 
+function normalizeSuccessPayload(responseData) {
+  if (!responseData) {
+    return {};
+  }
+
+  if (typeof responseData === 'string') {
+    try {
+      return JSON.parse(responseData);
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  return responseData;
+}
+
 function request({ url, method = 'GET', data, header = {}, auth = 'none', params }) {
   const app = getApp();
   const authHeader = buildAuthHeader(auth);
@@ -113,7 +129,7 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
           return;
         }
 
-        const payload = res.data || {};
+        const payload = normalizeSuccessPayload(res.data);
         reject(
           createRequestError(buildErrorMessage(payload, '请求失败'), {
             statusCode: res.statusCode,
@@ -137,8 +153,66 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
   });
 }
 
+function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, header = {}, auth = 'none' }) {
+  const app = getApp();
+  const authHeader = buildAuthHeader(auth);
+  const targets = (filePaths || []).filter((item) => typeof item === 'string' && item.trim());
+
+  if (!targets.length) {
+    return Promise.resolve({ items: [] });
+  }
+
+  const uploadOne = (filePath) => new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: buildUrl(app.globalData.apiBaseUrl, url),
+      filePath,
+      name,
+      formData,
+      header: {
+        ...authHeader,
+        ...header
+      },
+      success: (res) => {
+        const payload = normalizeSuccessPayload(res.data);
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(payload || {});
+          return;
+        }
+
+        reject(
+          createRequestError(buildErrorMessage(payload, '上传失败'), {
+            statusCode: res.statusCode,
+            code: payload.code,
+            payload,
+            isUnauthorized: isUnauthorizedResponse(res.statusCode, payload),
+            isConflict: res.statusCode === 409
+          })
+        );
+      },
+      fail: (error) => {
+        reject(
+          createRequestError('网络异常，图片上传失败。请确认本地服务已启动且已允许开发者工具访问。', {
+            code: 'NETWORK_ERROR',
+            payload: error,
+            isNetworkError: true
+          })
+        );
+      }
+    });
+  });
+
+  return targets.reduce((chain, filePath) => chain.then(async (acc) => {
+    const payload = await uploadOne(filePath);
+    return {
+      ...payload,
+      items: [...(acc.items || []), ...((payload && payload.items) || [])]
+    };
+  }), Promise.resolve({ items: [] }));
+}
+
 module.exports = {
   request,
+  uploadFiles,
   createRequestError,
   getErrorKind,
   getErrorMessage

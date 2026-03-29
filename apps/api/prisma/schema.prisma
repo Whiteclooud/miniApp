@@ -72,16 +72,20 @@ model BookingRule {
 }
 
 model GalleryItem {
-  id            String        @id @default(cuid())
-  title         String        @db.VarChar(191)
-  imageUrl      String        @map("image_url") @db.Text
-  imageUrlsJson String        @default("[]") @map("image_urls_json") @db.LongText
-  tagsJson      String        @default("[]") @map("tags_json") @db.LongText
-  sortOrder     Int           @default(0) @map("sort_order")
-  status        GalleryStatus @default(ACTIVE)
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(cuid())
+  title           String        @db.VarChar(191)
+  imageUrl        String        @map("image_url") @db.Text
+  imageUrlsJson   String        @default("[]") @map("image_urls_json") @db.LongText
+  description     String?       @db.Text
+  tagsJson        String        @default("[]") @map("tags_json") @db.LongText
+  publishedAt     DateTime      @default(now()) @map("published_at")
+  createdByOpenId String?       @map("created_by_open_id") @db.VarChar(191)
+  sortOrder       Int           @default(0) @map("sort_order")
+  status          GalleryStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
+  @@index([publishedAt], map: "idx_gallery_items_published_at")
   @@index([sortOrder], map: "idx_gallery_items_sort_order")
   @@index([status], map: "idx_gallery_items_status")
   @@map("gallery_items")
