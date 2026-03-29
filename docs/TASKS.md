@@ -47,6 +47,8 @@
 > 状态更新（2026-03-29 13:0x Asia/Shanghai）：architect 已完成 2026-03-29 新阶段文档收口，并已分别向 `miniapp-frontend` / `miniapp-backend` 派发本轮体验优化 run；当前项目状态已从“待继续定义任务”推进到“worker 正在按冻结范围实施”，下一次高价值动作将是回收实现结果并组织本轮页面级体验 UAT。
 >
 > 状态更新（2026-03-29 13:26 Asia/Shanghai）：frontend 首轮 run 因 `stream_read_error` 中断，未形成可审阅交付；architect 已按更窄范围重新派发 frontend run，优先收口 FE-018 / FE-019 / FE-021，backend run 继续执行中。当前阶段判断仍为“worker 实施中，待回收结果”，暂不对外宣告里程碑或阻塞。
+>
+> 状态更新（2026-03-29 13:28 Asia/Shanghai）：frontend 第二次重派工未进入实现阶段，运行时直接返回 `Concurrency limit exceeded for account, please retry later`，且错误信息同时暴露其在读取外部 skill 路径时命中 sandbox root 限制；因此当前前端阻塞被收敛为“运行时并发额度 / 子任务启动环境问题”，不是已确认的业务实现偏航。backend run 仍在继续；下一步按 heartbeat 纪律等待当前 backend run 回收后，再重新派发 frontend FE-018 / FE-019 / FE-021，不在此时重复并发重试制造噪音。
 
 ## 当前执行边界（2026-03-29）
 
