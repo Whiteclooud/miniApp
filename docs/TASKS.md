@@ -59,6 +59,8 @@
 > 状态更新（2026-03-29 13:52 Asia/Shanghai）：frontend 这轮 final rerun 未产出代码交付，运行时直接返回临时服务不可用；判定为运行时可用性问题，而不是已确认的前端实现偏航。backend 基线仍维持已落主仓状态，当前唯一未完成面继续收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
 >
 > 状态更新（2026-03-29 14:23 Asia/Shanghai）：因当前已无活跃 worker、且前端剩余工作边界清晰，architect 将按既有冻结范围重新派发 frontend run，并优先要求其直接消费主仓已落库的后端契约，不新增文档或后端改动；在这轮结果回收前，项目仍处于“前端实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 14:29 Asia/Shanghai）：architect 已再次向 `miniapp-frontend` 派发 run `fe-20260329-experience-upgrade-1429`，任务范围继续严格收敛为 FE-018 / FE-019 / FE-020 / FE-021，并显式要求只在前端 workspace 内直接实现、直接消费当前主仓后端契约、禁止再扩 docs / backend 范围。当前项目重新进入“frontend worker 实施中，待回收结果”的状态。
 
 ## 当前执行边界（2026-03-29）
 
