@@ -49,6 +49,10 @@
 > 状态更新（2026-03-29 13:26 Asia/Shanghai）：frontend 首轮 run 因 `stream_read_error` 中断，未形成可审阅交付；architect 已按更窄范围重新派发 frontend run，优先收口 FE-018 / FE-019 / FE-021，backend run 继续执行中。当前阶段判断仍为“worker 实施中，待回收结果”，暂不对外宣告里程碑或阻塞。
 >
 > 状态更新（2026-03-29 13:28 Asia/Shanghai）：frontend 第二次重派工未进入实现阶段，运行时直接返回 `Concurrency limit exceeded for account, please retry later`，且错误信息同时暴露其在读取外部 skill 路径时命中 sandbox root 限制；因此当前前端阻塞被收敛为“运行时并发额度 / 子任务启动环境问题”，不是已确认的业务实现偏航。backend run 仍在继续；下一步按 heartbeat 纪律等待当前 backend run 回收后，再重新派发 frontend FE-018 / FE-019 / FE-021，不在此时重复并发重试制造噪音。
+>
+> 状态更新（2026-03-29 13:32 Asia/Shanghai）：backend run 已完成并回收候选 commit `7e15ac5`，实现范围覆盖 BE-025 / BE-026 / BE-027 / BE-028：`GET /api/v1/gallery` 扩展到首页 3 条 / 全量列表 / 详情多图、店员图片上传与返图管理、`GET /api/v1/availability` 新增 `calendarDays`、店员审核结果支持再次修改且重算占用逻辑；backend 回报 `npm run build`、gallery / availability / review smoke 与测试均通过。当前最高优先级已从“等待 backend 完成”切换为“architect 先审这版后端候选补丁是否完全符合冻结范围，再在运行时条件允许时重新派发 frontend FE-018 / FE-019 / FE-021”。
+>
+> 状态更新（2026-03-29 13:46 Asia/Shanghai）：architect 已在当前主仓直接复跑 backend 候选改动：先修正 `uploads.controller.ts` 的类型问题，再把 `apps/api/scripts/smoke-parallel-run.cjs` 从旧的“重复审核=409”断言更新为当前冻结的“审核结果可修改、以最新状态为准”语义；随后已在 `apps/api` 实际通过 `npm run build` 与 `npm test`。判定：backend 这轮体验优化结果已在 architect 主仓达到可集成状态，当前唯一未完成的实施面收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
 
 ## 当前执行边界（2026-03-29）
 

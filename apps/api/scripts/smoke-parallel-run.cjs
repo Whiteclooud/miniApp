@@ -186,7 +186,7 @@ async function main() {
       return result.json.item;
     });
 
-    await runCase('PATCH review repeated -> APPOINTMENT_ALREADY_REVIEWED', async () => {
+    await runCase('PATCH review same status -> updates latest review note', async () => {
       const result = await request(`/api/v1/staff/appointments/${ids.happy}/review`, {
         method: 'PATCH',
         headers: {
@@ -194,14 +194,15 @@ async function main() {
           'X-Staff-OpenId': STAFF_OPEN_ID
         },
         body: JSON.stringify({
-          status: 'rejected',
-          reviewNote: 'should fail as repeated review'
+          status: 'approved',
+          reviewNote: 'latest approved note'
         })
       });
 
-      assert(result.status === 409, `expected 409, got ${result.status}`);
-      assert(result.json?.code === 'APPOINTMENT_ALREADY_REVIEWED', 'expected APPOINTMENT_ALREADY_REVIEWED');
-      return result.json;
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.item?.status === 'approved', 'expected approved after repeat patch');
+      assert(result.json?.item?.reviewNote === 'latest approved note', 'expected latest review note');
+      return result.json.item;
     });
 
     await runCase('POST same approved slot create -> SLOT_OCCUPIED', async () => {
@@ -289,6 +290,57 @@ async function main() {
       assert(slotBItem?.status === 'active', 'expected slotB active');
       assert(slotBItem?.reasonCode === 'AVAILABLE', 'expected slotB AVAILABLE');
       return { slotA: slotAItem, slotB: slotBItem };
+    });
+
+    await runCase('PATCH occupied approved -> rejected releases slot', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.occupiedApproved}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          status: 'rejected',
+          reviewNote: 'release slot'
+        })
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.item?.status === 'rejected', 'expected rejected after release patch');
+
+      const availabilityResult = await request(`/api/v1/availability?date=${occupiedDate}`);
+      const slotAItem = findByTimeSlot(availabilityResult.json?.items || [], slotA);
+      assert(slotAItem?.status === 'active', 'expected slotA active after releasing approved booking');
+      return {
+        review: result.json.item,
+        availability: slotAItem
+      };
+    });
+
+    await runCase('PATCH occupied rejected -> approved re-occupies slot', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.occupiedApproved}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          status: 'approved',
+          reviewNote: 're-approve slot'
+        })
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.item?.status === 'approved', 'expected approved after re-approve patch');
+
+      const availabilityResult = await request(`/api/v1/availability?date=${occupiedDate}`);
+      const slotAItem = findByTimeSlot(availabilityResult.json?.items || [], slotA);
+      assert(slotAItem?.status === 'disabled', 'expected slotA disabled again after re-approve');
+      assert(slotAItem?.reasonCode === 'SLOT_OCCUPIED', 'expected slotA SLOT_OCCUPIED after re-approve');
+      return {
+        review: result.json.item,
+        availability: slotAItem
+      };
     });
 
     await runCase('GET /api/v1/staff/appointments default -> full list', async () => {

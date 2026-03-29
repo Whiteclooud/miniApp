@@ -9,6 +9,8 @@ import { MyAppointmentsModule } from './my-appointments/my-appointments.module';
 import { StaffAppointmentDetailModule } from './staff-appointment-detail/staff-appointment-detail.module';
 import { StaffAppointmentReviewModule } from './staff-appointment-review/staff-appointment-review.module';
 import { StaffAppointmentsModule } from './staff-appointments/staff-appointments.module';
+import { StaffGalleryModule } from './staff-gallery/staff-gallery.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -21,7 +23,9 @@ import { StaffAppointmentsModule } from './staff-appointments/staff-appointments
     MyAppointmentsModule,
     StaffAppointmentsModule,
     StaffAppointmentDetailModule,
-    StaffAppointmentReviewModule
+    StaffAppointmentReviewModule,
+    UploadsModule,
+    StaffGalleryModule
   ]
 })
 export class AppModule {}
