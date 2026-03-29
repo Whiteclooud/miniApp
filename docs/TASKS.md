@@ -45,6 +45,8 @@
 - 完成定义：`docs/UAT_RESULTS.md` 补出新一轮通过 / 不通过结论
 
 > 状态更新（2026-03-29 13:0x Asia/Shanghai）：architect 已完成 2026-03-29 新阶段文档收口，并已分别向 `miniapp-frontend` / `miniapp-backend` 派发本轮体验优化 run；当前项目状态已从“待继续定义任务”推进到“worker 正在按冻结范围实施”，下一次高价值动作将是回收实现结果并组织本轮页面级体验 UAT。
+>
+> 状态更新（2026-03-29 13:26 Asia/Shanghai）：frontend 首轮 run 因 `stream_read_error` 中断，未形成可审阅交付；architect 已按更窄范围重新派发 frontend run，优先收口 FE-018 / FE-019 / FE-021，backend run 继续执行中。当前阶段判断仍为“worker 实施中，待回收结果”，暂不对外宣告里程碑或阻塞。
 
 ## 当前执行边界（2026-03-29）
 
