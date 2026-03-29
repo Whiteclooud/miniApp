@@ -91,6 +91,10 @@
 | BE-028 | backend | 扩展 availability 与 review 语义，支持顾客月历与审核结果修改 | `docs/API.md`、现有 `apps/api/src/availability/**`、`staff-appointments/**` | `calendarDays` 返回、review 逻辑调整、自测结论 | ARCH-012 | availability 返回日期级状态；审核结果可修改且占用逻辑正确；改回通过时冲突校验、改回拒绝时释放占用 | 若只改接口返回不改占用逻辑，会造成日历与真实可约状态不一致 |
 | QA-007 | frontend/backend | 本轮体验优化完成后的页面级回归 UAT | `docs/UAT_RESULTS.md`、本轮 frontend/backend 结果 | 回填后的 UAT 结论、残余问题清单 | FE-018, FE-019, FE-020, FE-021, BE-025, BE-026, BE-027, BE-028 | 首页返图、列表页、详情、多图、顾客月历、店员上传、审核结果修改全部形成明确结论 | 若只做局部自测不做整体验收，会把联动回归带到下一轮 |
 
+> 状态更新（2026-03-29 16:40 Asia/Shanghai）：frontend 体验升级基线已落入当前主仓并形成提交 `94fefa9 feat: land weapp experience upgrade baseline`；当前前端已具备首页最近 3 条返图、全部返图列表页、顾客月历选日期、店员返图管理页、店员审核结果可改判等能力，`npm run check:weapp-contract` 已通过。
+>
+> 状态更新（2026-03-29 16:40 Asia/Shanghai）：backend 体验升级基线已落入当前主仓并形成提交 `934090f feat: land backend experience upgrade baseline`；当前后端已具备 `GET /api/v1/gallery?limit=3`、`calendarDays`、店员返图上传 / 管理接口，以及“审核结果可修改”的 review 语义。architect 已在当前主仓实际执行 `apps/api npm run build`、`npm run smoke:parallel`，并追加运行店员上传返图 / 店员返图创建编辑 / `calendarDays` 运行级 smoke，结果通过。当前阶段已从“前后端实现中”推进到“等待真实页面 UAT 回填 QA-007”。
+
 ## 2026-03-27 页面级 UAT 收口任务
 
 | ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
