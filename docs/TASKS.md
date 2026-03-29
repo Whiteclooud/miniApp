@@ -55,6 +55,10 @@
 > 状态更新（2026-03-29 13:46 Asia/Shanghai）：architect 已在当前主仓直接复跑 backend 候选改动：先修正 `uploads.controller.ts` 的类型问题，再把 `apps/api/scripts/smoke-parallel-run.cjs` 从旧的“重复审核=409”断言更新为当前冻结的“审核结果可修改、以最新状态为准”语义；随后已在 `apps/api` 实际通过 `npm run build` 与 `npm test`，并以提交 `934090f feat: land backend experience upgrade baseline` 收口到主仓。判定：backend 这轮体验优化结果已不再是当前阶段阻塞，唯一未完成的实施面收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
 >
 > 状态更新（2026-03-29 13:49 Asia/Shanghai）：architect 已基于当前主仓后端提交重新派发 frontend run `fe-20260329-experience-upgrade-final-rerun`，任务边界只保留 FE-018 / FE-019 / FE-020 / FE-021，并明确要求直接消费已经落库的 gallery / uploads / staff gallery / availability.calendarDays / review 新口径，不再额外扩 docs 或后端范围。当前阶段重新进入“前端 worker 实施中，待回收结果”的状态。
+>
+> 状态更新（2026-03-29 13:52 Asia/Shanghai）：frontend 这轮 final rerun 未产出代码交付，运行时直接返回临时服务不可用；判定为运行时可用性问题，而不是已确认的前端实现偏航。backend 基线仍维持已落主仓状态，当前唯一未完成面继续收敛为 frontend FE-018 / FE-019 / FE-020 / FE-021。
+>
+> 状态更新（2026-03-29 14:23 Asia/Shanghai）：因当前已无活跃 worker、且前端剩余工作边界清晰，architect 将按既有冻结范围重新派发 frontend run，并优先要求其直接消费主仓已落库的后端契约，不新增文档或后端改动；在这轮结果回收前，项目仍处于“前端实施中，待回收结果”的状态。
 
 ## 当前执行边界（2026-03-29）
 
