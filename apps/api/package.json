@@ -11,9 +11,10 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "smoke:availability": "node --env-file=.env scripts/availability-runtime-smoke.mjs",
+    "smoke:booking-rules": "node --env-file=.env scripts/booking-rules-gallery-smoke.mjs",
     "smoke:create-appointment": "node --env-file=.env scripts/create-appointment-runtime-smoke.mjs",
     "smoke:parallel": "node --env-file=.env scripts/smoke-parallel-run.cjs",
-    "test": "npm run smoke:availability && npm run smoke:create-appointment && npm run smoke:parallel"
+    "test": "npm run smoke:availability && npm run smoke:booking-rules && npm run smoke:create-appointment && npm run smoke:parallel"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.2",

@@ -147,6 +147,20 @@ function buildDayStat(items) {
   };
 }
 
+function buildCustomerPreviewName(item) {
+  const customerName = `${item.customerName || ''}`.trim();
+  if (customerName && customerName !== '未填写') {
+    return customerName.length > 4 ? `${customerName.slice(0, 4)}…` : customerName;
+  }
+
+  const phone = `${item.phone || ''}`.trim();
+  if (/^1\d{10}$/.test(phone)) {
+    return `${phone.slice(0, 3)}***${phone.slice(-2)}`;
+  }
+
+  return '未留名';
+}
+
 function buildCalendarState(appointments, cursor, preferredDate) {
   const groupedAppointments = groupAppointmentsByDate(appointments);
   const todayKey = getTodayKey();
@@ -169,6 +183,7 @@ function buildCalendarState(appointments, cursor, preferredDate) {
     const key = formatDateKey(current);
     const items = groupedAppointments[key] || [];
     const stat = buildDayStat(items);
+    const customerPreviewNames = items.slice(0, 3).map(buildCustomerPreviewName);
     cells.push({
       key,
       date: key,
@@ -183,7 +198,9 @@ function buildCalendarState(appointments, cursor, preferredDate) {
       hasItems: stat.total > 0,
       pendingText: stat.pending ? `待${stat.pending}` : '',
       approvedText: stat.approved ? `过${stat.approved}` : '',
-      rejectedText: stat.rejected ? `拒${stat.rejected}` : ''
+      rejectedText: stat.rejected ? `拒${stat.rejected}` : '',
+      customerPreviewNames,
+      extraCustomerCount: Math.max(items.length - customerPreviewNames.length, 0)
     });
   }
 
@@ -200,7 +217,7 @@ function buildCalendarState(appointments, cursor, preferredDate) {
     selectedDate,
     selectedDateMeta: {
       label: selectedDate || '请选择日期',
-      totalText: selectedItems.length ? `当天共 ${selectedItems.length} 条预约` : '当天暂无预约'
+      totalText: selectedItems.length ? `当天共 ${selectedItems.length} 条预约，已按时间段排序展示。` : '当天暂无预约'
     },
     dayAppointments: selectedItems
   };

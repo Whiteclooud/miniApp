@@ -182,7 +182,8 @@ function normalizeAvailability(data, requestedDate) {
     dateOptions,
     timeSlotOptionsByDate: grouped,
     defaultTimeSlotOptions,
-    selectedDate
+    selectedDate,
+    responseSelectedDate
   };
 }
 
@@ -282,6 +283,7 @@ Page({
     submitMessage: '',
     submitState: 'idle',
     timeSlotStateMessage: '',
+    availabilityNoticeText: '',
     customerIdentity: {
       openId: '',
       label: '未设置顾客 OpenID',
@@ -412,6 +414,7 @@ Page({
           ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
           : '未获取到顾客 OpenID，当前环境不能提交预约。',
         timeSlotStateMessage: '',
+        availabilityNoticeText: '',
         selectedTimeSlotValue: ''
       });
       return;
@@ -435,6 +438,7 @@ Page({
           ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
           : '未获取到顾客 OpenID，当前环境不能提交预约。',
         timeSlotStateMessage: '',
+        availabilityNoticeText: '',
         selectedTimeSlotValue: ''
       });
       return;
@@ -446,7 +450,8 @@ Page({
       pageState: 'loading',
       stateMessage: '',
       submitMessage: '',
-      timeSlotStateMessage: ''
+      timeSlotStateMessage: '',
+      availabilityNoticeText: ''
     });
 
     try {
@@ -454,7 +459,8 @@ Page({
       const previousSelectedTimeSlotValue = this.data.selectedTimeSlotValue;
       const availability = normalizeAvailability(await getAvailability(date), date);
       const dateOptions = availability.dateOptions;
-      const selectedDate = availability.selectedDate;
+      const requestedDateInOptions = dateOptions.some((item) => item.value === date);
+      const selectedDate = requestedDateInOptions ? date : availability.selectedDate;
       const timeSlotOptions = getTimeSlotOptionsForDate(availability, selectedDate);
       const selectedIndex = Math.max(dateOptions.findIndex((item) => item.value === selectedDate), 0);
       const shouldKeepSelection = selectedDate === previousDate;
@@ -463,6 +469,9 @@ Page({
         shouldKeepSelection ? previousSelectedTimeSlotValue : ''
       );
       const hasActiveTimeSlots = timeSlotOptions.some((item) => item.status === 'active');
+      const availabilityNoticeText = requestedDateInOptions && availability.responseSelectedDate && availability.responseSelectedDate !== date
+        ? `当前请求日期是 ${date}，但接口返回的 selectedDate 为 ${availability.responseSelectedDate}。页面已优先按你点选的日期展示这次结果，请继续核对后端 selectedDate 与 items 是否同步。`
+        : '';
 
       let pageState = 'ready';
       let stateMessage = '';
@@ -485,13 +494,15 @@ Page({
         selectedTimeSlotValue,
         pageState,
         stateMessage,
-        timeSlotStateMessage
+        timeSlotStateMessage,
+        availabilityNoticeText
       });
     } catch (error) {
       this.setData({
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',
         stateMessage: formatPageErrorMessage(error, '预约页加载失败，请确认 availability 接口是否可用。'),
         timeSlotStateMessage: '',
+        availabilityNoticeText: '',
         selectedTimeSlotValue: ''
       });
     }

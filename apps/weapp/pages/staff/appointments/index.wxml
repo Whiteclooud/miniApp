@@ -87,6 +87,10 @@
             <text wx:if="{{item.approvedText}}" class="calendar-badge approved">{{item.approvedText}}</text>
             <text wx:if="{{item.rejectedText}}" class="calendar-badge rejected">{{item.rejectedText}}</text>
           </view>
+          <view wx:if="{{item.customerPreviewNames.length}}" class="calendar-customers">
+            <text wx:for="{{item.customerPreviewNames}}" wx:key="*this" class="calendar-customer">{{item}}</text>
+            <text wx:if="{{item.extraCustomerCount}}" class="calendar-customer more">+{{item.extraCustomerCount}}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -94,6 +98,18 @@
     <view class="card detail-card">
       <view class="detail-title">{{selectedDateMeta.label}}</view>
       <view class="helper-text">{{selectedDateMeta.totalText}}</view>
+      <view wx:if="{{dayAppointments.length}}" class="day-detail-list">
+        <view wx:for="{{dayAppointments}}" wx:key="id" class="day-detail-item">
+          <view class="day-detail-header">
+            <view class="day-detail-slot">{{item.timeSlot}}</view>
+            <view class="status-pill {{item.status}}">{{item.statusText}}</view>
+          </view>
+          <view class="day-detail-meta">{{item.customerName}}<text wx:if="{{item.phone && item.phone !== '未填写'}}"> · {{item.phone}}</text></view>
+          <view wx:if="{{item.note}}" class="day-detail-note">备注：{{item.note}}</view>
+          <view wx:if="{{item.reviewNote}}" class="day-detail-note">审核说明：{{item.reviewNote}}</view>
+        </view>
+      </view>
+      <view wx:else class="helper-text">选中日期后，会在这里按时间段展示顾客信息与预约状态。</view>
     </view>
 
     <view wx:if="{{reviewMessage}}" class="inline-error">{{reviewMessage}}</view>

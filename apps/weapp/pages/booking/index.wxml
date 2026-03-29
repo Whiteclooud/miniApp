@@ -55,6 +55,7 @@
       </view>
     </scroll-view>
     <view class="helper-text">切换日期时会重新调用 availability 接口，并使用固定 query key：date。</view>
+    <view wx:if="{{availabilityNoticeText}}" class="helper-text warning-text">{{availabilityNoticeText}}</view>
 
     <view class="field-label">可预约时间段</view>
     <view class="time-slot-grid">
