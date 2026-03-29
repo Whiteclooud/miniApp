@@ -11,33 +11,33 @@
     </view>
   </view>
 
-  <view class="section-header">
-    <view class="section-title">返图灵感</view>
-    <view class="section-subtitle">首页只展示封面图，点击卡片可查看详情多图</view>
+  <view class="section-header section-header-inline">
+    <view>
+      <view class="section-title">返图灵感</view>
+      <view class="section-subtitle">首页只展示最近 3 条已发布内容，点击卡片可查看详情多图</view>
+    </view>
+    <button class="button-plain view-all-button" bindtap="goGalleryList">查看全部</button>
   </view>
 
   <view wx:if="{{loading}}" class="card state-card">正在加载返图内容...</view>
   <view wx:elif="{{hasError}}" class="card state-card">返图内容暂时不可用，你也可以先直接去预约。</view>
   <view wx:elif="{{galleryItems.length === 0}}" class="card state-card">返图内容整理中，稍后再来看看。</view>
-  <block wx:else>
-    <block wx:for="{{galleryItems}}" wx:key="id">
-      <view class="card gallery-card" data-id="{{item.id}}" bindtap="goGalleryDetail">
-        <image
-          wx:if="{{item.imageUrl}}"
-          class="gallery-image"
-          mode="aspectFill"
-          src="{{item.imageUrl}}"
-        />
-        <view class="gallery-body">
+  <view wx:else class="gallery-grid">
+    <view wx:for="{{galleryItems}}" wx:key="id" class="card gallery-card" data-id="{{item.id}}" bindtap="goGalleryDetail">
+      <image wx:if="{{item.imageUrl}}" class="gallery-image" mode="aspectFill" src="{{item.imageUrl}}" />
+      <view class="gallery-body">
+        <view class="gallery-meta-row">
           <view class="gallery-title">{{item.title}}</view>
-          <view class="gallery-tags">
-            <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
-          </view>
-          <view class="gallery-desc">点击查看详情多图</view>
+          <view wx:if="{{item.publishedAtText}}" class="gallery-time">{{item.publishedAtText}}</view>
         </view>
+        <view wx:if="{{item.tags.length}}" class="gallery-tags">
+          <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+        <view wx:if="{{item.description}}" class="gallery-desc">{{item.description}}</view>
+        <view wx:else class="gallery-desc">点击查看详情多图</view>
       </view>
-    </block>
-  </block>
+    </view>
+  </view>
 
   <view class="note-card card">
     <view class="note-title">预约说明</view>

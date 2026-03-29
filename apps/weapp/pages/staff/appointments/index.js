@@ -107,7 +107,12 @@ function normalizeAppointments(items) {
       statusText: formatStatus(status),
       createdAtText: formatTime(item.createdAt),
       reviewedAtText: formatTime(item.reviewedAt),
-      canReview: status === 'pending',
+      canReview: true,
+      showApproveAction: status !== 'approved',
+      showRejectAction: status !== 'rejected',
+      approveActionText: status === 'pending' ? '通过预约' : '改为通过',
+      rejectActionText: status === 'pending' ? '驳回预约' : '改为拒绝',
+      reviewHint: status === 'pending' ? '待审核预约可直接处理。' : '当前支持改判，系统以最新审核结果为准。',
       isHistory: isDateText(date) && date < today
     };
   }).sort((left, right) => {
@@ -459,6 +464,12 @@ Page({
   goRules() {
     wx.redirectTo({
       url: '/pages/staff/rules/index'
+    });
+  },
+
+  goGallery() {
+    wx.redirectTo({
+      url: '/pages/staff/gallery/index'
     });
   },
 

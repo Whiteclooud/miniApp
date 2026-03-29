@@ -1,0 +1,89 @@
+@import '../../app.wxss';
+
+.section-card,
+.state-card {
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.section-desc {
+  margin-top: 12rpx;
+  color: #81695e;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.gallery-grid {
+  column-count: 2;
+  column-gap: 20rpx;
+}
+
+.gallery-card {
+  break-inside: avoid;
+  margin-bottom: 20rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 12rpx 36rpx rgba(140, 78, 58, 0.08);
+}
+
+.gallery-image {
+  width: 100%;
+  height: 300rpx;
+  background: #f6ebe6;
+}
+
+.gallery-body {
+  padding: 20rpx;
+}
+
+.gallery-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.gallery-desc {
+  margin-top: 10rpx;
+  color: #6f574b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.gallery-tags {
+  margin-top: 12rpx;
+}
+
+.tag {
+  display: inline-block;
+  margin-right: 10rpx;
+  margin-bottom: 10rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #fff3ef;
+  color: #a45f67;
+  font-size: 22rpx;
+}
+
+.gallery-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.gallery-time {
+  color: #ab9084;
+  font-size: 22rpx;
+}
+
+.detail-link {
+  color: #c05d76;
+  font-size: 22rpx;
+  font-weight: 600;
+}

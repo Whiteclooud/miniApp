@@ -2,6 +2,14 @@ const { getAvailability, createAppointment } = require('../../services/appointme
 const { getErrorKind, getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
 
+const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+const CALENDAR_LEGEND = [
+  { key: 'AVAILABLE', label: '可约', status: 'active' },
+  { key: 'SLOT_OCCUPIED', label: '已满', status: 'disabled' },
+  { key: 'DATE_CLOSED', label: '休息', status: 'disabled' },
+  { key: 'DATE_OUT_OF_RANGE', label: '超窗', status: 'disabled' }
+];
+
 function padNumber(value) {
   return `${value}`.padStart(2, '0');
 }
@@ -40,14 +48,6 @@ function normalizeText(value, fallback = '') {
   return typeof value === 'string' ? value.trim() || fallback : fallback;
 }
 
-function normalizeStringOption(value, index, prefix) {
-  return {
-    id: `${prefix}-${index}`,
-    label: value,
-    value
-  };
-}
-
 function normalizeDateOption(item, index) {
   if (typeof item === 'string') {
     return {
@@ -76,7 +76,9 @@ function normalizeTimeSlotStatus(value) {
 function normalizeTimeSlotOption(item, index) {
   if (typeof item === 'string') {
     return {
-      ...normalizeStringOption(item, index, 'time-slot'),
+      id: `time-slot-${index}`,
+      label: item,
+      value: item,
       status: 'active',
       reasonCode: '',
       reasonText: ''
@@ -105,95 +107,127 @@ function normalizeTimeSlots(items) {
     .filter((item) => item.value);
 }
 
-function normalizeAvailability(data, requestedDate) {
-  const source = data.item || data.data || data || {};
-  const grouped = {};
-  const dateOptionMap = {};
-  const responseSelectedDate = normalizeText(
-    source.selectedDate || source.selected_date || source.currentDate || source.current_date
-  );
-  const hasSelectedDateContract = Array.isArray(source.dateOptions) || !!responseSelectedDate;
-  const groupedEntries = hasSelectedDateContract
-    ? (source.availability || source.dateSlots || source.dateTimeSlots || [])
-    : (source.items || source.availability || source.dateSlots || source.dateTimeSlots || []);
-
-  const seedDateOption = (rawItem, index) => {
-    const option = normalizeDateOption(rawItem, index);
-    if (!option.value || dateOptionMap[option.value]) {
-      return;
-    }
-
-    dateOptionMap[option.value] = option;
-  };
-
-  (source.dateOptions || source.availableDates || source.dates || []).forEach(seedDateOption);
-
-  if (Array.isArray(groupedEntries) && groupedEntries.length) {
-    groupedEntries.forEach((entry, index) => {
-      if (!entry || typeof entry !== 'object') {
-        return;
-      }
-
-      const dateValue = entry.date || entry.value || entry.label || requestedDate || responseSelectedDate || '';
-      if (!dateValue) {
-        return;
-      }
-
-      seedDateOption({ value: dateValue }, index);
-
-      const normalizedSlots = normalizeTimeSlots(entry.timeSlots || entry.availableSlots || entry.slots || []);
-      if (normalizedSlots.length) {
-        grouped[dateValue] = (grouped[dateValue] || []).concat(normalizedSlots);
-        return;
-      }
-
-      if (entry.timeSlot) {
-        grouped[dateValue] = (grouped[dateValue] || []).concat([
-          normalizeTimeSlotOption(entry, index)
-        ]);
-      }
-    });
-  } else if (source.timeSlotsByDate && typeof source.timeSlotsByDate === 'object') {
-    Object.keys(source.timeSlotsByDate).forEach((key, index) => {
-      seedDateOption({ value: key }, index);
-      grouped[key] = normalizeTimeSlots(source.timeSlotsByDate[key]);
-    });
+function normalizeCalendarDay(item, index) {
+  if (typeof item === 'string') {
+    return {
+      id: `calendar-day-${index}`,
+      date: item,
+      status: 'active',
+      reasonCode: 'AVAILABLE',
+      reasonText: '可预约'
+    };
   }
 
-  let dateOptions = Object.keys(dateOptionMap)
-    .sort()
-    .map((value) => dateOptionMap[value]);
-
-  if (!dateOptions.length && requestedDate) {
-    dateOptions = [normalizeDateOption({ value: requestedDate }, 0)];
-  }
-
-  const defaultTimeSlotOptions = hasSelectedDateContract
-    ? normalizeTimeSlots(source.items || source.timeSlotOptions || source.availableSlots || source.timeSlots || [])
-    : normalizeTimeSlots(
-      source.timeSlotOptions || source.availableSlots || source.timeSlots || []
-    );
-
-  const selectedDate = dateOptions.some((item) => item.value === requestedDate)
-    ? requestedDate
-    : responseSelectedDate || (dateOptions[0] && dateOptions[0].value) || requestedDate || '';
+  const date = normalizeText(item.date || item.value || item.label);
+  const reasonCode = normalizeText(item.reasonCode || item.reason_code || item.code || 'AVAILABLE');
+  const reasonText = normalizeText(item.reasonText || item.reason_text || item.reason || '');
+  const explicitStatus = normalizeTimeSlotStatus(item.status);
+  const status = explicitStatus || ((reasonCode && reasonCode !== 'AVAILABLE') ? 'disabled' : 'active');
 
   return {
-    dateOptions,
-    timeSlotOptionsByDate: grouped,
-    defaultTimeSlotOptions,
-    selectedDate,
-    responseSelectedDate
+    id: item.id || `calendar-day-${index}`,
+    date,
+    status,
+    reasonCode: reasonCode || (status === 'active' ? 'AVAILABLE' : 'DATE_OUT_OF_RANGE'),
+    reasonText: reasonText || (status === 'active' ? '可预约' : '当前日期不可预约')
   };
 }
 
-function getTimeSlotOptionsForDate(availability, date) {
-  const mapped = availability.timeSlotOptionsByDate[date];
-  if (Array.isArray(mapped) && mapped.length) {
-    return mapped;
+function formatMonthLabel(dateText) {
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) {
+    return '预约日历';
+  }
+  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月`;
+}
+
+function getDateNumber(dateText) {
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) {
+    return '--';
+  }
+  return `${date.getDate()}`;
+}
+
+function buildCalendarWeeks(calendarDays, selectedDate) {
+  if (!calendarDays.length) {
+    return [];
   }
 
-  return availability.defaultTimeSlotOptions || [];
+  const sortedDays = [...calendarDays].sort((left, right) => `${left.date}`.localeCompare(`${right.date}`));
+  const firstDate = new Date(sortedDays[0].date);
+  const lastDate = new Date(sortedDays[sortedDays.length - 1].date);
+  if (Number.isNaN(firstDate.getTime()) || Number.isNaN(lastDate.getTime())) {
+    return [];
+  }
+
+  const dayMap = sortedDays.reduce((result, item) => {
+    result[item.date] = item;
+    return result;
+  }, {});
+
+  const startDate = new Date(firstDate);
+  startDate.setDate(1 - firstDate.getDay());
+  const endDate = new Date(lastDate);
+  endDate.setDate(lastDate.getDate() + (6 - lastDate.getDay()));
+  const today = getTodayDateValue();
+  const weeks = [];
+  let currentWeek = [];
+
+  for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+    const key = formatDateValue(cursor);
+    const source = dayMap[key];
+    const isCurrentMonth = cursor.getMonth() === firstDate.getMonth();
+    currentWeek.push({
+      key,
+      date: key,
+      dayNumber: getDateNumber(key),
+      isCurrentMonth,
+      isToday: key === today,
+      isSelected: key === selectedDate,
+      status: source ? source.status : 'disabled',
+      reasonCode: source ? source.reasonCode : 'DATE_OUT_OF_RANGE',
+      reasonText: source ? source.reasonText : '超出开放窗口',
+      isDisabled: !source || source.status !== 'active',
+      canTap: Boolean(source)
+    });
+
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+  }
+
+  return weeks;
+}
+
+function normalizeAvailability(data, requestedDate) {
+  const source = data.item || data.data || data || {};
+  const responseSelectedDate = normalizeText(
+    source.selectedDate || source.selected_date || source.currentDate || source.current_date
+  );
+  const dateOptions = (source.dateOptions || source.availableDates || source.dates || []).map(normalizeDateOption).filter((item) => item.value);
+  const selectedDate = dateOptions.some((item) => item.value === requestedDate)
+    ? requestedDate
+    : responseSelectedDate || (dateOptions[0] && dateOptions[0].value) || requestedDate || '';
+  const timeSlotOptions = normalizeTimeSlots(source.items || source.timeSlotOptions || source.availableSlots || source.timeSlots || []);
+  const calendarDays = (source.calendarDays || source.calendar_days || dateOptions.map((item) => ({
+    date: item.value,
+    status: item.value === selectedDate ? 'active' : 'disabled',
+    reasonCode: item.value === selectedDate ? 'AVAILABLE' : 'DATE_OUT_OF_RANGE',
+    reasonText: item.value === selectedDate ? '可预约' : '超出开放窗口'
+  }))).map(normalizeCalendarDay).filter((item) => item.date);
+  const selectedCalendarDay = calendarDays.find((item) => item.date === selectedDate) || null;
+
+  return {
+    dateOptions,
+    calendarDays,
+    selectedDate,
+    selectedCalendarDay,
+    timeSlotOptions,
+    monthLabel: selectedDate ? formatMonthLabel(selectedDate) : '预约日历',
+    calendarWeeks: buildCalendarWeeks(calendarDays, selectedDate)
+  };
 }
 
 function getSelectedTimeSlotOption(timeSlotOptions, selectedTimeSlotValue) {
@@ -294,15 +328,18 @@ Page({
       isDevelopEnv: false
     },
     customerOpenIdInput: '',
-    dateOptions: [],
-    dateIndex: 0,
+    weekLabels: WEEK_LABELS,
+    calendarLegend: CALENDAR_LEGEND,
+    monthLabel: '预约日历',
+    calendarWeeks: [],
+    selectedCalendarDay: null,
     timeSlotOptions: [],
     selectedTimeSlotValue: '',
     availability: {
       dateOptions: [],
-      timeSlotOptionsByDate: {},
-      defaultTimeSlotOptions: [],
-      selectedDate: ''
+      calendarDays: [],
+      selectedDate: '',
+      timeSlotOptions: []
     },
     form: {
       customerName: '',
@@ -374,14 +411,29 @@ Page({
     });
   },
 
-  async onDateChange(event) {
-    const dateIndex = Number(event.currentTarget.dataset.index ?? event.detail.value);
-    const nextDate = (this.data.dateOptions[dateIndex] && this.data.dateOptions[dateIndex].value) || '';
-    if (!nextDate) {
+  async onCalendarDayTap(event) {
+    const { date, canTap } = event.currentTarget.dataset;
+    if (!date || canTap === false || canTap === 'false') {
       return;
     }
 
-    await this.loadAvailability(nextDate);
+    await this.loadAvailability(date);
+  },
+
+  async changeMonth(event) {
+    const { delta } = event.currentTarget.dataset;
+    const currentDateText = this.data.availability.selectedDate || getTodayDateValue();
+    const currentDate = new Date(currentDateText);
+    if (Number.isNaN(currentDate.getTime())) {
+      return;
+    }
+
+    const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + Number(delta || 0), 1);
+    await this.loadAvailability(formatDateValue(targetDate));
+  },
+
+  resetToCurrentMonth() {
+    this.loadAvailability(getTodayDateValue());
   },
 
   onTimeSlotTap(event) {
@@ -420,11 +472,7 @@ Page({
       return;
     }
 
-    const selectedDate =
-      (this.data.dateOptions[this.data.dateIndex] && this.data.dateOptions[this.data.dateIndex].value) ||
-      this.data.availability.selectedDate ||
-      getTodayDateValue();
-
+    const selectedDate = this.data.availability.selectedDate || getTodayDateValue();
     await this.loadAvailability(selectedDate);
   },
 
@@ -458,44 +506,41 @@ Page({
       const previousDate = this.data.availability.selectedDate;
       const previousSelectedTimeSlotValue = this.data.selectedTimeSlotValue;
       const availability = normalizeAvailability(await getAvailability(date), date);
-      const dateOptions = availability.dateOptions;
-      const requestedDateInOptions = dateOptions.some((item) => item.value === date);
-      const selectedDate = requestedDateInOptions ? date : availability.selectedDate;
-      const timeSlotOptions = getTimeSlotOptionsForDate(availability, selectedDate);
-      const selectedIndex = Math.max(dateOptions.findIndex((item) => item.value === selectedDate), 0);
-      const shouldKeepSelection = selectedDate === previousDate;
+      const timeSlotOptions = availability.timeSlotOptions || [];
       const selectedTimeSlotValue = resolveSelectedTimeSlotValue(
         timeSlotOptions,
-        shouldKeepSelection ? previousSelectedTimeSlotValue : ''
+        availability.selectedDate === previousDate ? previousSelectedTimeSlotValue : ''
       );
       const hasActiveTimeSlots = timeSlotOptions.some((item) => item.status === 'active');
-      const availabilityNoticeText = requestedDateInOptions && availability.responseSelectedDate && availability.responseSelectedDate !== date
-        ? `当前请求日期是 ${date}，但接口返回的 selectedDate 为 ${availability.responseSelectedDate}。页面已优先按你点选的日期展示这次结果，请继续核对后端 selectedDate 与 items 是否同步。`
-        : '';
 
       let pageState = 'ready';
       let stateMessage = '';
       let timeSlotStateMessage = '';
-      if (!dateOptions.length) {
+      if (!availability.calendarDays.length) {
         pageState = 'empty';
-        stateMessage = 'availability 接口已返回，但当前没有可约日期。';
+        stateMessage = 'availability 接口已返回，但当前没有可展示的月历日期。';
       } else if (!timeSlotOptions.length) {
         pageState = 'empty';
-        stateMessage = 'availability 接口已返回，但当前日期暂无可约时段，请联系店员确认排期。';
+        stateMessage = '当前日期暂无可展示时段，请联系店员确认排期。';
       } else if (!hasActiveTimeSlots) {
-        timeSlotStateMessage = '当前日期暂无可直接提交的可预约时段；灰色卡片已展示不可预约原因，请改选日期或联系门店确认排期。';
+        timeSlotStateMessage = (availability.selectedCalendarDay && availability.selectedCalendarDay.reasonText)
+          ? `当前日期不可直接预约：${availability.selectedCalendarDay.reasonText}。你仍可查看各时段禁用原因。`
+          : '当前日期暂无可直接提交的可预约时段；灰色卡片已展示不可预约原因，请改选日期或联系门店确认排期。';
       }
 
       this.setData({
         availability,
-        dateOptions,
-        dateIndex: selectedIndex,
+        monthLabel: availability.monthLabel,
+        calendarWeeks: availability.calendarWeeks,
+        selectedCalendarDay: availability.selectedCalendarDay,
         timeSlotOptions,
         selectedTimeSlotValue,
         pageState,
         stateMessage,
         timeSlotStateMessage,
-        availabilityNoticeText
+        availabilityNoticeText: availability.selectedCalendarDay && availability.selectedCalendarDay.reasonCode === 'DATE_OUT_OF_RANGE'
+          ? '当前查看的是超出开放窗口的日期，月历仍保留状态展示，便于理解哪些日期暂不可约。'
+          : ''
       });
     } catch (error) {
       this.setData({
@@ -511,8 +556,7 @@ Page({
   async submit() {
     const {
       pageState,
-      dateOptions,
-      dateIndex,
+      availability,
       timeSlotOptions,
       selectedTimeSlotValue,
       form,
@@ -533,7 +577,6 @@ Page({
       return;
     }
 
-    const dateOption = dateOptions[dateIndex];
     const timeSlotOption = getSelectedTimeSlotOption(timeSlotOptions, selectedTimeSlotValue);
     const customerName = (form.customerName || '').trim();
     const phone = (form.phone || '').trim();
@@ -547,7 +590,7 @@ Page({
       return;
     }
 
-    if (!dateOption || !timeSlotOption || timeSlotOption.status !== 'active') {
+    if (!availability.selectedDate || !timeSlotOption || timeSlotOption.status !== 'active') {
       this.setData({
         submitMessage: getTimeSlotReasonText(timeSlotOption) || '当前没有可提交的预约时段，请改选其他日期或时间。'
       });
@@ -562,7 +605,7 @@ Page({
 
     try {
       await createAppointment({
-        appointmentDate: dateOption.value,
+        appointmentDate: availability.selectedDate,
         timeSlot: timeSlotOption.value,
         customerName,
         phone,

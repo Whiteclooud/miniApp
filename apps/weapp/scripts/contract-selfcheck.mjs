@@ -193,7 +193,9 @@ expectExcludes(apiProfileText, "'legacy'", apiProfilePath);
 const homePagePath = 'apps/weapp/pages/home/index.js';
 const homePageText = readText(homePagePath);
 expectIncludes(homePageText, 'goGalleryDetail', homePagePath);
+expectIncludes(homePageText, 'goGalleryList', homePagePath);
 expectIncludes(homePageText, '/pages/gallery-detail/index?id=', homePagePath);
+expectIncludes(homePageText, '/pages/gallery-list/index', homePagePath);
 expectIncludes(homePageText, 'normalizeGalleryItems', homePagePath);
 expectExcludes(homePageText, 'switchToLegacyProfile', homePagePath);
 expectExcludes(homePageText, 'applyApiProfile', homePagePath);
@@ -201,6 +203,7 @@ expectExcludes(homePageText, 'applyApiProfile', homePagePath);
 const homeWxmlPath = 'apps/weapp/pages/home/index.wxml';
 const homeWxmlText = readText(homeWxmlPath);
 expectIncludes(homeWxmlText, '返图灵感', homeWxmlPath);
+expectIncludes(homeWxmlText, '查看全部', homeWxmlPath);
 expectExcludes(homeWxmlText, 'apps/server', homeWxmlPath);
 expectExcludes(homeWxmlText, '当前接口基线', homeWxmlPath);
 expectExcludes(homeWxmlText, '当前执行口径', homeWxmlPath);
@@ -220,11 +223,15 @@ const galleryUtilsPath = 'apps/weapp/utils/gallery.js';
 const galleryUtilsText = readText(galleryUtilsPath);
 expectIncludes(galleryUtilsText, 'item.imageUrls', galleryUtilsPath);
 expectIncludes(galleryUtilsText, 'item.imageUrl', galleryUtilsPath);
-expectIncludes(galleryUtilsText, 'const coverImageUrl = imageUrls[0] ||', galleryUtilsPath);
+expectIncludes(galleryUtilsText, 'const coverImageUrl = item.imageUrl || imageUrls[0] ||', galleryUtilsPath);
 
 const bookingPagePath = 'apps/weapp/pages/booking/index.js';
 const bookingPageText = readText(bookingPagePath);
 expectIncludes(bookingPageText, 'normalizeTimeSlotStatus', bookingPagePath);
+expectIncludes(bookingPageText, 'calendarDays', bookingPagePath);
+expectIncludes(bookingPageText, 'calendarWeeks', bookingPagePath);
+expectIncludes(bookingPageText, 'changeMonth', bookingPagePath);
+expectIncludes(bookingPageText, 'onCalendarDayTap', bookingPagePath);
 expectIncludes(bookingPageText, 'reasonText', bookingPagePath);
 expectIncludes(bookingPageText, 'selectedTimeSlotValue', bookingPagePath);
 expectIncludes(bookingPageText, 'onTimeSlotTap', bookingPagePath);
@@ -232,7 +239,7 @@ expectIncludes(bookingPageText, "status !== 'active'", bookingPagePath);
 expectIncludes(bookingPageText, 'getTimeSlotReasonText', bookingPagePath);
 expectRegex(
   bookingPageText,
-  /createAppointment\(\{[\s\S]*appointmentDate:\s*dateOption\.value[\s\S]*timeSlot:\s*timeSlotOption\.value[\s\S]*\}\)/,
+  /createAppointment\(\{[\s\S]*appointmentDate:\s*availability\.selectedDate[\s\S]*timeSlot:\s*timeSlotOption\.value[\s\S]*\}\)/,
   bookingPagePath,
   'must submit appointmentDate + timeSlot when creating appointments'
 );
@@ -242,6 +249,8 @@ expectRegex(
 
 const bookingWxmlPath = 'apps/weapp/pages/booking/index.wxml';
 const bookingWxmlText = readText(bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'calendarWeeks', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'bindtap="onCalendarDayTap"', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'time-slot-grid', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'bindtap="onTimeSlotTap"', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'item.reasonText || item.reasonCode', bookingWxmlPath);
@@ -249,6 +258,8 @@ expectExcludes(bookingWxmlText, 'picker mode="selector" range="{{timeSlotOptions
 
 const bookingWxssPath = 'apps/weapp/pages/booking/index.wxss';
 const bookingWxssText = readText(bookingWxssPath);
+expectIncludes(bookingWxssText, '.calendar-card', bookingWxssPath);
+expectIncludes(bookingWxssText, '.calendar-cell', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-grid', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-card.is-disabled', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-card.is-selected', bookingWxssPath);
@@ -271,6 +282,10 @@ const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
 });
 expectIncludes(staffAppointmentsPageText, "'approved'", staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, "'rejected'", staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'goGallery', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'reviewHint', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'showApproveAction', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'showRejectAction', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'activeListFilter', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'detailFilters', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'onDetailFilterTap', staffAppointmentsPagePath);
@@ -294,7 +309,8 @@ const staffAppointmentsWxmlText = readText(staffAppointmentsWxmlPath);
 ['confirm', '确认预约', '待确认'].forEach((token) => {
   expectExcludes(staffAppointmentsWxmlText, token, staffAppointmentsWxmlPath);
 });
-expectIncludes(staffAppointmentsWxmlText, '通过预约', staffAppointmentsWxmlPath);
+expectIncludes(staffAppointmentsWxmlText, 'approveActionText', staffAppointmentsWxmlPath);
+expectIncludes(staffAppointmentsWxmlText, 'rejectActionText', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, '待审核', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, 'bindtap="onDetailFilterTap"', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, 'detail-filter-chip', staffAppointmentsWxmlPath);
@@ -311,14 +327,29 @@ expectRegex(
   'must submit advanceOpenDays + dailySlots + closedDates'
 );
 
+const galleryListPagePath = 'apps/weapp/pages/gallery-list/index.js';
+const galleryListPageText = readText(galleryListPagePath);
+expectIncludes(galleryListPageText, 'listGallery', galleryListPagePath);
+expectIncludes(galleryListPageText, 'goGalleryDetail', galleryListPagePath);
+
+const staffGalleryPagePath = 'apps/weapp/pages/staff/gallery/index.js';
+const staffGalleryPageText = readText(staffGalleryPagePath);
+expectIncludes(staffGalleryPageText, 'uploadStaffGalleryImages', staffGalleryPagePath);
+expectIncludes(staffGalleryPageText, 'createStaffGallery', staffGalleryPagePath);
+expectIncludes(staffGalleryPageText, 'updateStaffGallery', staffGalleryPagePath);
+expectIncludes(staffGalleryPageText, "publishedAt = `${form.publishDate}T${form.publishTime}:00`", staffGalleryPagePath);
+expectIncludes(staffGalleryPageText, "status: form.status === 'inactive' ? 'inactive' : 'active'", staffGalleryPagePath);
+
 const appJsonPath = 'apps/weapp/app.json';
 const appJson = JSON.parse(readText(appJsonPath) || '{}');
 const requiredPages = [
   'pages/home/index',
+  'pages/gallery-list/index',
   'pages/gallery-detail/index',
   'pages/booking/index',
   'pages/my-bookings/index',
   'pages/staff/rules/index',
+  'pages/staff/gallery/index',
   'pages/staff/appointments/index'
 ];
 requiredPages.forEach((page) => {

@@ -20,13 +20,13 @@ Page({
   async loadData() {
     this.setData({ loading: true, hasError: false });
     try {
-      const res = await listGallery();
+      const res = await listGallery({ limit: 3 });
       this.setData({
         galleryItems: normalizeGalleryItems(res.items || []),
         loading: false,
         hasError: false
       });
-    } catch (error) {
+    } catch (_error) {
       this.setData({
         galleryItems: [],
         loading: false,
@@ -46,6 +46,12 @@ Page({
     }
     wx.navigateTo({
       url: `/pages/gallery-detail/index?id=${encodeURIComponent(id)}`
+    });
+  },
+
+  goGalleryList() {
+    wx.navigateTo({
+      url: '/pages/gallery-list/index'
     });
   },
 

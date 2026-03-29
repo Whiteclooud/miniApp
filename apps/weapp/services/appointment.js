@@ -1,8 +1,43 @@
-const { request } = require('../utils/request');
+const { request, uploadFiles } = require('../utils/request');
 
-function listGallery() {
+function listGallery(params = {}) {
   return request({
-    url: '/api/v1/gallery'
+    url: '/api/v1/gallery',
+    params
+  });
+}
+
+function listStaffGallery() {
+  return request({
+    url: '/api/v1/staff/gallery',
+    auth: 'staff'
+  });
+}
+
+function createStaffGallery(payload = {}) {
+  return request({
+    url: '/api/v1/staff/gallery',
+    method: 'POST',
+    data: payload,
+    auth: 'staff'
+  });
+}
+
+function updateStaffGallery(itemId, payload = {}) {
+  return request({
+    url: `/api/v1/staff/gallery/${itemId}`,
+    method: 'PATCH',
+    data: payload,
+    auth: 'staff'
+  });
+}
+
+function uploadStaffGalleryImages(filePaths = []) {
+  return uploadFiles({
+    url: '/api/v1/staff/uploads/images',
+    filePaths,
+    name: 'files',
+    auth: 'staff'
   });
 }
 
@@ -81,6 +116,10 @@ function reviewStaffAppointment(appointmentId, payload, method = 'PATCH') {
 
 module.exports = {
   listGallery,
+  listStaffGallery,
+  createStaffGallery,
+  updateStaffGallery,
+  uploadStaffGalleryImages,
   getAvailability,
   createAppointment,
   listMyAppointments,

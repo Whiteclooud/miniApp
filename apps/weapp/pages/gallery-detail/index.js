@@ -51,7 +51,7 @@ Page({
         item,
         previewUrls: item.imageUrls || []
       });
-    } catch (error) {
+    } catch (_error) {
       this.setData({
         pageState: 'error',
         stateMessage: '返图详情加载失败，请稍后重试。'

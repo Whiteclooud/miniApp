@@ -54,6 +54,10 @@
   margin-top: 16rpx;
 }
 
+.action-row-wrap {
+  flex-wrap: wrap;
+}
+
 .stepper-button {
   flex: 1;
   border-radius: 999rpx;

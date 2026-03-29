@@ -65,6 +65,8 @@
 > 状态更新（2026-03-29 14:32 Asia/Shanghai）：frontend 已回收有效候选提交 `c2b57bc feat(weapp): polish gallery and booking experience` 与补丁 `281d5b1 fix(weapp): normalize gallery publish timestamp`，覆盖 FE-018 / FE-019 / FE-020 / FE-021：首页返图“查看全部”与列表信息增强、顾客预约页继续沿用月历选期并补状态图例、店员返图管理页最小闭环、店员审核结果改判提示。frontend 回报已通过语法检查与 `git diff --check`，但这批改动尚未导入 architect 主仓，因此当前最高优先级已从“继续前端实现”切换为“导出可审阅材料并做 architect 收口”。
 >
 > 状态更新（2026-03-29 14:33 Asia/Shanghai）：architect 已重新派发短任务 `fe-20260329-export-281d5b1`，只要求 frontend 把 `c2b57bc / 281d5b1` 的 patch、MANIFEST 与最终文件快照导出到 architect 工作区 `.integration/`，不再新增业务改动。当前阶段收敛为“等待前端交接材料 -> architect 审阅并决定是否合入主仓”。
+>
+> 状态更新（2026-03-29 15:3x Asia/Shanghai）：architect 已在当前主仓直接完成 FE-018 / FE-019 / FE-020 / FE-021 收口：补齐 `pages/gallery-list`、`pages/staff/gallery`、首页“查看全部返图灵感”入口、顾客预约月历选期、店员返图管理最小闭环、店员审核结果改判提示，并同步更新 `apps/weapp/scripts/contract-selfcheck.mjs`。当前已在主仓实际通过前端关键页面 `node --check`、`node apps/weapp/scripts/contract-selfcheck.mjs` 与 `git diff --check -- apps/weapp`；判定：本轮体验优化的前后端主仓实现已重新收敛，下一步最高优先级切换为 QA-007 页面级回归 UAT，而不是继续追加 frontend/backend 开发任务。
 
 ## 当前执行边界（2026-03-29）
 

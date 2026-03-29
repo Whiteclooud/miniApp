@@ -37,6 +37,8 @@ function normalizeAppointments(items) {
     date: item.appointmentDate || item.date || '-',
     timeSlot: item.timeSlot || '-',
     note: item.note || '',
+    reviewNote: item.reviewNote || '',
+    reviewedAtText: formatTime(item.reviewedAt),
     statusText: formatStatus(item.status),
     createdAtText: formatTime(item.createdAt)
   }));

@@ -1,10 +1,12 @@
 {
   "pages": [
     "pages/home/index",
+    "pages/gallery-list/index",
     "pages/gallery-detail/index",
     "pages/booking/index",
     "pages/my-bookings/index",
     "pages/staff/rules/index",
+    "pages/staff/gallery/index",
     "pages/staff/appointments/index"
   ],
   "window": {
