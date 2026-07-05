@@ -8,11 +8,54 @@ const PROFILE_MAP = {
     key: 'api',
     label: '当前主线 · apps/api',
     shortLabel: 'apps/api',
-    baseUrl: 'http://127.0.0.1:3100'
+    baseUrl: 'http://127.0.0.1:3100',
+    enableWechatAuth: false,
+    allowHeaderAuthFallback: true
+  },
+  trial: {
+    key: 'trial',
+    label: '体验版 · HTTPS API',
+    shortLabel: 'trial',
+    baseUrl: 'https://replace-with-your-api-domain.example.com',
+    enableWechatAuth: true,
+    allowHeaderAuthFallback: false,
+    requiresConfiguration: true
+  },
+  release: {
+    key: 'release',
+    label: '正式版 · HTTPS API',
+    shortLabel: 'release',
+    baseUrl: 'https://replace-with-your-api-domain.example.com',
+    enableWechatAuth: true,
+    allowHeaderAuthFallback: false,
+    requiresConfiguration: true
   }
 };
 
-function normalizeProfileKey() {
+function getRuntimeEnvVersion() {
+  try {
+    const accountInfo = wx.getAccountInfoSync();
+    return accountInfo.miniProgram.envVersion || 'develop';
+  } catch (_error) {
+    return 'develop';
+  }
+}
+
+function normalizeProfileKey(profileKey) {
+  return PROFILE_MAP[profileKey] ? profileKey : DEFAULT_PROFILE;
+}
+
+function resolveRuntimeProfileKey() {
+  const envVersion = getRuntimeEnvVersion();
+
+  if (envVersion === 'trial') {
+    return 'trial';
+  }
+
+  if (envVersion === 'release') {
+    return 'release';
+  }
+
   return DEFAULT_PROFILE;
 }
 
@@ -25,32 +68,35 @@ function buildProfile(profileKey, extra = {}) {
     label: profile.label,
     shortLabel: profile.shortLabel,
     baseUrl: profile.baseUrl,
-    isDefault: true,
+    enableWechatAuth: !!profile.enableWechatAuth,
+    allowHeaderAuthFallback: !!profile.allowHeaderAuthFallback,
+    requiresConfiguration: !!profile.requiresConfiguration,
+    isDefault: normalizedKey === resolveRuntimeProfileKey(),
     isDevelopEnv: !!extra.isDevelopEnv,
-    canSwitch: false,
+    canSwitch: isDevelopEnv(),
     source: extra.source || 'default'
   };
 }
 
 function ensureApiProfile() {
   wx.removeStorageSync(STORAGE_KEY);
-  return buildProfile(DEFAULT_PROFILE, {
+  return buildProfile(resolveRuntimeProfileKey(), {
     isDevelopEnv: isDevelopEnv(),
     source: 'default'
   });
 }
 
-function setApiProfile() {
+function setApiProfile(profileKey) {
   wx.removeStorageSync(STORAGE_KEY);
-  return buildProfile(DEFAULT_PROFILE, {
+  return buildProfile(profileKey || resolveRuntimeProfileKey(), {
     isDevelopEnv: isDevelopEnv(),
-    source: 'default'
+    source: 'manual'
   });
 }
 
 function resetApiProfile() {
   wx.removeStorageSync(STORAGE_KEY);
-  return buildProfile(DEFAULT_PROFILE, {
+  return buildProfile(resolveRuntimeProfileKey(), {
     isDevelopEnv: isDevelopEnv(),
     source: 'default'
   });

@@ -1,7 +1,21 @@
 import { UnauthorizedException } from '@nestjs/common';
 
+function shouldIncludeDemoStaffOpenId() {
+  const configuredValue = process.env.ALLOW_DEMO_STAFF_OPENID;
+
+  if (configuredValue !== undefined) {
+    return ['1', 'true', 'yes', 'on'].includes(configuredValue.trim().toLowerCase());
+  }
+
+  return process.env.NODE_ENV !== 'production';
+}
+
 export function resolveAllowedStaffIds(): string[] {
-  const values = [process.env.STAFF_OPEN_IDS, process.env.STAFF_OPEN_ID, 'staff-openid-demo']
+  const values = [
+    process.env.STAFF_OPEN_IDS,
+    process.env.STAFF_OPEN_ID,
+    shouldIncludeDemoStaffOpenId() ? 'staff-openid-demo' : ''
+  ]
     .filter(Boolean)
     .flatMap((value) => `${value}`.split(','))
     .map((value) => value.trim())

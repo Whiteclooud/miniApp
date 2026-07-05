@@ -107,6 +107,7 @@ export class AppointmentsService {
         phone: `${payload.phone || ''}`.trim() || null,
         date: appointmentDate,
         timeSlot,
+        approvedSlotKey: null,
         note: `${payload.note || ''}`.trim() || null,
         status: AppointmentStatus.PENDING,
         reviewedAt: null,

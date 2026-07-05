@@ -2,12 +2,12 @@
 
 ## 目的
 
-本文件用于说明 MiniApp Phase 0 / Phase 1 中，`apps/api` 所需的 MySQL 环境要求、推荐版本、Docker 启动方式、本机直装方式，以及最小验收步骤。
+本文件用于说明当前唯一后端基线 `apps/api` 所需的 MySQL 环境要求、推荐版本、Docker 启动方式、本机直装方式，以及最小验收步骤。
 
 当前原则：
 - **推荐优先使用 Docker 启动 MySQL**，与仓库现有 compose 配置保持一致
 - 如果你更习惯本机直接安装，也可以，但请尽量对齐本文档中的版本、端口、库名、账号与密码
-- 当前 `apps/server` 仍使用 SQLite；MySQL 仅服务于新的 `apps/api`
+- `apps/api + MySQL` 是当前开发、联调、体验版验收的后端主线
 
 ---
 
@@ -38,7 +38,7 @@
 - 路径：`infra/compose/api-mysql.compose.yml`
 
 ### 当前默认数据库连接
-`apps/api/.env.example` 中当前默认值为：
+`apps/api/.env` 本地默认建议值为：
 
 ```env
 PORT=3100
@@ -173,13 +173,7 @@ FLUSH PRIVILEGES;
 无论你用 Docker 还是本机直装，只要 MySQL 可访问，接下来都需要：
 
 ### 5.1 准备 `.env`
-在仓库根目录下执行：
-
-```bash
-cp apps/api/.env.example apps/api/.env
-```
-
-如需修改端口，再编辑 `apps/api/.env` 中的 `DATABASE_URL`。
+在 `apps/api/.env` 中配置 `DATABASE_URL`。如需修改端口，同步修改该变量。
 
 ### 5.2 生成 Prisma Client
 
@@ -243,7 +237,7 @@ http://127.0.0.1:3100/health
 大概率可以，但当前项目最稳的做法仍然是先按 8.4 起环境。
 
 ### Q3：能不能继续只用 SQLite？
-可以继续用 SQLite 跑旧的 `apps/server`；但新的 `apps/api` Phase 1/2 运行验证需要 MySQL。
+当前主线不能只用 SQLite。`apps/api` 的 Prisma datasource 是 MySQL，体验版与正式版验收都以 MySQL 为准。
 
 ### Q4：如果我已经装了本机 MySQL，但端口不是 3307，怎么办？
 可以继续用你的端口，但请同步修改 `apps/api/.env` 的 `DATABASE_URL`，并告诉我最终端口。

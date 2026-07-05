@@ -1,4 +1,9 @@
 {
   "desc": "miniapp sitemap",
-  "rules": []
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
 }

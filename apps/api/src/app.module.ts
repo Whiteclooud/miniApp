@@ -11,10 +11,12 @@ import { StaffAppointmentReviewModule } from './staff-appointment-review/staff-a
 import { StaffAppointmentsModule } from './staff-appointments/staff-appointments.module';
 import { StaffGalleryModule } from './staff-gallery/staff-gallery.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     PrismaModule,
+    AuthModule,
     HealthModule,
     GalleryModule,
     BookingRulesModule,

@@ -1,5 +1,11 @@
 const { getCustomerIdentityOrThrow } = require('./customer');
 const { getStaffIdentityOrThrow } = require('./staff');
+const {
+  ensureAuthSession,
+  getSessionToken,
+  clearAuthSession,
+  isWechatAuthEnabled
+} = require('./auth');
 
 function createRequestError(message, extra = {}) {
   const error = new Error(message || '请求失败');
@@ -50,6 +56,18 @@ function getErrorKind(error) {
 }
 
 function buildAuthHeader(auth) {
+  const sessionToken = getSessionToken();
+
+  if (sessionToken) {
+    return {
+      Authorization: `Bearer ${sessionToken}`
+    };
+  }
+
+  if (!isHeaderAuthFallbackEnabled()) {
+    return {};
+  }
+
   if (auth === 'customer') {
     const identity = getCustomerIdentityOrThrow();
     return {
@@ -65,6 +83,15 @@ function buildAuthHeader(auth) {
   }
 
   return {};
+}
+
+function shouldUseWechatAuth(auth) {
+  return auth === 'customer' || auth === 'staff';
+}
+
+function isHeaderAuthFallbackEnabled() {
+  const app = getApp();
+  return !!(app && app.globalData && app.globalData.allowHeaderAuthFallback);
 }
 
 function buildUrl(baseUrl, path, params) {
@@ -93,6 +120,15 @@ function isUnauthorizedResponse(statusCode, payload) {
   return code === 'STAFF_UNAUTHORIZED' || code === 'CUSTOMER_UNAUTHORIZED';
 }
 
+function isSessionUnauthorized(statusCode, payload) {
+  if (statusCode !== 401) {
+    return false;
+  }
+
+  const code = `${(payload && (payload.code || payload.error)) || ''}`.toUpperCase();
+  return code === 'SESSION_UNAUTHORIZED';
+}
+
 function normalizeSuccessPayload(responseData) {
   if (!responseData) {
     return {};
@@ -111,9 +147,10 @@ function normalizeSuccessPayload(responseData) {
 
 function request({ url, method = 'GET', data, header = {}, auth = 'none', params }) {
   const app = getApp();
-  const authHeader = buildAuthHeader(auth);
 
-  return new Promise((resolve, reject) => {
+  const runRequest = () => new Promise((resolve, reject) => {
+    const authHeader = buildAuthHeader(auth);
+
     wx.request({
       url: buildUrl(app.globalData.apiBaseUrl, url, params),
       method,
@@ -130,6 +167,10 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
         }
 
         const payload = normalizeSuccessPayload(res.data);
+        if (isSessionUnauthorized(res.statusCode, payload)) {
+          clearAuthSession();
+        }
+
         reject(
           createRequestError(buildErrorMessage(payload, '请求失败'), {
             statusCode: res.statusCode,
@@ -151,11 +192,24 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
       }
     });
   });
+
+  if (!shouldUseWechatAuth(auth) || getSessionToken() || !isWechatAuthEnabled()) {
+    return runRequest();
+  }
+
+  return ensureAuthSession()
+    .then(() => runRequest())
+    .catch((error) => {
+      if (isHeaderAuthFallbackEnabled()) {
+        return runRequest();
+      }
+
+      return Promise.reject(error);
+    });
 }
 
 function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, header = {}, auth = 'none' }) {
   const app = getApp();
-  const authHeader = buildAuthHeader(auth);
   const targets = (filePaths || []).filter((item) => typeof item === 'string' && item.trim());
 
   if (!targets.length) {
@@ -163,6 +217,8 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
   }
 
   const uploadOne = (filePath) => new Promise((resolve, reject) => {
+    const authHeader = buildAuthHeader(auth);
+
     wx.uploadFile({
       url: buildUrl(app.globalData.apiBaseUrl, url),
       filePath,
@@ -177,6 +233,10 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(payload || {});
           return;
+        }
+
+        if (isSessionUnauthorized(res.statusCode, payload)) {
+          clearAuthSession();
         }
 
         reject(
@@ -201,13 +261,27 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
     });
   });
 
-  return targets.reduce((chain, filePath) => chain.then(async (acc) => {
+  const runUploads = () => targets.reduce((chain, filePath) => chain.then(async (acc) => {
     const payload = await uploadOne(filePath);
     return {
       ...payload,
       items: [...(acc.items || []), ...((payload && payload.items) || [])]
     };
   }), Promise.resolve({ items: [] }));
+
+  if (!shouldUseWechatAuth(auth) || getSessionToken() || !isWechatAuthEnabled()) {
+    return runUploads();
+  }
+
+  return ensureAuthSession()
+    .then(() => runUploads())
+    .catch((error) => {
+      if (isHeaderAuthFallbackEnabled()) {
+        return runUploads();
+      }
+
+      return Promise.reject(error);
+    });
 }
 
 module.exports = {
@@ -215,5 +289,6 @@ module.exports = {
   uploadFiles,
   createRequestError,
   getErrorKind,
-  getErrorMessage
+  getErrorMessage,
+  clearAuthSession
 };

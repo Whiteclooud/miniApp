@@ -9,3 +9,4 @@ coverage/
 apps/server/data/*.sqlite
 apps/server/data/*.sqlite-shm
 apps/server/data/*.sqlite-wal
+apps/api/uploads/

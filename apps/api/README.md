@@ -1,83 +1,103 @@
 # apps/api
 
-这是 MiniApp 项目的新后端并行骨架，目标技术栈为 **NestJS + Prisma + MySQL**。
+MiniApp 当前唯一后端基线，技术栈为 **NestJS + Prisma + MySQL**。
 
 ## 当前定位
 
-- `apps/server`：当前已通过 UAT 的旧运行基线，继续保留，作为回滚入口。
-- `apps/api`：新后端并行骨架，只承载 Phase 0/1 首轮落地，不直接承接现网流量。
+- `apps/api` 承接当前小程序所有后端接口。
+- 旧 `apps/server` / SQLite 不再作为当前联调、验收或发布主线。
+- 前端默认通过 `apps/weapp` 调用 `apps/api`。
 
-当前原则：
-1. 不改动 `apps/server/**`
-2. 不回改当前冻结 API 契约
-3. 新旧后端并行存在，后续通过端口 / env / 启动脚本切换
+## 核心能力
 
-## 当前已落地内容
+- 健康检查：`GET /health`
+- 微信登录与会话：`POST /api/v1/auth/wechat-login`、`GET /api/v1/auth/me`、`POST /api/v1/auth/logout`
+- 返图库：`GET /api/v1/gallery`
+- 店员返图上传与管理：`POST /api/v1/staff/uploads/images`、`GET/POST/PATCH /api/v1/staff/gallery`
+- 可预约时段：`GET /api/v1/availability`
+- 顾客预约：`POST /api/v1/appointments`、`GET /api/v1/my/appointments`
+- 店员规则：`GET/PUT /api/v1/staff/booking-rules`
+- 店员预约：`GET /api/v1/staff/appointments`、`GET /api/v1/staff/appointments/:id`
+- 店员审核：`POST/PATCH /api/v1/staff/appointments/:id/review`
 
-- NestJS 基础启动结构
-- `GET /health` 健康检查模块
-- `GET /api/v1/gallery` 首个业务模块（active-only + sortOrder 排序）
-- `GET /api/v1/staff/booking-rules` 读接口（对齐冻结契约的单例规则读取）
-- Prisma module / service
-- Prisma v1 schema
-- MySQL 初始 migration 基线
+## 本地启动
 
-## Prisma v1 模型覆盖
+### 1. 准备 MySQL
 
-### users
-- `openId`
-- `role`
-- `displayName`
-- `phone`
-- `status`
-- `createdAt`
-- `updatedAt`
+```bash
+docker compose -f ../../infra/compose/api-mysql.compose.yml up -d
+```
 
-### appointments
-- `customerOpenId`
-- `customerName`
-- `phone`
-- `date`
-- `timeSlot`
-- `note`
-- `status`
-- `createdAt`
-- `reviewedAt`
-- `reviewedByOpenId`
-- `reviewNote`
+仓库根目录也可以执行：
 
-### booking_rules
-- `advanceOpenDays`
-- `closedDatesJson`
-- `dailySlotsJson`
-- `updatedAt`
+```bash
+docker compose -f infra/compose/api-mysql.compose.yml up -d
+```
 
-### gallery_items
-- `title`
-- `imageUrl`
-- `imageUrlsJson`
-- `tagsJson`
-- `sortOrder`
-- `status`
+### 2. 准备环境变量
 
-## 字段映射说明
+`apps/api/.env` 至少需要：
 
-- 旧 `apps/server` 中的 `customer_open_id` -> 新模型 `customerOpenId`
-- 旧 `date` / `time_slot` -> 新模型 `date` / `timeSlot`
-- 旧 `closed_dates_json` / `daily_slots_json` -> 新模型 `closedDatesJson` / `dailySlotsJson`
-- 旧 `image_urls_json` / `tags_json` -> 新模型 `imageUrlsJson` / `tagsJson`
+```env
+PORT=3100
+DATABASE_URL="mysql://miniapp:miniapp@127.0.0.1:3307/miniapp_api"
+STAFF_OPEN_IDS="staff-openid-demo"
+ALLOW_OPENID_HEADER_AUTH=1
+ALLOW_DEMO_STAFF_OPENID=1
+```
 
-更多环境与切换说明，见：`docs/API_PARALLEL_RUNBOOK.md`
+体验版 / 正式版还需要：
 
-## 当前残余风险
+```env
+NODE_ENV=production
+WECHAT_APP_ID="小程序 AppID"
+WECHAT_APP_SECRET="小程序 AppSecret"
+STAFF_OPEN_IDS="真实店员 openid"
+PUBLIC_BASE_URL="https://你的 API 域名"
+ALLOW_OPENID_HEADER_AUTH=0
+ALLOW_DEMO_STAFF_OPENID=0
+```
 
-1. 当前只落了 `/health` 与 Prisma 基线，冻结契约主业务路由尚未迁入 NestJS。
-2. `approved-only` 时段唯一约束当前仍保留在旧服务语义中；新服务需在后续 phase 里补 service-level 校验与数据库约束方案。
-3. `closedDates` / `dailySlots` / `imageUrls` / `tags` 当前仍采用 JSON 字符串落库，后续若查询复杂度提升再考虑拆表。
-4. 本轮默认目标库为 MySQL，但未在本次提交里补 Docker / compose；该部分由 `DEV-001` 继续推进。
+### 3. 生成 Prisma Client 与迁移
 
-## 下一步建议
+```bash
+npm run prisma:generate
+npm run prisma:migrate:deploy
+```
 
-1. 安装 `apps/api` 依赖并执行 `prisma generate` / `prisma migrate deploy`
-2. 以 `health -> gallery -> booking-rules -> appointments -> staff` 顺序迁主路由
-3. 在不破坏旧基线的前提下，为新旧服务补兼容断言与切换手册
+### 4. 启动
+
+```bash
+npm run start:dev
+```
+
+默认监听：`http://127.0.0.1:3100`
+
+## 验证
+
+```bash
+npm run build
+npm run test
+```
+
+`npm run test` 会执行运行级 smoke，要求 MySQL 与 API 服务可访问。
+
+仓库根目录可执行：
+
+```bash
+npm run build:api
+npm run test:api
+```
+
+## 数据模型重点
+
+- `AuthSession`：只保存 session token hash，不保存明文 token。
+- `Appointment.approvedSlotKey`：仅在 `approved` 预约上写入 `${date}#${timeSlot}`，通过数据库唯一约束兜底单员工同一时段最多通过一单。
+- `GalleryItem`：支持封面、多图、标签、说明、发布时间与状态。
+- `BookingRule`：承载开放天数、闭店日期和每日时段。
+
+## 上传策略
+
+当前体验版默认使用 API 服务本地 `uploads/gallery` 目录，并通过 `/api/v1/staff/uploads/images/:filename` 访问。
+
+正式商用前建议迁到对象存储，或至少确保该目录挂载持久化云盘并纳入备份策略。

@@ -23,6 +23,10 @@ export interface ReviewStaffAppointmentResultItem {
   reviewNote: string;
 }
 
+function toApprovedSlotKey(date: string, timeSlot: string) {
+  return `${date}#${timeSlot}`;
+}
+
 @Injectable()
 export class StaffAppointmentReviewService {
   constructor(
@@ -48,38 +52,53 @@ export class StaffAppointmentReviewService {
     const targetStatus = this.resolveTargetStatus(payload);
     const normalizedReviewNote = `${payload.reviewNote || ''}`.trim();
 
-    const updatedAppointment = await this.prisma.$transaction(async (tx) => {
-      const appointment = await tx.appointment.findUnique({
-        where: {
-          id: normalizedAppointmentId
+    try {
+      const updatedAppointment = await this.prisma.$transaction(async (tx) => {
+        const appointment = await tx.appointment.findUnique({
+          where: {
+            id: normalizedAppointmentId
+          }
+        });
+
+        if (!appointment) {
+          throw new NotFoundException({
+            error: 'Appointment not found',
+            code: 'APPOINTMENT_NOT_FOUND'
+          });
         }
+
+        if (targetStatus === AppointmentStatus.APPROVED) {
+          await this.assertSlotNotOccupied(tx, appointment);
+        }
+
+        return tx.appointment.update({
+          where: {
+            id: appointment.id
+          },
+          data: {
+            status: targetStatus,
+            approvedSlotKey:
+              targetStatus === AppointmentStatus.APPROVED
+                ? toApprovedSlotKey(appointment.date, appointment.timeSlot)
+                : null,
+            reviewedAt: new Date(),
+            reviewedByOpenId: normalizedStaffOpenId,
+            reviewNote: normalizedReviewNote
+          }
+        });
       });
 
-      if (!appointment) {
-        throw new NotFoundException({
-          error: 'Appointment not found',
-          code: 'APPOINTMENT_NOT_FOUND'
+      return this.toReviewResultItem(updatedAppointment);
+    } catch (error) {
+      if (this.isUniqueSlotConflict(error)) {
+        throw new ConflictException({
+          error: 'Slot occupied',
+          code: 'SLOT_OCCUPIED'
         });
       }
 
-      if (targetStatus === AppointmentStatus.APPROVED) {
-        await this.assertSlotNotOccupied(tx, appointment);
-      }
-
-      return tx.appointment.update({
-        where: {
-          id: appointment.id
-        },
-        data: {
-          status: targetStatus,
-          reviewedAt: new Date(),
-          reviewedByOpenId: normalizedStaffOpenId,
-          reviewNote: normalizedReviewNote
-        }
-      });
-    });
-
-    return this.toReviewResultItem(updatedAppointment);
+      throw error;
+    }
   }
 
   private resolveTargetStatus(payload: ReviewStaffAppointmentDto): AppointmentStatus {
@@ -121,6 +140,15 @@ export class StaffAppointmentReviewService {
         code: 'SLOT_OCCUPIED'
       });
     }
+  }
+
+  private isUniqueSlotConflict(error: unknown) {
+    return !!(
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2002'
+    );
   }
 
   private toReviewResultItem(item: Appointment): ReviewStaffAppointmentResultItem {

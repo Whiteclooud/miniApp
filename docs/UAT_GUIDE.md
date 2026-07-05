@@ -14,6 +14,7 @@
 4. 顾客预约页月历化日期选择
 5. 店员返图上传 / 标签 / 文字说明管理
 6. 店员审核结果可修改后的行为一致性
+7. 体验版登录链路使用 `wx.login + Bearer token`，不依赖 mock OpenID header
 
 ---
 
@@ -88,6 +89,18 @@ customer-openid-demo
 - 店员请求头使用 `X-Staff-OpenId`
 - 顾客回查、店员返图管理、审核修改链路在同一组身份下可连续复现
 
+### 5. 体验版登录检查
+
+体验版 / 正式版不再使用 mock header 作为身份主链路，需额外确认：
+
+- 小程序 profile 为 `trial` 或 `release`
+- API 域名为 HTTPS
+- `enableWechatAuth=true`
+- `allowHeaderAuthFallback=false`
+- Network 面板中顾客 / 店员接口带有 `Authorization: Bearer <token>`
+- 不再出现 `X-Customer-OpenId` / `X-Staff-OpenId` 作为主身份头
+- 店员 OpenID 已配置在服务端 `STAFF_OPEN_IDS`
+
 ---
 
 ## 二、建议验收顺序
@@ -101,6 +114,7 @@ customer-openid-demo
 5. 店员返图上传 / 创建 / 编辑
 6. 店员修改审核结果
 7. 顾客再次查看修改后的审核结果
+8. 体验版登录 / 退出 / 无权限店员验证
 
 如果时间有限，最低优先保证以下 4 项：
 
@@ -108,6 +122,7 @@ customer-openid-demo
 2. 顾客月历选日期
 3. 店员返图内容管理
 4. 店员审核结果修改
+5. 体验版不依赖 mock OpenID header
 
 ---
 
@@ -274,7 +289,30 @@ customer-openid-demo
 
 ## 四、可选补充验证
 
-## Case 9：接口口径一致性（防回退）
+## Case 9：体验版登录与权限
+
+### 操作
+1. 使用体验版打开小程序
+2. 进入顾客预约页，触发微信登录
+3. 打开 Network 面板检查请求头
+4. 使用非店员账号进入店员页
+5. 使用店员账号进入店员页
+6. 调用退出登录能力后重新进入页面
+
+### 预期结果
+- 顾客 / 店员接口使用 `Authorization: Bearer <token>`
+- 体验版不依赖 mock OpenID header
+- 非店员账号访问 staff 接口返回 `STAFF_UNAUTHORIZED`
+- 店员账号可访问 staff 页面
+- 退出登录后旧 token 失效，再访问 `/api/v1/auth/me` 返回 `SESSION_UNAUTHORIZED`
+
+### 若失败，记录什么
+- 当前小程序环境版本
+- Network 请求头
+- 服务端返回错误码
+- 截图
+
+## Case 10：接口口径一致性（防回退）
 
 ### 操作
 1. 打开微信开发者工具 Network 面板
@@ -302,6 +340,7 @@ customer-openid-demo
 - 顾客预约页已切到月历式日期选择，且状态表达清晰
 - 店员可上传并维护返图内容
 - 店员可修改已审核结果，顾客侧能看到最新状态
+- 体验版身份链路使用微信登录 Bearer token，不依赖 mock OpenID header
 - 上述新增体验不回退当前顾客预约 / 我的预约主链路
 
 ---
@@ -330,7 +369,8 @@ customer-openid-demo
 - Case 6 店员返图上传与内容管理：通过 / 不通过
 - Case 7 店员审核结果修改：通过 / 不通过
 - Case 8 顾客查看修改后的审核结果：通过 / 不通过
-- Case 9 接口口径一致性（可选）：通过 / 不通过
+- Case 9 体验版登录与权限：通过 / 不通过
+- Case 10 接口口径一致性（可选）：通过 / 不通过
 
 ## 问题记录
 1.

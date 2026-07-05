@@ -208,6 +208,7 @@ async function main() {
         customerName: 'Approved Conflict',
         date: openDatePlusThree,
         timeSlot: sharedTimeSlot,
+        approvedSlotKey: `${openDatePlusThree}#${sharedTimeSlot}`,
         status: AppointmentStatus.APPROVED,
         reviewedAt: new Date(),
         reviewedByOpenId: 'staff-openid-demo',

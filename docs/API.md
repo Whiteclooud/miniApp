@@ -4,20 +4,23 @@
 
 开发环境：`http://127.0.0.1:3100`
 
-## 当前基线调整（2026-03-24）
+## 当前基线调整（2026-07-05）
 
-- `apps/api` 已完成唯一后端基线收口，当前对外开发基线切到 `http://127.0.0.1:3100`。
-- 在旧基线退场后的当前阶段，仍需围绕 `apps/api + apps/weapp` 执行一轮页面级回归 UAT；该 UAT 的目标是确认当前冻结接口与页面表现未在清理后回退。
-- 旧 `apps/server` 相关脚本、目录与过渡文档进入清理范围，不再作为默认后端口径，也不再承接新增接口改动。
-- 当前接口补修顺序固定为：先修 `availability` 的未来日期窗口表达与 staff appointments 的全量聚合口径，再执行旧 `apps/server` / cutover 文档清理。
-- `GET /api/v1/availability` 需补充“规则窗口日期”表达，不能只让顾客看到当天。
-- `GET /api/v1/staff/appointments` 在默认店员工作台视图下需覆盖完整预约数据，而不是只返回 `pending`。
+- `apps/api` 是当前唯一后端基线，开发环境默认地址为 `http://127.0.0.1:3100`。
+- 体验版 / 正式版必须切到 HTTPS API 域名，并在微信公众平台配置合法 request/uploadFile 域名。
+- 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`。
+- develop 环境允许 `X-Customer-OpenId` / `X-Staff-OpenId` 作为本地联调兜底；体验版 / 正式版不允许依赖 mock OpenID header。
+- `GET /api/v1/availability` 已承载规则窗口日期、月历日期状态与当前日期全部时段。
+- `GET /api/v1/staff/appointments` 未传 `status` 时返回完整预约数据集，供店员月历聚合使用。
 
 ## 当前冻结契约（2026-03-16 复核，2026-03-29 增补）
 
 V1 当前只允许以下接口对外使用：
 
 - `GET /health`
+- `POST /api/v1/auth/wechat-login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/logout`
 - `GET /api/v1/gallery`
 - `GET /api/v1/availability`
 - `POST /api/v1/appointments`
@@ -40,12 +43,12 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/artists`
 - 旧版 `GET /api/v1/appointments`
 
-## 本轮 UAT / 集成备注（2026-03-19）
+## 本轮 UAT / 集成备注（2026-07-05）
 
-- 当前页面 UAT 已确认顾客主链路可跑通，但 staff 侧存在环境一致性问题：文档与 UAT 使用 `staff-openid-demo`，当前统一验收基线服务默认白名单仍需与之对齐，否则 `/api/v1/staff/*` 会返回 `401 + STAFF_UNAUTHORIZED`。
-- SQLite 历史库需兼容 `appointments.appointment_date` 旧列；若沿用本地老库启动失败，服务端需在启动时自动迁移到当前 `date` 字段模型。
+- 体验版 UAT 需要额外确认 Bearer session、logout、非店员拦截和 staff 白名单复核。
+- 本地 UAT 可继续使用 `staff-openid-demo`；`NODE_ENV=production` 时 demo 店员默认不生效。
 - 返图接口在不新增详情接口的前提下，扩展 `imageUrls` 供前端详情页展示多图。
-- 顾客预约页新增显性时间段选择体验：`GET /api/v1/availability?date=...` 对当前日期应返回“可约 + 不可约”时段与原因，供前端做卡片化选择和禁用提示。
+- 顾客预约页显性展示“可约 + 不可约”时段与原因，供前端做卡片化选择和禁用提示。
 
 ## 本轮体验优化接口增补（2026-03-29）
 
@@ -54,6 +57,8 @@ V1 当前只允许以下接口对外使用：
 - 新增店员返图维护链路：`POST /api/v1/staff/uploads/images` 负责上传图片，`GET/POST/PATCH /api/v1/staff/gallery` 负责返图内容查询、创建与编辑。
 - `GET /api/v1/availability` 除 `dateOptions` 外，新增 `calendarDays`，用于顾客端复用店员月历组件；每个日期需显性给出日期级状态与原因。
 - `POST/PATCH /api/v1/staff/appointments/:id/review` 从“一次性审核”调整为“可修改最终状态”；最新审核结果生效，且从拒绝改回通过时仍需重新做 slot 冲突校验。
+- 当前体验版 / 正式版身份口径为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`；`X-Customer-OpenId` / `X-Staff-OpenId` 仅作为 develop 环境兼容兜底，不作为体验版或正式版发布口径。
+- 店员 Bearer session 每次访问 staff 接口时仍会复核 `STAFF_OPEN_IDS` 白名单；从白名单移除后，旧 session 不再拥有店员权限。
 
 ## 1. 健康检查
 
@@ -70,6 +75,74 @@ V1 当前只允许以下接口对外使用：
   "timestamp": "2026-03-16T00:00:00.000Z"
 }
 ```
+
+## 身份登录与会话
+
+### 2.1 微信登录
+
+#### Request
+
+- `POST /api/v1/auth/wechat-login`
+
+```json
+{
+  "code": "wx.login 返回的临时 code"
+}
+```
+
+#### Response
+
+```json
+{
+  "token": "session-token",
+  "expiresAt": "2026-07-05T12:00:00.000Z",
+  "user": {
+    "id": "user-id",
+    "openId": "openid",
+    "role": "customer"
+  }
+}
+```
+
+### 2.2 当前会话
+
+#### Request
+
+- `GET /api/v1/auth/me`
+- Header：`Authorization: Bearer <token>`
+
+#### Response
+
+```json
+{
+  "user": {
+    "id": "user-id",
+    "openId": "openid",
+    "role": "customer"
+  }
+}
+```
+
+### 2.3 退出登录
+
+#### Request
+
+- `POST /api/v1/auth/logout`
+- Header：`Authorization: Bearer <token>`
+
+#### Response
+
+```json
+{
+  "ok": true
+}
+```
+
+### Notes
+
+- 缺少、过期或已退出的 token 访问 `/api/v1/auth/me` 时返回 `401 + SESSION_UNAUTHORIZED`。
+- `role=staff` 由服务端根据 `STAFF_OPEN_IDS` 白名单判断。
+- 体验版 / 正式版必须使用 Bearer token；OpenID header 只保留给 develop 环境联调。
 
 ## 2. 获取返图库
 
@@ -117,7 +190,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `POST /api/v1/staff/uploads/images`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 - Content-Type：`multipart/form-data`
 - FormData：`files[]`
 
@@ -146,7 +219,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `POST /api/v1/staff/gallery`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Body
 
@@ -176,7 +249,7 @@ V1 当前只允许以下接口对外使用：
 
 - `GET /api/v1/staff/gallery`
 - `PATCH /api/v1/staff/gallery/:id`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### PATCH Body（示例）
 
@@ -265,7 +338,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `POST /api/v1/appointments`
-- Header：`X-Customer-OpenId: <customer-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Customer-OpenId: <customer-openid>`
 
 ### Body
 
@@ -281,8 +354,8 @@ V1 当前只允许以下接口对外使用：
 
 ### Field Rules
 
-- 顾客身份只从请求头 `X-Customer-OpenId` 读取。
-- `customerOpenId` 不允许作为 body 主身份字段；即使 body 中出现，也以后端读取到的 header 为准。
+- 顾客身份优先从 Bearer session 读取；develop 环境允许从请求头 `X-Customer-OpenId` 兜底读取。
+- `customerOpenId` 不允许作为 body 主身份字段；即使 body 中出现，也以服务端解析到的 session/header 身份为准。
 - 必填：`appointmentDate`, `timeSlot`
 - 选填联系字段：`customerName`, `phone`, `note`
 - 不再要求 `serviceId`、`serviceName`、`artistId`、`artistName`。
@@ -332,7 +405,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `GET /api/v1/my/appointments`
-- Header：`X-Customer-OpenId: <customer-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Customer-OpenId: <customer-openid>`
 
 ### Response
 
@@ -360,14 +433,14 @@ V1 当前只允许以下接口对外使用：
 ### Notes
 
 - 不再支持手机号参数查询“我的预约”。
-- 缺少 `X-Customer-OpenId` 时统一返回 `401 + CUSTOMER_UNAUTHORIZED`。
+- 缺少有效 Bearer session 且 develop header 兜底不可用时，统一返回 `401 + CUSTOMER_UNAUTHORIZED`。
 
 ## 9. 店员读取预约规则
 
 ### Request
 
 - `GET /api/v1/staff/booking-rules`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Response
 
@@ -387,8 +460,8 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
-- 店员身份口径固定为 `X-Staff-OpenId`。
-- 本地 UAT 默认白名单至少包含 `staff-openid-demo`；若环境变量额外配置其他值，应与默认值共同生效。
+- 店员身份优先从 Bearer session 读取；develop 环境允许从 `X-Staff-OpenId` 兜底读取。
+- 本地 UAT 默认可使用 `staff-openid-demo`；`NODE_ENV=production` 时 demo 店员默认关闭，必须通过 `STAFF_OPEN_IDS` 显式配置。
 - 白名单外身份统一返回 `401 + STAFF_UNAUTHORIZED`。
 
 ## 10. 店员更新预约规则
@@ -396,7 +469,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `PUT /api/v1/staff/booking-rules`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Body
 
@@ -443,7 +516,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `GET /api/v1/staff/appointments`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Query
 
@@ -483,7 +556,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `GET /api/v1/staff/appointments/:id`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Response
 
@@ -511,7 +584,7 @@ V1 当前只允许以下接口对外使用：
 ### Request
 
 - `POST /api/v1/staff/appointments/:id/review`
-- Header：`X-Staff-OpenId: <staff-openid>`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可用 `X-Staff-OpenId: <staff-openid>`
 
 ### Body
 
@@ -526,7 +599,7 @@ V1 当前只允许以下接口对外使用：
 
 - `status` 仅允许：`approved` / `rejected`
 - 兼容 `action=approve|reject` 到相同审核结果
-- 店员身份口径固定为 `X-Staff-OpenId`
+- 店员身份优先使用 Bearer session；develop 环境可用 `X-Staff-OpenId` 兜底
 - 该接口语义为“设置当前最终审核结果”，已审核预约允许再次修改状态
 - 改为 `approved` 时需要再次校验 slot 是否已被其他已通过预约占用
 - 改为 `rejected` 时，如当前记录原本为 `approved`，需立即释放该时段占用
@@ -578,5 +651,14 @@ V1 当前只允许以下接口对外使用：
 {
   "error": "Customer unauthorized",
   "code": "CUSTOMER_UNAUTHORIZED"
+}
+```
+
+### Session Unauthorized
+
+```json
+{
+  "error": "Session unauthorized",
+  "code": "SESSION_UNAUTHORIZED"
 }
 ```

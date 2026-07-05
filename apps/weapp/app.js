@@ -10,6 +10,12 @@ const {
   setApiProfile,
   resetApiProfile
 } = require('./utils/api-profile');
+const {
+  ensureAuthSession,
+  getStoredAuthSession,
+  logoutAuthSession,
+  clearAuthSession
+} = require('./utils/auth');
 
 App({
   globalData: {
@@ -20,6 +26,8 @@ App({
       label: '当前主线 · apps/api',
       shortLabel: 'apps/api',
       baseUrl: 'http://127.0.0.1:3100',
+      enableWechatAuth: false,
+      allowHeaderAuthFallback: true,
       isDefault: true,
       isDevelopEnv: true,
       canSwitch: false,
@@ -33,12 +41,16 @@ App({
       canUse: false,
       label: '未设置顾客 OpenID'
     },
+    authSession: null,
+    enableWechatAuth: false,
+    allowHeaderAuthFallback: true,
     isDevelopEnv: true
   },
 
   onLaunch() {
-    this.refreshCustomerIdentity();
     this.refreshApiProfile();
+    this.refreshCustomerIdentity();
+    this.refreshAuthSession();
   },
 
   refreshCustomerIdentity() {
@@ -52,6 +64,8 @@ App({
     const apiProfile = ensureApiProfile();
     this.globalData.apiProfile = apiProfile;
     this.globalData.apiBaseUrl = apiProfile.baseUrl;
+    this.globalData.enableWechatAuth = !!apiProfile.enableWechatAuth;
+    this.globalData.allowHeaderAuthFallback = !!apiProfile.allowHeaderAuthFallback;
     this.globalData.isDevelopEnv = isDevelopEnv();
     return apiProfile;
   },
@@ -64,10 +78,39 @@ App({
     return this.refreshApiProfile();
   },
 
+  refreshAuthSession() {
+    const authSession = getStoredAuthSession();
+    this.globalData.authSession = authSession;
+    return authSession;
+  },
+
+  ensureAuthSession() {
+    return ensureAuthSession()
+      .then((authSession) => {
+        this.globalData.authSession = authSession;
+        return authSession;
+      });
+  },
+
+  clearAuthSession() {
+    clearAuthSession();
+    this.globalData.authSession = null;
+  },
+
+  logoutAuthSession() {
+    return logoutAuthSession()
+      .then((result) => {
+        this.globalData.authSession = null;
+        return result;
+      });
+  },
+
   setApiProfile(profileKey) {
     const apiProfile = setApiProfile(profileKey);
     this.globalData.apiProfile = apiProfile;
     this.globalData.apiBaseUrl = apiProfile.baseUrl;
+    this.globalData.enableWechatAuth = !!apiProfile.enableWechatAuth;
+    this.globalData.allowHeaderAuthFallback = !!apiProfile.allowHeaderAuthFallback;
     this.globalData.isDevelopEnv = isDevelopEnv();
     return apiProfile;
   },
@@ -76,6 +119,8 @@ App({
     const apiProfile = resetApiProfile();
     this.globalData.apiProfile = apiProfile;
     this.globalData.apiBaseUrl = apiProfile.baseUrl;
+    this.globalData.enableWechatAuth = !!apiProfile.enableWechatAuth;
+    this.globalData.allowHeaderAuthFallback = !!apiProfile.allowHeaderAuthFallback;
     this.globalData.isDevelopEnv = isDevelopEnv();
     return apiProfile;
   },

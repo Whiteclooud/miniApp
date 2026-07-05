@@ -72,6 +72,7 @@ async function main() {
         customerOpenId: `availability-customer-approved-${runId}`,
         date: occupiedDate,
         timeSlot: '10:00-11:00',
+        approvedSlotKey: `${occupiedDate}#10:00-11:00`,
         status: AppointmentStatus.APPROVED,
         reviewedAt: new Date(),
         reviewedByOpenId: 'staff-openid-demo',
