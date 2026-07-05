@@ -1,5 +1,7 @@
 const {
+  listStaffAppointmentAuditLogs,
   listStaffAppointments,
+  rescheduleStaffAppointment,
   reviewStaffAppointment
 } = require('../../../services/appointment');
 const {
@@ -17,14 +19,30 @@ const DETAIL_FILTER_DEFINITIONS = [
   { key: 'pending', label: '待审核' },
   { key: 'approved', label: '已通过' },
   { key: 'rejected', label: '已拒绝' },
+  { key: 'cancelled', label: '已取消' },
+  { key: 'completed', label: '已完成' },
+  { key: 'no_show', label: '未到店' },
   { key: 'history', label: '历史预约' }
+];
+
+const STATUS_PICKER_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: 'pending', label: '待审核' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '已拒绝' },
+  { value: 'cancelled', label: '已取消' },
+  { value: 'completed', label: '已完成' },
+  { value: 'no_show', label: '未到店' }
 ];
 
 function formatStatus(status) {
   const map = {
     pending: '待审核',
     approved: '已通过',
-    rejected: '已拒绝'
+    rejected: '已拒绝',
+    cancelled: '已取消',
+    completed: '已完成',
+    no_show: '未到店'
   };
   return map[status] || status || '待处理';
 }
@@ -71,6 +89,16 @@ function getTodayKey() {
   return formatDateKey(new Date());
 }
 
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getTomorrowKey() {
+  return formatDateKey(addDays(new Date(), 1));
+}
+
 function getMonthDateRange(cursor) {
   const [yearText, monthText] = `${cursor}`.split('-');
   const year = Number(yearText);
@@ -86,7 +114,7 @@ function shiftMonthCursor(cursor, delta) {
 }
 
 function isStatusFilterKey(value) {
-  return value === 'pending' || value === 'approved' || value === 'rejected';
+  return ['pending', 'approved', 'rejected', 'cancelled', 'completed', 'no_show'].includes(value);
 }
 
 function normalizeAppointments(items) {
@@ -110,9 +138,17 @@ function normalizeAppointments(items) {
       canReview: true,
       showApproveAction: status !== 'approved',
       showRejectAction: status !== 'rejected',
+      showCancelAction: status !== 'cancelled' && status !== 'completed',
+      showCompleteAction: status === 'approved',
+      showNoShowAction: status === 'approved',
       approveActionText: status === 'pending' ? '通过预约' : '改为通过',
       rejectActionText: status === 'pending' ? '驳回预约' : '改为拒绝',
-      reviewHint: status === 'pending' ? '待审核预约可直接处理。' : '当前支持改判，系统以最新审核结果为准。',
+      cancelActionText: '取消预约',
+      completeActionText: '标记完成',
+      noShowActionText: '标记未到',
+      rescheduleDate: date,
+      rescheduleTimeSlot: item.timeSlot || '-',
+      reviewHint: status === 'pending' ? '待审核预约可直接处理。' : '可按实际到店情况继续更新状态或协助改期。',
       isHistory: isDateText(date) && date < today
     };
   }).sort((left, right) => {
@@ -129,7 +165,10 @@ function buildSummary(appointments) {
     total: appointments.length,
     pending: appointments.filter((item) => item.status === 'pending').length,
     approved: appointments.filter((item) => item.status === 'approved').length,
-    rejected: appointments.filter((item) => item.status === 'rejected').length
+    rejected: appointments.filter((item) => item.status === 'rejected').length,
+    cancelled: appointments.filter((item) => item.status === 'cancelled').length,
+    completed: appointments.filter((item) => item.status === 'completed').length,
+    no_show: appointments.filter((item) => item.status === 'no_show').length
   };
 }
 
@@ -148,7 +187,10 @@ function buildDayStat(items) {
     total: items.length,
     pending: items.filter((item) => item.status === 'pending').length,
     approved: items.filter((item) => item.status === 'approved').length,
-    rejected: items.filter((item) => item.status === 'rejected').length
+    rejected: items.filter((item) => item.status === 'rejected').length,
+    cancelled: items.filter((item) => item.status === 'cancelled').length,
+    completed: items.filter((item) => item.status === 'completed').length,
+    no_show: items.filter((item) => item.status === 'no_show').length
   };
 }
 
@@ -233,6 +275,9 @@ function buildStatusLists(appointments) {
     pendingAppointments: appointments.filter((item) => item.status === 'pending'),
     approvedAppointments: appointments.filter((item) => item.status === 'approved'),
     rejectedAppointments: appointments.filter((item) => item.status === 'rejected'),
+    cancelledAppointments: appointments.filter((item) => item.status === 'cancelled'),
+    completedAppointments: appointments.filter((item) => item.status === 'completed'),
+    noShowAppointments: appointments.filter((item) => item.status === 'no_show'),
     historyAppointments: appointments.filter((item) => item.isHistory)
   };
 }
@@ -243,6 +288,9 @@ function buildDetailFilters(activeKey, summary, historyCount) {
     pending: summary.pending,
     approved: summary.approved,
     rejected: summary.rejected,
+    cancelled: summary.cancelled,
+    completed: summary.completed,
+    no_show: summary.no_show,
     history: historyCount
   };
 
@@ -252,6 +300,24 @@ function buildDetailFilters(activeKey, summary, historyCount) {
     count: counts[item.key] || 0,
     isActive: item.key === activeKey
   }));
+}
+
+function buildWorkbench(appointments) {
+  const todayKey = getTodayKey();
+  const tomorrowKey = getTomorrowKey();
+  const todayAppointments = appointments.filter((item) => item.date === todayKey);
+  const tomorrowAppointments = appointments.filter((item) => item.date === tomorrowKey);
+
+  return {
+    workbenchSummary: {
+      today: todayAppointments.length,
+      tomorrow: tomorrowAppointments.length,
+      todayApproved: todayAppointments.filter((item) => item.status === 'approved').length,
+      tomorrowApproved: tomorrowAppointments.filter((item) => item.status === 'approved').length
+    },
+    todayAppointments,
+    tomorrowAppointments
+  };
 }
 
 function buildDetailListView(filterKey, allAppointments, remoteAppointments) {
@@ -284,6 +350,17 @@ function buildDetailListView(filterKey, allAppointments, remoteAppointments) {
       items: Array.isArray(remoteAppointments) ? remoteAppointments : appointments.filter((item) => item.status === 'rejected'),
       emptyText: '当前没有已拒绝预约。',
       noticeText: Array.isArray(remoteAppointments) ? '当前筛选已按 status=rejected 重新请求 staff appointments 列表。' : ''
+    };
+  }
+
+  if (isStatusFilterKey(filterKey)) {
+    const definition = DETAIL_FILTER_DEFINITIONS.find((item) => item.key === filterKey);
+    return {
+      title: `${definition ? definition.label : '状态'}列表`,
+      description: `当前按 status=${filterKey} 请求预约明细，便于按状态回看运营处理结果。`,
+      items: Array.isArray(remoteAppointments) ? remoteAppointments : appointments.filter((item) => item.status === filterKey),
+      emptyText: `当前没有${definition ? definition.label : '该状态'}预约。`,
+      noticeText: Array.isArray(remoteAppointments) ? `当前筛选已按 status=${filterKey} 重新请求 staff appointments 列表。` : ''
     };
   }
 
@@ -355,16 +432,39 @@ function formatReviewErrorMessage(error, actionText) {
   return getErrorMessage(error, `${actionText}失败，请稍后重试。`);
 }
 
+function normalizeAuditLogs(items) {
+  return (items || []).map((item) => ({
+    id: item.id,
+    action: item.action || '-',
+    actorRole: item.actorRole || '',
+    actorOpenId: item.actorOpenId || '',
+    fromStatusText: formatStatus(item.fromStatus),
+    toStatusText: formatStatus(item.toStatus),
+    fromDate: item.fromDate || '',
+    toDate: item.toDate || '',
+    fromTimeSlot: item.fromTimeSlot || '',
+    toTimeSlot: item.toTimeSlot || '',
+    note: item.note || '',
+    createdAtText: formatTime(item.createdAt)
+  }));
+}
+
 function getEmptyDashboardState(filterKey = 'all') {
-  const summary = { total: 0, pending: 0, approved: 0, rejected: 0 };
+  const summary = { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0, completed: 0, no_show: 0 };
   const detailView = buildDetailListView(filterKey, []);
   const calendarState = buildCalendarState([], createMonthCursor(new Date()), '');
   return {
     appointments: [],
     summary,
+    workbenchSummary: { today: 0, tomorrow: 0, todayApproved: 0, tomorrowApproved: 0 },
+    todayAppointments: [],
+    tomorrowAppointments: [],
     pendingAppointments: [],
     approvedAppointments: [],
     rejectedAppointments: [],
+    cancelledAppointments: [],
+    completedAppointments: [],
+    noShowAppointments: [],
     historyAppointments: [],
     activeListFilter: filterKey,
     detailFilters: buildDetailFilters(filterKey, summary, 0),
@@ -395,6 +495,13 @@ Page({
     },
     staffOpenIdInput: '',
     weekLabels: WEEK_LABELS,
+    statusPickerOptions: STATUS_PICKER_OPTIONS,
+    statusPickerIndex: 0,
+    searchKeyword: '',
+    searchDate: '',
+    rescheduleDraftMap: {},
+    auditLogsMap: {},
+    auditStateMap: {},
     ...getEmptyDashboardState('all')
   },
 
@@ -563,6 +670,157 @@ Page({
     }
   },
 
+  onSearchKeywordInput(event) {
+    this.setData({
+      searchKeyword: event.detail.value
+    });
+  },
+
+  onSearchDateChange(event) {
+    this.setData({
+      searchDate: event.detail.value
+    });
+  },
+
+  onSearchStatusChange(event) {
+    const index = Number(event.detail.value) || 0;
+    this.setData({
+      statusPickerIndex: index
+    });
+  },
+
+  async runSearchFilters() {
+    const statusOption = STATUS_PICKER_OPTIONS[this.data.statusPickerIndex] || STATUS_PICKER_OPTIONS[0];
+    const params = {};
+    if ((this.data.searchKeyword || '').trim()) {
+      params.keyword = this.data.searchKeyword.trim();
+    }
+    if (this.data.searchDate) {
+      params.date = this.data.searchDate;
+    }
+    if (statusOption.value) {
+      params.status = statusOption.value;
+    }
+
+    this.setData({
+      listState: 'loading',
+      detailSectionTitle: '筛选结果',
+      detailSectionDesc: '按顾客姓名、手机号、日期或状态查询预约。',
+      detailListNotice: '',
+      activeListFilter: 'search'
+    });
+
+    try {
+      const response = await listStaffAppointments(params);
+      const remoteAppointments = normalizeAppointments(response.items || []);
+      this.setData({
+        listAppointments: remoteAppointments,
+        listState: 'ready',
+        detailEmptyText: '当前筛选条件下没有预约。',
+        detailListNotice: Object.keys(params).length ? '已按筛选条件刷新列表。' : '未设置筛选条件，显示全部预约。'
+      });
+    } catch (error) {
+      this.setData({
+        listState: 'error',
+        detailListNotice: formatPageErrorMessage(error, '筛选预约失败，请稍后重试。')
+      });
+    }
+  },
+
+  clearSearchFilters() {
+    this.setData({
+      searchKeyword: '',
+      searchDate: '',
+      statusPickerIndex: 0
+    });
+    this.loadDetailList('all');
+  },
+
+  onRescheduleDateChange(event) {
+    const { id } = event.currentTarget.dataset;
+    if (!id) {
+      return;
+    }
+    this.setData({
+      [`rescheduleDraftMap.${id}.date`]: event.detail.value
+    });
+  },
+
+  onRescheduleSlotInput(event) {
+    const { id } = event.currentTarget.dataset;
+    if (!id) {
+      return;
+    }
+    this.setData({
+      [`rescheduleDraftMap.${id}.timeSlot`]: event.detail.value
+    });
+  },
+
+  async rescheduleAppointment(event) {
+    const { id, date, timeSlot } = event.currentTarget.dataset;
+    const draft = this.data.rescheduleDraftMap[id] || {};
+    const appointmentDate = draft.date || date;
+    const nextTimeSlot = (draft.timeSlot || timeSlot || '').trim();
+
+    if (!id || !appointmentDate || !nextTimeSlot) {
+      wx.showToast({ title: '请填写改期日期和时段', icon: 'none' });
+      return;
+    }
+
+    const stateKey = `reviewStateMap.${id}`;
+    this.setData({
+      reviewMessage: '',
+      [stateKey]: 'rescheduling'
+    });
+
+    try {
+      await rescheduleStaffAppointment(id, {
+        appointmentDate,
+        timeSlot: nextTimeSlot,
+        reviewNote: '店员协助改期'
+      });
+      wx.showToast({ title: '已改期', icon: 'success' });
+      await this.loadData();
+    } catch (error) {
+      this.setData({
+        reviewMessage: formatReviewErrorMessage(error, '改期'),
+        [stateKey]: 'idle'
+      });
+      wx.showToast({ title: '改期失败', icon: 'none' });
+    }
+  },
+
+  async toggleAuditLogs(event) {
+    const { id } = event.currentTarget.dataset;
+    if (!id) {
+      return;
+    }
+
+    if (this.data.auditLogsMap[id]) {
+      this.setData({
+        [`auditLogsMap.${id}`]: null
+      });
+      return;
+    }
+
+    this.setData({
+      [`auditStateMap.${id}`]: 'loading'
+    });
+
+    try {
+      const response = await listStaffAppointmentAuditLogs(id);
+      this.setData({
+        [`auditLogsMap.${id}`]: normalizeAuditLogs(response.items || []),
+        [`auditStateMap.${id}`]: 'ready'
+      });
+    } catch (error) {
+      this.setData({
+        reviewMessage: formatPageErrorMessage(error, '操作日志加载失败，请稍后重试。'),
+        [`auditStateMap.${id}`]: 'error'
+      });
+    }
+  },
+
   async loadData() {
     const staffIdentity = getStaffIdentityMeta();
     if (!staffIdentity.canUse) {
@@ -595,13 +853,18 @@ Page({
       const summary = buildSummary(appointments);
       const statusLists = buildStatusLists(appointments);
       const calendarState = buildCalendarState(appointments, this.data.monthCursor, this.data.selectedDate);
+      const workbench = buildWorkbench(appointments);
 
       this.setData({
         appointments,
         summary,
+        ...workbench,
         pendingAppointments: statusLists.pendingAppointments,
         approvedAppointments: statusLists.approvedAppointments,
         rejectedAppointments: statusLists.rejectedAppointments,
+        cancelledAppointments: statusLists.cancelledAppointments,
+        completedAppointments: statusLists.completedAppointments,
+        noShowAppointments: statusLists.noShowAppointments,
         historyAppointments: statusLists.historyAppointments,
         pageState: 'ready',
         stateMessage: appointments.length ? '' : '当前暂无门店预约记录，月历仍保持可查看状态。',
@@ -641,10 +904,21 @@ Page({
       return;
     }
 
-    const status = action === 'approve' ? 'approved' : 'rejected';
-    const actionText = action === 'approve' ? '通过预约' : '拒绝预约';
+    const actionConfig = {
+      approve: { status: 'approved', text: '通过预约', state: 'approving', toast: '已通过' },
+      reject: { status: 'rejected', text: '拒绝预约', state: 'rejecting', toast: '已拒绝' },
+      cancel: { status: 'cancelled', text: '取消预约', state: 'cancelling', toast: '已取消' },
+      complete: { status: 'completed', text: '标记完成', state: 'completing', toast: '已完成' },
+      no_show: { status: 'no_show', text: '标记未到店', state: 'no_showing', toast: '已标记' }
+    };
+    const config = actionConfig[action];
+    if (!config) {
+      return;
+    }
+    const status = config.status;
+    const actionText = config.text;
     const stateKey = `reviewStateMap.${id}`;
-    const nextState = action === 'approve' ? 'approving' : 'rejecting';
+    const nextState = config.state;
 
     this.setData({
       reviewMessage: '',
@@ -654,7 +928,7 @@ Page({
     try {
       await reviewStaffAppointment(id, { status });
       wx.showToast({
-        title: action === 'approve' ? '已通过' : '已拒绝',
+        title: config.toast,
         icon: 'success'
       });
       await this.loadData();
@@ -671,7 +945,7 @@ Page({
         reviewMessage: formatReviewErrorMessage(error, actionText),
         [stateKey]: 'idle'
       });
-      wx.showToast({ title: '审核失败', icon: 'none' });
+      wx.showToast({ title: `${actionText}失败`, icon: 'none' });
     } finally {
       if (this.data.reviewStateMap[id]) {
         this.setData({

@@ -66,7 +66,11 @@ async function main() {
         id: bookingRuleId,
         advanceOpenDays: 5000,
         closedDatesJson: JSON.stringify([]),
-        dailySlotsJson: JSON.stringify([slotA, slotB])
+        dailySlotsJson: JSON.stringify([slotA, slotB]),
+        weeklyOpenDaysJson: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
+        sameDayCutoffTime: null,
+        minAdvanceHours: 0,
+        dateSlotOverridesJson: JSON.stringify({})
       }
     });
 
@@ -371,8 +375,104 @@ async function main() {
       return { count: result.json.items.length };
     });
 
+    await runCase('GET staff appointments keyword filter -> finds customer name', async () => {
+      const result = await request('/api/v1/staff/appointments?keyword=Parallel%20Happy', {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json.items.some((item) => item.id === ids.happy), 'expected happy appointment in keyword filter');
+      return { count: result.json.items.length };
+    });
+
+    await runCase('PATCH staff reschedule pending appointment -> updates date and slot', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.occupiedPending}/reschedule`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          appointmentDate: openDate,
+          timeSlot: slotB,
+          reviewNote: 'reschedule pending in smoke'
+        })
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.item?.date === openDate, 'expected rescheduled date');
+      assert(result.json?.item?.timeSlot === slotB, 'expected rescheduled slot');
+      return result.json.item;
+    });
+
+    await runCase('GET staff appointment audit logs -> includes status and reschedule logs', async () => {
+      const happyLogs = await request(`/api/v1/staff/appointments/${ids.happy}/audit-logs`, {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+      const pendingLogs = await request(`/api/v1/staff/appointments/${ids.occupiedPending}/audit-logs`, {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(happyLogs.status === 200, `expected happy logs 200, got ${happyLogs.status}`);
+      assert(pendingLogs.status === 200, `expected pending logs 200, got ${pendingLogs.status}`);
+      assert(happyLogs.json.items.some((item) => item.action === 'STAFF_STATUS_UPDATE'), 'expected status log');
+      assert(pendingLogs.json.items.some((item) => item.action === 'STAFF_RESCHEDULE'), 'expected reschedule log');
+      return {
+        happyLogCount: happyLogs.json.items.length,
+        pendingLogCount: pendingLogs.json.items.length
+      };
+    });
+
+    await runCase('PATCH approved appointment -> completed releases slot', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.happy}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          status: 'completed',
+          reviewNote: 'completed in smoke'
+        })
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(result.json?.item?.status === 'completed', 'expected completed status');
+      const availabilityResult = await request(`/api/v1/availability?date=${openDate}`);
+      const slotAItem = findByTimeSlot(availabilityResult.json?.items || [], slotA);
+      assert(slotAItem?.status === 'active', 'expected slotA active after completed');
+      return {
+        review: result.json.item,
+        availability: slotAItem
+      };
+    });
+
     console.log(JSON.stringify({ ok: true, baseUrl: BASE_URL, cases }, null, 2));
   } finally {
+    const cleanupAppointments = await prisma.appointment.findMany({
+      where: {
+        OR: [
+          { id: { in: [ids.happy, ids.occupiedApproved, ids.occupiedPending].filter(Boolean) } },
+          { customerOpenId: { startsWith: cleanupCustomerPrefix } }
+        ]
+      },
+      select: {
+        id: true
+      }
+    });
+    await prisma.appointmentAuditLog.deleteMany({
+      where: {
+        appointmentId: {
+          in: cleanupAppointments.map((item) => item.id)
+        }
+      }
+    });
     await prisma.appointment.deleteMany({
       where: {
         OR: [

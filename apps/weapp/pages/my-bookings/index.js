@@ -1,4 +1,4 @@
-const { listMyAppointments } = require('../../services/appointment');
+const { cancelMyAppointment, listMyAppointments } = require('../../services/appointment');
 const { getErrorKind, getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
 
@@ -6,7 +6,10 @@ function formatStatus(status) {
   const map = {
     pending: '待审核',
     approved: '已通过',
-    rejected: '已拒绝'
+    rejected: '已拒绝',
+    cancelled: '已取消',
+    completed: '已完成',
+    no_show: '未到店'
   };
   return map[status] || status || '待处理';
 }
@@ -38,6 +41,11 @@ function normalizeAppointments(items) {
     timeSlot: item.timeSlot || '-',
     note: item.note || '',
     reviewNote: item.reviewNote || '',
+    cancelReason: item.cancelReason || '',
+    cancelledAtText: formatTime(item.cancelledAt),
+    arrivalInstructions: item.arrivalInstructions || null,
+    canCancel: item.status === 'pending' || item.status === 'approved',
+    status: item.status || 'pending',
     reviewedAtText: formatTime(item.reviewedAt),
     statusText: formatStatus(item.status),
     createdAtText: formatTime(item.createdAt)
@@ -193,5 +201,34 @@ Page({
         stateMessage: formatPageErrorMessage(error, '“我的预约”加载失败，请稍后重试。')
       });
     }
+  },
+
+  cancelAppointment(event) {
+    const { id } = event.currentTarget.dataset;
+    if (!id) {
+      return;
+    }
+
+    wx.showModal({
+      title: '取消预约',
+      content: '确认取消这条预约吗？已通过的预约取消后会释放时段。',
+      confirmText: '确认取消',
+      success: async (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        try {
+          await cancelMyAppointment(id, { reason: '顾客主动取消' });
+          wx.showToast({ title: '已取消', icon: 'success' });
+          await this.loadData();
+        } catch (error) {
+          wx.showToast({
+            title: formatPageErrorMessage(error, '取消失败，请稍后重试。'),
+            icon: 'none'
+          });
+        }
+      }
+    });
   }
 });

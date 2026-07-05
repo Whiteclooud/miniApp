@@ -3,3 +3,10 @@ export interface ReviewStaffAppointmentDto {
   action?: string;
   reviewNote?: string;
 }
+
+export interface RescheduleStaffAppointmentDto {
+  appointmentDate?: string;
+  date?: string;
+  timeSlot?: string;
+  reviewNote?: string;
+}

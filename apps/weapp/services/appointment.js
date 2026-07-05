@@ -81,6 +81,15 @@ function listMyAppointments() {
   });
 }
 
+function cancelMyAppointment(appointmentId, payload = {}) {
+  return request({
+    url: `/api/v1/my/appointments/${appointmentId}/cancel`,
+    method: 'PATCH',
+    data: payload,
+    auth: 'customer'
+  });
+}
+
 function listStaffRules() {
   return request({
     url: '/api/v1/staff/booking-rules',
@@ -114,6 +123,22 @@ function reviewStaffAppointment(appointmentId, payload, method = 'PATCH') {
   });
 }
 
+function rescheduleStaffAppointment(appointmentId, payload = {}) {
+  return request({
+    url: `/api/v1/staff/appointments/${appointmentId}/reschedule`,
+    method: 'PATCH',
+    data: payload,
+    auth: 'staff'
+  });
+}
+
+function listStaffAppointmentAuditLogs(appointmentId) {
+  return request({
+    url: `/api/v1/staff/appointments/${appointmentId}/audit-logs`,
+    auth: 'staff'
+  });
+}
+
 module.exports = {
   listGallery,
   listStaffGallery,
@@ -123,8 +148,11 @@ module.exports = {
   getAvailability,
   createAppointment,
   listMyAppointments,
+  cancelMyAppointment,
   listStaffRules,
   updateStaffRules,
   listStaffAppointments,
-  reviewStaffAppointment
+  reviewStaffAppointment,
+  rescheduleStaffAppointment,
+  listStaffAppointmentAuditLogs
 };

@@ -62,7 +62,11 @@ async function main() {
         id: bookingRuleId,
         advanceOpenDays: 7,
         closedDatesJson: JSON.stringify([closedDate]),
-        dailySlotsJson: JSON.stringify(['10:00-11:00', '14:00-15:00'])
+        dailySlotsJson: JSON.stringify(['10:00-11:00', '14:00-15:00']),
+        weeklyOpenDaysJson: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
+        sameDayCutoffTime: null,
+        minAdvanceHours: 0,
+        dateSlotOverridesJson: JSON.stringify({})
       }
     });
 

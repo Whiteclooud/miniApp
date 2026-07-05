@@ -45,7 +45,7 @@
       <view class="card booking-card">
         <view class="booking-header">
           <view class="booking-title">预约记录</view>
-          <view class="status-pill">{{item.statusText}}</view>
+          <view class="status-pill {{item.status}}">{{item.statusText}}</view>
         </view>
         <view class="info-row">
           <view class="info-label">预约时间</view>
@@ -75,6 +75,21 @@
           <view class="info-label">审核说明</view>
           <view class="info-value">{{item.reviewNote}}</view>
         </view>
+        <view wx:if="{{item.cancelledAtText}}" class="info-row">
+          <view class="info-label">取消时间</view>
+          <view class="info-value">{{item.cancelledAtText}}</view>
+        </view>
+        <view wx:if="{{item.cancelReason}}" class="info-row">
+          <view class="info-label">取消原因</view>
+          <view class="info-value">{{item.cancelReason}}</view>
+        </view>
+        <view wx:if="{{item.arrivalInstructions}}" class="arrival-box">
+          <view class="arrival-title">{{item.arrivalInstructions.title}}</view>
+          <view class="arrival-line">地址：{{item.arrivalInstructions.address}}</view>
+          <view class="arrival-line">联系：{{item.arrivalInstructions.contact}}</view>
+          <view wx:for="{{item.arrivalInstructions.notes}}" wx:key="*this" class="arrival-line">{{item}}</view>
+        </view>
+        <button wx:if="{{item.canCancel}}" class="button-secondary compact-button cancel-button" bindtap="cancelAppointment" data-id="{{item.id}}">取消预约</button>
       </view>
     </block>
   </block>

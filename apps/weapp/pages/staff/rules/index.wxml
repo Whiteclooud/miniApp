@@ -73,6 +73,28 @@
     </view>
 
     <view class="card form-card">
+      <view class="field-label">每周营业日</view>
+      <view class="chips-row">
+        <view wx:for="{{weeklyOpenDayOptions}}" wx:key="value" class="option-chip {{item.active ? 'option-chip-active' : ''}}" data-value="{{item.value}}" bindtap="toggleWeeklyOpenDay">{{item.label}}</view>
+      </view>
+      <view class="helper-text">未选中的星期会在顾客预约日历中显示为不可约。</view>
+    </view>
+
+    <view class="card form-card">
+      <view class="field-label">截止与提前预约</view>
+      <picker mode="time" value="{{form.sameDayCutoffTime}}" bindchange="onSameDayCutoffChange">
+        <view class="picker-trigger">{{form.sameDayCutoffTime || '不设置当天截止时间'}}</view>
+      </picker>
+      <button class="button-secondary compact-button inline-button" bindtap="clearSameDayCutoff">清除当天截止</button>
+      <view class="stepper-row">
+        <button class="stepper-button" data-delta="-1" bindtap="stepMinAdvanceHours">-1 小时</button>
+        <view class="picker-trigger stepper-value">提前 {{form.minAdvanceHours}} 小时</view>
+        <button class="stepper-button" data-delta="1" bindtap="stepMinAdvanceHours">+1 小时</button>
+      </view>
+      <view class="helper-text">当天截止控制今日整体是否可约；提前小时会按具体时段判断。</view>
+    </view>
+
+    <view class="card form-card">
       <view class="field-label">闭店日期</view>
       <picker mode="date" value="{{draftClosedDate}}" bindchange="onDraftClosedDateChange">
         <view class="picker-trigger">{{draftClosedDate || '选择一个闭店日期'}}</view>
@@ -117,6 +139,43 @@
         </view>
       </view>
       <view wx:else class="helper-text">请至少添加一个时段。</view>
+    </view>
+
+    <view class="card form-card">
+      <view class="field-label">特殊日期时段</view>
+      <picker mode="date" value="{{draftOverrideDate}}" bindchange="onDraftOverrideDateChange">
+        <view class="picker-trigger">{{draftOverrideDate || '选择特殊日期'}}</view>
+      </picker>
+      <view class="slot-picker-grid">
+        <view class="slot-picker-item">
+          <view class="picker-caption">开始时间</view>
+          <picker mode="time" value="{{draftOverrideSlotStart}}" data-field="draftOverrideSlotStart" bindchange="onDraftOverrideTimeChange">
+            <view class="picker-trigger">{{draftOverrideSlotStart}}</view>
+          </picker>
+        </view>
+        <view class="slot-picker-item">
+          <view class="picker-caption">结束时间</view>
+          <picker mode="time" value="{{draftOverrideSlotEnd}}" data-field="draftOverrideSlotEnd" bindchange="onDraftOverrideTimeChange">
+            <view class="picker-trigger">{{draftOverrideSlotEnd}}</view>
+          </picker>
+        </view>
+      </view>
+      <button class="button-secondary compact-button inline-button" bindtap="addDateSlotOverride">添加特殊时段</button>
+      <view wx:if="{{overrideDates.length}}" class="slot-card-list">
+        <view wx:for="{{overrideDates}}" wx:for-item="dateItem" wx:key="*this" class="slot-card override-card">
+          <view class="override-content">
+            <view class="slot-title">{{dateItem}}</view>
+            <view class="chips-row">
+              <view wx:for="{{form.dateSlotOverrides[dateItem]}}" wx:for-item="slotItem" wx:key="*this" class="tag-item compact-tag">
+                <text>{{slotItem}}</text>
+                <text class="remove-text" data-date="{{dateItem}}" data-slot="{{slotItem}}" bindtap="removeDateSlotOverride">移除</text>
+              </view>
+            </view>
+          </view>
+          <text class="remove-text" data-date="{{dateItem}}" bindtap="removeOverrideDate">删除日期</text>
+        </view>
+      </view>
+      <view wx:else class="helper-text">未设置特殊日期时段时，默认使用每日可预约时段。</view>
     </view>
 
     <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>

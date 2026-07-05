@@ -1,14 +1,27 @@
-import { AppointmentStatus } from '@prisma/client';
+import { AppointmentStatus, Prisma } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { ApiAppointmentItem, toApiAppointmentItem } from '../appointments/appointment-response';
+import {
+  ApiAppointmentItem,
+  mapAppointmentStatus,
+  toApiAppointmentItem
+} from '../appointments/appointment-response';
+import { isDateText } from '../booking-rules/booking-rules.shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertStaffAuthorized } from '../staff-auth/staff-auth';
+import { ListStaffAppointmentsQuery } from './dto/list-staff-appointments.query';
 
-const ALLOWED_STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
+const ALLOWED_STATUS_VALUES = [
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+  'completed',
+  'no_show'
+] as const;
 
 type ListStatus = (typeof ALLOWED_STATUS_VALUES)[number];
 
@@ -33,10 +46,69 @@ function toPrismaAppointmentStatus(status?: string): AppointmentStatus | undefin
       return AppointmentStatus.APPROVED;
     case 'rejected':
       return AppointmentStatus.REJECTED;
+    case 'cancelled':
+      return AppointmentStatus.CANCELLED;
+    case 'completed':
+      return AppointmentStatus.COMPLETED;
+    case 'no_show':
+      return AppointmentStatus.NO_SHOW;
     case 'pending':
     default:
       return AppointmentStatus.PENDING;
   }
+}
+
+function validateDateQuery(value?: string, code = 'INVALID_DATE') {
+  const normalized = `${value || ''}`.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  if (!isDateText(normalized)) {
+    throw new BadRequestException({
+      error: 'Invalid date',
+      code
+    });
+  }
+
+  return normalized;
+}
+
+function buildWhereFromQuery(query: ListStaffAppointmentsQuery = {}) {
+  const normalizedStatus = toPrismaAppointmentStatus(query.status);
+  const keyword = `${query.keyword || ''}`.trim();
+  const date = validateDateQuery(query.date);
+  const dateFrom = validateDateQuery(query.dateFrom, 'INVALID_DATE_FROM');
+  const dateTo = validateDateQuery(query.dateTo, 'INVALID_DATE_TO');
+
+  const where: Prisma.AppointmentWhereInput = {};
+
+  if (normalizedStatus) {
+    where.status = normalizedStatus;
+  }
+
+  if (date) {
+    where.date = date;
+  } else if (dateFrom || dateTo) {
+    where.date = {
+      ...(dateFrom ? { gte: dateFrom } : {}),
+      ...(dateTo ? { lte: dateTo } : {})
+    };
+  }
+
+  if (keyword) {
+    where.OR = [
+      { customerName: { contains: keyword } },
+      { phone: { contains: keyword } },
+      { customerOpenId: { contains: keyword } }
+    ];
+  }
+
+  return where;
+}
+
+function mapAuditStatus(status: AppointmentStatus | null) {
+  return status ? mapAppointmentStatus(status) : null;
 }
 
 @Injectable()
@@ -47,17 +119,20 @@ export class StaffAppointmentsService {
     return assertStaffAuthorized(staffOpenId);
   }
 
-  async listStaffAppointments(staffOpenId?: string, status?: string) {
+  async listStaffAppointments(
+    staffOpenId?: string,
+    statusOrQuery?: string | ListStaffAppointmentsQuery
+  ) {
     this.assertStaffAuthorized(staffOpenId);
-    const normalizedStatus = toPrismaAppointmentStatus(status);
+    const query =
+      typeof statusOrQuery === 'string'
+        ? { status: statusOrQuery }
+        : statusOrQuery || {};
+    const where = buildWhereFromQuery(query);
 
     const rows = await this.prisma.appointment.findMany({
-      where: normalizedStatus
-        ? {
-            status: normalizedStatus
-          }
-        : undefined,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
+      where: Object.keys(where).length ? where : undefined,
+      orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }]
     });
 
     return rows.map((item) => this.toStaffAppointmentItem(item));
@@ -83,6 +158,57 @@ export class StaffAppointmentsService {
     }
 
     return this.toStaffAppointmentItem(appointment);
+  }
+
+  async listStaffAppointmentAuditLogs(staffOpenId?: string, appointmentId?: string) {
+    this.assertStaffAuthorized(staffOpenId);
+    const normalizedAppointmentId = `${appointmentId || ''}`.trim();
+
+    if (!normalizedAppointmentId) {
+      throw new NotFoundException({
+        error: 'Appointment not found',
+        code: 'APPOINTMENT_NOT_FOUND'
+      });
+    }
+
+    const appointment = await this.prisma.appointment.findUnique({
+      where: {
+        id: normalizedAppointmentId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!appointment) {
+      throw new NotFoundException({
+        error: 'Appointment not found',
+        code: 'APPOINTMENT_NOT_FOUND'
+      });
+    }
+
+    const rows = await this.prisma.appointmentAuditLog.findMany({
+      where: {
+        appointmentId: normalizedAppointmentId
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
+    });
+
+    return rows.map((item) => ({
+      id: item.id,
+      appointmentId: item.appointmentId,
+      actorOpenId: item.actorOpenId || '',
+      actorRole: item.actorRole,
+      action: item.action,
+      fromStatus: mapAuditStatus(item.fromStatus),
+      toStatus: mapAuditStatus(item.toStatus),
+      fromDate: item.fromDate || '',
+      toDate: item.toDate || '',
+      fromTimeSlot: item.fromTimeSlot || '',
+      toTimeSlot: item.toTimeSlot || '',
+      note: item.note || '',
+      createdAt: item.createdAt.toISOString()
+    }));
   }
 
   toStaffAppointmentItem(item: any): StaffAppointmentItem {

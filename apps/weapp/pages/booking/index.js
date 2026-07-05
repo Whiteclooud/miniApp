@@ -316,6 +316,8 @@ Page({
     stateMessage: '',
     submitMessage: '',
     submitState: 'idle',
+    submitResult: null,
+    sourceGalleryTitle: '',
     timeSlotStateMessage: '',
     availabilityNoticeText: '',
     customerIdentity: {
@@ -345,6 +347,17 @@ Page({
       customerName: '',
       phone: '',
       note: ''
+    }
+  },
+
+  onLoad(options = {}) {
+    const galleryTitle = decodeURIComponent(options.galleryTitle || '');
+    const styleNote = decodeURIComponent(options.styleNote || '');
+    if (galleryTitle || styleNote) {
+      this.setData({
+        sourceGalleryTitle: galleryTitle,
+        'form.note': styleNote || (galleryTitle ? `喜欢返图风格：${galleryTitle}` : this.data.form.note)
+      });
     }
   },
 
@@ -409,6 +422,21 @@ Page({
     this.setData({
       [`form.${field}`]: value
     });
+  },
+
+  goMyBookings() {
+    wx.redirectTo({
+      url: '/pages/my-bookings/index?created=1'
+    });
+  },
+
+  bookAgain() {
+    this.setData({
+      submitState: 'idle',
+      submitMessage: '',
+      submitResult: null
+    });
+    this.loadPage();
   },
 
   async onCalendarDayTap(event) {
@@ -582,11 +610,27 @@ Page({
     const phone = (form.phone || '').trim();
     const note = (form.note || '').trim();
 
+    if (customerName.length > 30) {
+      this.setData({
+        submitMessage: '姓名建议控制在 30 个字以内，方便门店快速识别。'
+      });
+      wx.showToast({ title: '姓名过长', icon: 'none' });
+      return;
+    }
+
     if (phone && !/^1\d{10}$/.test(phone)) {
       this.setData({
         submitMessage: '手机号仅用于联系；如需填写，请输入正确的 11 位手机号。'
       });
       wx.showToast({ title: '手机号格式不正确', icon: 'none' });
+      return;
+    }
+
+    if (note.length > 200) {
+      this.setData({
+        submitMessage: '备注建议控制在 200 个字以内。'
+      });
+      wx.showToast({ title: '备注过长', icon: 'none' });
       return;
     }
 
@@ -604,7 +648,7 @@ Page({
     });
 
     try {
-      await createAppointment({
+      const response = await createAppointment({
         appointmentDate: availability.selectedDate,
         timeSlot: timeSlotOption.value,
         customerName,
@@ -613,11 +657,14 @@ Page({
       });
 
       wx.showToast({ title: '预约已提交', icon: 'success' });
-      setTimeout(() => {
-        wx.redirectTo({
-          url: '/pages/my-bookings/index'
-        });
-      }, 700);
+      this.setData({
+        submitState: 'success',
+        submitResult: response.item || {
+          date: availability.selectedDate,
+          timeSlot: timeSlotOption.value,
+          status: 'pending'
+        }
+      });
     } catch (error) {
       if (error.isUnauthorized) {
         this.setData({
@@ -635,9 +682,11 @@ Page({
         icon: 'none'
       });
     } finally {
-      this.setData({
-        submitState: 'idle'
-      });
+      if (this.data.submitState !== 'success') {
+        this.setData({
+          submitState: 'idle'
+        });
+      }
     }
   }
 });

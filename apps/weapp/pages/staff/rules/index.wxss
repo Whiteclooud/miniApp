@@ -94,6 +94,11 @@
   flex: 1;
 }
 
+.stepper-value {
+  flex: 1;
+  justify-content: center;
+}
+
 .tag-list,
 .slot-card-list {
   margin-top: 16rpx;
@@ -124,4 +129,17 @@
 .remove-text {
   color: #c35e72;
   font-size: 24rpx;
+}
+
+.override-card {
+  align-items: flex-start;
+}
+
+.override-content {
+  flex: 1;
+}
+
+.compact-tag {
+  margin-bottom: 0;
+  padding: 12rpx 16rpx;
 }

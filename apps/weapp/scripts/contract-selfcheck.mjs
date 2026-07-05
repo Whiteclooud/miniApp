@@ -70,7 +70,7 @@ function getFunctionBody(text, functionName) {
 
 function scanLegacyTokens(dirPath) {
   const scanExtensions = new Set(['.js', '.json', '.wxml']);
-  const tokens = ['/api/v1/staff/rules', 'bookingEnabled', 'bookingNotice', 'confirmed', 'cancelled', 'completed'];
+  const tokens = ['/api/v1/staff/rules', 'bookingEnabled', 'bookingNotice', 'confirmed'];
 
   for (const name of fs.readdirSync(dirPath)) {
     const fullPath = path.join(dirPath, name);
@@ -185,7 +185,12 @@ expectExcludes(appJsText, 'apps/server', appJsPath);
 const apiProfilePath = 'apps/weapp/utils/api-profile.js';
 const apiProfileText = readText(apiProfilePath);
 expectIncludes(apiProfileText, "const DEFAULT_PROFILE = 'api'", apiProfilePath);
-expectIncludes(apiProfileText, "baseUrl: 'http://127.0.0.1:3100'", apiProfilePath);
+expectRegex(
+  apiProfileText,
+  /baseUrl:\s*'http:\/\/[^']+:3100'/,
+  apiProfilePath,
+  'must point api profile to an apps/api server on port 3100'
+);
 expectExcludes(apiProfileText, 'apps/server', apiProfilePath);
 expectExcludes(apiProfileText, '127.0.0.1:3000', apiProfilePath);
 expectExcludes(apiProfileText, "'legacy'", apiProfilePath);
@@ -269,19 +274,24 @@ const myBookingsPageText = readText(myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'listMyAppointments', myBookingsPagePath);
 expectExcludes(myBookingsPageText, '/api/v1/appointments', myBookingsPagePath);
 expectExcludes(myBookingsPageText, 'phone=', myBookingsPagePath);
-['confirmed', 'cancelled', 'completed'].forEach((token) => {
+['confirmed'].forEach((token) => {
   expectExcludes(myBookingsPageText, `'${token}'`, myBookingsPagePath);
 });
 expectIncludes(myBookingsPageText, 'approved', myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'rejected', myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'cancelled', myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'completed', myBookingsPagePath);
 
 const staffAppointmentsPagePath = 'apps/weapp/pages/staff/appointments/index.js';
 const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
-['confirmed', 'cancelled', 'completed'].forEach((token) => {
+['confirmed'].forEach((token) => {
   expectExcludes(staffAppointmentsPageText, `'${token}'`, staffAppointmentsPagePath);
 });
 expectIncludes(staffAppointmentsPageText, "'approved'", staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, "'rejected'", staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, "'cancelled'", staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, "'completed'", staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, "'no_show'", staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'goGallery', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'reviewHint', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'showApproveAction', staffAppointmentsPagePath);

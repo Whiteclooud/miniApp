@@ -9,6 +9,15 @@ const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
 
 const ADVANCE_OPEN_DAY_OPTIONS = [0, 1, 3, 5, 7, 14, 21, 30];
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: '周一' },
+  { value: 2, label: '周二' },
+  { value: 3, label: '周三' },
+  { value: 4, label: '周四' },
+  { value: 5, label: '周五' },
+  { value: 6, label: '周六' },
+  { value: 0, label: '周日' }
+];
 const SLOT_PRESET_OPTIONS = [
   { label: '09:00 - 10:00', start: '09:00', end: '10:00' },
   { label: '10:30 - 11:30', start: '10:30', end: '11:30' },
@@ -73,11 +82,36 @@ function uniqueSortedSlots(slots) {
   return [...new Set(normalizeStringList(slots).filter(isDailySlotText))].sort(compareSlots);
 }
 
+function normalizeWeeklyOpenDays(value) {
+  const source = Array.isArray(value) ? value : WEEKDAY_OPTIONS.map((item) => item.value);
+  const days = source
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6);
+  return [...new Set(days)].sort((left, right) => left - right);
+}
+
+function normalizeDateSlotOverrides(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.keys(value).sort(compareText).reduce((result, dateText) => {
+    if (isDateText(dateText)) {
+      result[dateText] = uniqueSortedSlots(value[dateText]);
+    }
+    return result;
+  }, {});
+}
+
 function getDefaultForm() {
   return {
     advanceOpenDays: '7',
     closedDates: [],
-    dailySlots: ['10:00-11:00']
+    dailySlots: ['10:00-11:00'],
+    weeklyOpenDays: WEEKDAY_OPTIONS.map((item) => item.value),
+    sameDayCutoffTime: '',
+    minAdvanceHours: '0',
+    dateSlotOverrides: {}
   };
 }
 
@@ -86,7 +120,11 @@ function normalizeRules(response) {
   const form = {
     advanceOpenDays: normalizeAdvanceOpenDays(source.advanceOpenDays),
     closedDates: uniqueSortedDates(source.closedDates),
-    dailySlots: uniqueSortedSlots(source.dailySlots)
+    dailySlots: uniqueSortedSlots(source.dailySlots),
+    weeklyOpenDays: normalizeWeeklyOpenDays(source.weeklyOpenDays),
+    sameDayCutoffTime: source.sameDayCutoffTime || '',
+    minAdvanceHours: normalizeAdvanceOpenDays(source.minAdvanceHours),
+    dateSlotOverrides: normalizeDateSlotOverrides(source.dateSlotOverrides)
   };
 
   const fallbackForm = getDefaultForm();
@@ -95,7 +133,11 @@ function normalizeRules(response) {
     form: {
       advanceOpenDays: form.advanceOpenDays === '' ? fallbackForm.advanceOpenDays : form.advanceOpenDays,
       closedDates: form.closedDates,
-      dailySlots: form.dailySlots.length ? form.dailySlots : fallbackForm.dailySlots
+      dailySlots: form.dailySlots.length ? form.dailySlots : fallbackForm.dailySlots,
+      weeklyOpenDays: form.weeklyOpenDays.length ? form.weeklyOpenDays : fallbackForm.weeklyOpenDays,
+      sameDayCutoffTime: form.sameDayCutoffTime,
+      minAdvanceHours: form.minAdvanceHours === '' ? fallbackForm.minAdvanceHours : form.minAdvanceHours,
+      dateSlotOverrides: form.dateSlotOverrides
     },
     updatedAt: source.updatedAt || response.updatedAt || ''
   };
@@ -113,7 +155,11 @@ function buildSubmitPayload(form) {
   return {
     advanceOpenDays: Number(form.advanceOpenDays),
     dailySlots: [...form.dailySlots],
-    closedDates: [...form.closedDates]
+    closedDates: [...form.closedDates],
+    weeklyOpenDays: normalizeWeeklyOpenDays(form.weeklyOpenDays),
+    sameDayCutoffTime: form.sameDayCutoffTime || '',
+    minAdvanceHours: Number(form.minAdvanceHours || 0),
+    dateSlotOverrides: normalizeDateSlotOverrides(form.dateSlotOverrides)
   };
 }
 
@@ -232,27 +278,39 @@ function buildRuleSummary(form) {
   const advanceText = form.advanceOpenDays === '' ? '未设置' : `提前 ${form.advanceOpenDays} 天开放`;
   const closedText = form.closedDates.length ? `已设 ${form.closedDates.length} 个闭店日期` : '当前未设置闭店日期';
   const slotText = form.dailySlots.length ? `共 ${form.dailySlots.length} 个每日时段` : '当前未设置时段';
-  return [advanceText, closedText, slotText];
+  const weeklyText = `每周营业 ${normalizeWeeklyOpenDays(form.weeklyOpenDays).length} 天`;
+  const cutoffText = form.sameDayCutoffTime ? `当天 ${form.sameDayCutoffTime} 后不可约` : '未设置当天截止';
+  const minAdvanceText = Number(form.minAdvanceHours || 0) ? `需提前 ${form.minAdvanceHours} 小时` : '无提前小时限制';
+  const overrideText = `${Object.keys(form.dateSlotOverrides || {}).length} 个特殊日期`;
+  return [advanceText, closedText, slotText, weeklyText, cutoffText, minAdvanceText, overrideText];
 }
 
 function buildViewState(source) {
   const form = source && source.form ? source.form : getDefaultForm();
   const advanceValue = form.advanceOpenDays === '' ? '0' : `${form.advanceOpenDays}`;
   const advanceIndex = Math.max(0, ADVANCE_OPEN_DAY_OPTIONS.findIndex((value) => `${value}` === advanceValue));
+  const weeklyOpenDays = normalizeWeeklyOpenDays(form.weeklyOpenDays);
+  const dateSlotOverrides = normalizeDateSlotOverrides(form.dateSlotOverrides);
+  const nextForm = {
+    advanceOpenDays: advanceValue,
+    closedDates: uniqueSortedDates(form.closedDates),
+    dailySlots: uniqueSortedSlots(form.dailySlots),
+    weeklyOpenDays,
+    sameDayCutoffTime: form.sameDayCutoffTime || '',
+    minAdvanceHours: normalizeAdvanceOpenDays(form.minAdvanceHours) || '0',
+    dateSlotOverrides
+  };
   return {
-    form: {
-      advanceOpenDays: advanceValue,
-      closedDates: uniqueSortedDates(form.closedDates),
-      dailySlots: uniqueSortedSlots(form.dailySlots)
-    },
+    form: nextForm,
     updatedAtText: formatTime(source && source.updatedAt),
     advanceOpenDaysIndex: advanceIndex,
     advanceOpenDayOptions: buildAdvanceOptionItems(advanceValue),
-    ruleSummary: buildRuleSummary({
-      advanceOpenDays: advanceValue,
-      closedDates: uniqueSortedDates(form.closedDates),
-      dailySlots: uniqueSortedSlots(form.dailySlots)
-    }),
+    weeklyOpenDayOptions: WEEKDAY_OPTIONS.map((item) => ({
+      ...item,
+      active: weeklyOpenDays.includes(item.value)
+    })),
+    overrideDates: Object.keys(dateSlotOverrides).sort(compareText),
+    ruleSummary: buildRuleSummary(nextForm),
     slotPresetOptions: buildPresetItems({
       dailySlots: uniqueSortedSlots(form.dailySlots)
     })
@@ -281,6 +339,25 @@ function validateForm(form) {
     return '闭店日期请使用 YYYY-MM-DD 格式，例如 2026-03-18。';
   }
 
+  if (!normalizeWeeklyOpenDays(form.weeklyOpenDays).length) {
+    return '请至少选择一个每周营业日。';
+  }
+
+  if (form.sameDayCutoffTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.sameDayCutoffTime)) {
+    return '当天截止时间请使用 HH:mm 格式。';
+  }
+
+  const minAdvanceHours = Number(form.minAdvanceHours || 0);
+  if (!Number.isInteger(minAdvanceHours) || minAdvanceHours < 0) {
+    return '提前预约小时数必须是大于等于 0 的整数。';
+  }
+
+  const overrides = normalizeDateSlotOverrides(form.dateSlotOverrides);
+  const invalidOverride = Object.keys(overrides).find((dateText) => hasSlotOverlap(overrides[dateText]));
+  if (invalidOverride) {
+    return `${invalidOverride} 的特殊时段不能重叠。`;
+  }
+
   return '';
 }
 
@@ -294,9 +371,14 @@ Page({
     ruleSummary: [],
     advanceOpenDayOptions: buildAdvanceOptionItems('7'),
     advanceOpenDaysIndex: 4,
+    weeklyOpenDayOptions: WEEKDAY_OPTIONS.map((item) => ({ ...item, active: true })),
     draftClosedDate: '',
     draftSlotStart: '10:00',
     draftSlotEnd: '11:00',
+    draftOverrideDate: '',
+    draftOverrideSlotStart: '10:00',
+    draftOverrideSlotEnd: '11:00',
+    overrideDates: [],
     slotPresetOptions: buildPresetItems({ dailySlots: ['10:00-11:00'] }),
     staffIdentity: {
       openId: '',
@@ -422,6 +504,49 @@ Page({
     this.changeAdvanceOpenDays(nextValue);
   },
 
+  toggleWeeklyOpenDay(event) {
+    const value = Number(event.currentTarget.dataset.value);
+    const current = normalizeWeeklyOpenDays(this.data.form.weeklyOpenDays);
+    const nextDays = current.includes(value)
+      ? current.filter((item) => item !== value)
+      : normalizeWeeklyOpenDays([...current, value]);
+    if (!nextDays.length) {
+      wx.showToast({ title: '至少保留一个营业日', icon: 'none' });
+      return;
+    }
+
+    const nextForm = {
+      ...this.data.form,
+      weeklyOpenDays: nextDays
+    };
+    this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
+  onSameDayCutoffChange(event) {
+    const nextForm = {
+      ...this.data.form,
+      sameDayCutoffTime: event.detail.value
+    };
+    this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
+  clearSameDayCutoff() {
+    const nextForm = {
+      ...this.data.form,
+      sameDayCutoffTime: ''
+    };
+    this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
+  stepMinAdvanceHours(event) {
+    const { delta } = event.currentTarget.dataset;
+    const nextForm = {
+      ...this.data.form,
+      minAdvanceHours: `${Math.max(0, Number(this.data.form.minAdvanceHours || 0) + Number(delta || 0))}`
+    };
+    this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
   onDraftClosedDateChange(event) {
     this.setData({
       draftClosedDate: event.detail.value
@@ -495,6 +620,83 @@ Page({
       dailySlots: (this.data.form.dailySlots || []).filter((item) => item !== slot)
     };
     this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
+  onDraftOverrideDateChange(event) {
+    this.setData({
+      draftOverrideDate: event.detail.value
+    });
+  },
+
+  onDraftOverrideTimeChange(event) {
+    const { field } = event.currentTarget.dataset;
+    this.setData({
+      [field]: event.detail.value
+    });
+  },
+
+  addDateSlotOverride() {
+    const dateText = this.data.draftOverrideDate;
+    const start = this.data.draftOverrideSlotStart;
+    const end = this.data.draftOverrideSlotEnd;
+    const startMinutes = timeTextToMinutes(start);
+    const endMinutes = timeTextToMinutes(end);
+
+    if (!isDateText(dateText)) {
+      wx.showToast({ title: '请选择特殊日期', icon: 'none' });
+      return;
+    }
+
+    if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+      wx.showToast({ title: '请选择有效特殊时段', icon: 'none' });
+      return;
+    }
+
+    const slot = `${start}-${end}`;
+    const overrides = normalizeDateSlotOverrides(this.data.form.dateSlotOverrides);
+    const nextOverrides = {
+      ...overrides,
+      [dateText]: uniqueSortedSlots([...(overrides[dateText] || []), slot])
+    };
+    const nextForm = {
+      ...this.data.form,
+      dateSlotOverrides: nextOverrides
+    };
+
+    this.applyViewState({ form: nextForm, updatedAt: this.data.updatedAtText });
+  },
+
+  removeDateSlotOverride(event) {
+    const { date, slot } = event.currentTarget.dataset;
+    const overrides = normalizeDateSlotOverrides(this.data.form.dateSlotOverrides);
+    const nextSlots = (overrides[date] || []).filter((item) => item !== slot);
+    const nextOverrides = { ...overrides };
+    if (nextSlots.length) {
+      nextOverrides[date] = nextSlots;
+    } else {
+      delete nextOverrides[date];
+    }
+
+    this.applyViewState({
+      form: {
+        ...this.data.form,
+        dateSlotOverrides: nextOverrides
+      },
+      updatedAt: this.data.updatedAtText
+    });
+  },
+
+  removeOverrideDate(event) {
+    const { date } = event.currentTarget.dataset;
+    const overrides = normalizeDateSlotOverrides(this.data.form.dateSlotOverrides);
+    delete overrides[date];
+    this.applyViewState({
+      form: {
+        ...this.data.form,
+        dateSlotOverrides: overrides
+      },
+      updatedAt: this.data.updatedAtText
+    });
   },
 
   async loadData() {

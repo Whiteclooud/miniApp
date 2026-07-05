@@ -19,7 +19,7 @@ export class StaffAppointmentsController {
     const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
     const items = await this.staffAppointmentsService.listStaffAppointments(
       resolvedStaffOpenId,
-      query.status
+      query
     );
     return { items };
   }

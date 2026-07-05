@@ -8,4 +8,8 @@ export class StaffAppointmentDetailService {
   async getStaffAppointmentDetail(staffOpenId?: string, appointmentId?: string) {
     return this.staffAppointmentsService.getStaffAppointmentDetail(staffOpenId, appointmentId);
   }
+
+  async listStaffAppointmentAuditLogs(staffOpenId?: string, appointmentId?: string) {
+    return this.staffAppointmentsService.listStaffAppointmentAuditLogs(staffOpenId, appointmentId);
+  }
 }

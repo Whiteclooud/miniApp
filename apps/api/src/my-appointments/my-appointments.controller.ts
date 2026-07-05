@@ -1,4 +1,4 @@
-import { Controller, Get, Headers } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { MyAppointmentsService } from './my-appointments.service';
 
@@ -20,5 +20,24 @@ export class MyAppointmentsController {
     );
     const items = await this.myAppointmentsService.listMyAppointments(resolvedCustomerOpenId);
     return { items };
+  }
+
+  @Patch(':id/cancel')
+  async cancelMyAppointment(
+    @Headers('authorization') authorization?: string,
+    @Headers('x-customer-openid') customerOpenId?: string,
+    @Param('id') appointmentId?: string,
+    @Body() payload: { reason?: string } = {}
+  ) {
+    const resolvedCustomerOpenId = await this.authService.resolveCustomerOpenId(
+      authorization,
+      customerOpenId
+    );
+    const item = await this.myAppointmentsService.cancelMyAppointment(
+      resolvedCustomerOpenId,
+      appointmentId,
+      payload.reason
+    );
+    return { item };
   }
 }

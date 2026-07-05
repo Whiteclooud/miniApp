@@ -3,8 +3,27 @@
 .identity-card,
 .dev-card,
 .state-card,
-.form-card {
+.form-card,
+.result-card {
   margin-bottom: 24rpx;
+}
+
+.result-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.result-desc,
+.result-time {
+  margin-top: 14rpx;
+  color: #7d5b4c;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.result-time {
+  font-weight: 700;
 }
 
 .calendar-card {

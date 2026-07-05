@@ -35,6 +35,9 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/staff/appointments/:id`
 - `POST /api/v1/staff/appointments/:id/review`
 - `PATCH /api/v1/staff/appointments/:id/review`
+- `PATCH /api/v1/my/appointments/:id/cancel`
+- `PATCH /api/v1/staff/appointments/:id/reschedule`
+- `GET /api/v1/staff/appointments/:id/audit-logs`
 
 以下旧接口不再属于当前契约，前后端都禁止继续依赖：
 
@@ -42,6 +45,17 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/hot-styles`
 - `GET /api/v1/artists`
 - 旧版 `GET /api/v1/appointments`
+
+## 业务流程升级（2026-07-05）
+
+- 预约状态扩展为：`pending` / `approved` / `rejected` / `cancelled` / `completed` / `no_show`。
+- 只有 `approved` 状态占用预约时段；`rejected`、`cancelled`、`completed`、`no_show` 都会释放 `approvedSlotKey`。
+- 顾客可调用 `PATCH /api/v1/my/appointments/:id/cancel` 取消 `pending` 或 `approved` 预约。
+- 店员可继续通过 `POST/PATCH /api/v1/staff/appointments/:id/review` 设置最终状态，`status` 支持上述全部状态。
+- 店员可调用 `PATCH /api/v1/staff/appointments/:id/reschedule` 协助待审核/已通过预约改期，body 支持 `appointmentDate`、`timeSlot`、`reviewNote`。
+- 店员可调用 `GET /api/v1/staff/appointments/:id/audit-logs` 查看创建、状态修改、改期、取消等操作日志。
+- `GET /api/v1/staff/appointments` 额外支持 `keyword`、`date`、`dateFrom`、`dateTo` 查询参数，用于按顾客名/手机号/OpenID、日期和状态筛选。
+- 预约规则扩展字段：`weeklyOpenDays`、`sameDayCutoffTime`、`minAdvanceHours`、`dateSlotOverrides`。availability 会根据周营业日、当天截止、提前小时和特殊日期时段返回日期/时段禁用原因。
 
 ## 本轮 UAT / 集成备注（2026-07-05）
 

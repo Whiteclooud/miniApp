@@ -9,7 +9,9 @@ import { BookingRulesService } from '../booking-rules/booking-rules.service';
 import {
   isDateText,
   isSlotText,
-  resolveBookingDateReasonCode
+  resolveBookingDateReasonCode,
+  resolveBookingSlotReasonCode,
+  resolveDailySlotsForDate
 } from '../booking-rules/booking-rules.shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiAppointmentItem, toApiAppointmentItem } from './appointment-response';
@@ -75,7 +77,9 @@ export class AppointmentsService {
       });
     }
 
-    if (!bookingRules.dailySlots.includes(timeSlot)) {
+    const availableSlots = resolveDailySlotsForDate(bookingRules, appointmentDate);
+
+    if (!availableSlots.includes(timeSlot)) {
       throw new BadRequestException({
         error: 'Invalid slot',
         code: 'INVALID_SLOT'
@@ -100,20 +104,58 @@ export class AppointmentsService {
       });
     }
 
-    const created = await this.prisma.appointment.create({
-      data: {
-        customerOpenId,
-        customerName: `${payload.customerName || ''}`.trim() || null,
-        phone: `${payload.phone || ''}`.trim() || null,
-        date: appointmentDate,
-        timeSlot,
-        approvedSlotKey: null,
-        note: `${payload.note || ''}`.trim() || null,
-        status: AppointmentStatus.PENDING,
-        reviewedAt: null,
-        reviewedByOpenId: null,
-        reviewNote: null
-      }
+    const slotReasonCode = resolveBookingSlotReasonCode(
+      appointmentDate,
+      timeSlot,
+      bookingRules,
+      bookingDateReasonCode,
+      new Set<string>()
+    );
+
+    if (slotReasonCode !== 'AVAILABLE') {
+      throw new BadRequestException({
+        error: 'Slot unavailable',
+        code: slotReasonCode
+      });
+    }
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.create({
+        data: {
+          customerOpenId,
+          customerName: `${payload.customerName || ''}`.trim() || null,
+          phone: `${payload.phone || ''}`.trim() || null,
+          date: appointmentDate,
+          timeSlot,
+          approvedSlotKey: null,
+          note: `${payload.note || ''}`.trim() || null,
+          status: AppointmentStatus.PENDING,
+          reviewedAt: null,
+          reviewedByOpenId: null,
+          reviewNote: null,
+          cancelledAt: null,
+          cancelledByOpenId: null,
+          cancelReason: null
+        }
+      });
+
+      await tx.appointmentAuditLog.create({
+        data: {
+          appointmentId: appointment.id,
+          actorOpenId: customerOpenId,
+          actorRole: 'customer',
+          action: 'CREATE',
+          fromStatus: null,
+          toStatus: appointment.status,
+          fromDate: null,
+          toDate: appointment.date,
+          fromTimeSlot: null,
+          toTimeSlot: appointment.timeSlot,
+          note: appointment.note
+        }
+      });
+
+      return appointment;
     });
 
     return toApiAppointmentItem(created);

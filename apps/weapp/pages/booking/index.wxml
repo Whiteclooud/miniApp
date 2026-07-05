@@ -38,6 +38,17 @@
     <button class="button-secondary" bindtap="loadPage">重新加载</button>
   </view>
 
+  <block wx:else>
+  <view wx:if="{{submitState === 'success'}}" class="card result-card">
+    <view class="result-title">预约已提交</view>
+    <view class="result-desc">门店会尽快审核你的预约，审核通过后可在“我的预约”查看到店说明。</view>
+    <view class="result-time">{{submitResult.date}} {{submitResult.timeSlot}}</view>
+    <view class="action-row action-row-wrap">
+      <button class="button-primary compact-button" bindtap="goMyBookings">查看我的预约</button>
+      <button class="button-secondary compact-button" bindtap="bookAgain">再约一次</button>
+    </view>
+  </view>
+
   <view wx:else class="card form-card">
     <view class="field-label">选择日期</view>
     <view class="calendar-card">
@@ -107,4 +118,5 @@
     <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>
     <button class="button-primary" bindtap="submit" loading="{{submitState === 'submitting'}}">提交预约</button>
   </view>
+  </block>
 </view>

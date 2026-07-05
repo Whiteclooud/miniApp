@@ -67,8 +67,56 @@
           <view class="summary-label">已拒绝</view>
           <view class="summary-value">{{summary.rejected}}</view>
         </view>
+        <view class="summary-item">
+          <view class="summary-label">已取消</view>
+          <view class="summary-value">{{summary.cancelled}}</view>
+        </view>
+        <view class="summary-item">
+          <view class="summary-label">已完成</view>
+          <view class="summary-value">{{summary.completed}}</view>
+        </view>
+        <view class="summary-item">
+          <view class="summary-label">未到店</view>
+          <view class="summary-value">{{summary.no_show}}</view>
+        </view>
       </view>
       <view wx:if="{{stateMessage}}" class="helper-text summary-helper">{{stateMessage}}</view>
+    </view>
+
+    <view class="card workbench-card">
+      <view class="section-subtitle">今日 / 明日工作台</view>
+      <view class="workbench-grid">
+        <view class="workbench-panel">
+          <view class="summary-label">今日预约</view>
+          <view class="summary-value">{{workbenchSummary.today}}</view>
+          <view class="helper-text">已通过 {{workbenchSummary.todayApproved}}</view>
+        </view>
+        <view class="workbench-panel">
+          <view class="summary-label">明日预约</view>
+          <view class="summary-value">{{workbenchSummary.tomorrow}}</view>
+          <view class="helper-text">已通过 {{workbenchSummary.tomorrowApproved}}</view>
+        </view>
+      </view>
+      <view wx:if="{{todayAppointments.length}}" class="mini-list">
+        <view wx:for="{{todayAppointments}}" wx:key="id" class="mini-list-row">{{item.timeSlot}} · {{item.customerName}} · {{item.statusText}}</view>
+      </view>
+    </view>
+
+    <view class="card filter-card">
+      <view class="section-subtitle">搜索与筛选</view>
+      <input class="field-input" value="{{searchKeyword}}" bindinput="onSearchKeywordInput" placeholder="顾客姓名 / 手机号 / OpenID" />
+      <view class="filter-grid">
+        <picker mode="date" value="{{searchDate}}" bindchange="onSearchDateChange">
+          <view class="picker-trigger">{{searchDate || '选择日期'}}</view>
+        </picker>
+        <picker mode="selector" range="{{statusPickerOptions}}" range-key="label" value="{{statusPickerIndex}}" bindchange="onSearchStatusChange">
+          <view class="picker-trigger">{{statusPickerOptions[statusPickerIndex].label}}</view>
+        </picker>
+      </view>
+      <view class="action-row action-row-wrap">
+        <button class="button-primary compact-button" bindtap="runSearchFilters">筛选预约</button>
+        <button class="button-secondary compact-button" bindtap="clearSearchFilters">清空筛选</button>
+      </view>
     </view>
 
     <view class="card calendar-card">
@@ -156,6 +204,24 @@
           <view class="action-row action-row-wrap">
             <button wx:if="{{item.showApproveAction}}" class="button-primary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="approve" loading="{{reviewStateMap[item.id] === 'approving'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">{{item.approveActionText}}</button>
             <button wx:if="{{item.showRejectAction}}" class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="reject" loading="{{reviewStateMap[item.id] === 'rejecting'}}" disabled="{{reviewStateMap[item.id] === 'approving' || reviewStateMap[item.id] === 'rejecting'}}">{{item.rejectActionText}}</button>
+            <button wx:if="{{item.showCancelAction}}" class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="cancel" loading="{{reviewStateMap[item.id] === 'cancelling'}}">{{item.cancelActionText}}</button>
+            <button wx:if="{{item.showCompleteAction}}" class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="complete" loading="{{reviewStateMap[item.id] === 'completing'}}">{{item.completeActionText}}</button>
+            <button wx:if="{{item.showNoShowAction}}" class="button-secondary compact-button" bindtap="reviewAppointment" data-id="{{item.id}}" data-action="no_show" loading="{{reviewStateMap[item.id] === 'no_showing'}}">{{item.noShowActionText}}</button>
+          </view>
+          <view class="reschedule-box">
+            <picker mode="date" value="{{rescheduleDraftMap[item.id].date || item.rescheduleDate}}" data-id="{{item.id}}" bindchange="onRescheduleDateChange">
+              <view class="picker-trigger compact-picker">{{rescheduleDraftMap[item.id].date || item.rescheduleDate}}</view>
+            </picker>
+            <input class="field-input compact-input" value="{{rescheduleDraftMap[item.id].timeSlot || item.rescheduleTimeSlot}}" data-id="{{item.id}}" bindinput="onRescheduleSlotInput" placeholder="10:00-11:00" />
+            <button class="button-secondary compact-button" bindtap="rescheduleAppointment" data-id="{{item.id}}" data-date="{{item.date}}" data-time-slot="{{item.timeSlot}}" loading="{{reviewStateMap[item.id] === 'rescheduling'}}">协助改期</button>
+          </view>
+          <button class="button-ghost compact-button audit-button" bindtap="toggleAuditLogs" data-id="{{item.id}}" loading="{{auditStateMap[item.id] === 'loading'}}">操作日志</button>
+          <view wx:if="{{auditLogsMap[item.id]}}" class="audit-list">
+            <view wx:for="{{auditLogsMap[item.id]}}" wx:key="id" class="audit-row">
+              <view class="audit-title">{{item.action}} · {{item.createdAtText}}</view>
+              <view class="audit-desc">{{item.fromStatusText || '-'}} → {{item.toStatusText || '-'}} · {{item.fromDate || '-'}} {{item.fromTimeSlot || ''}} → {{item.toDate || '-'}} {{item.toTimeSlot || ''}}</view>
+              <view wx:if="{{item.note}}" class="audit-desc">{{item.note}}</view>
+            </view>
           </view>
         </view>
       </view>

@@ -76,6 +76,61 @@
   color: #b24444;
 }
 
+.status-pill {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+
+.status-pill.pending {
+  background: #fff3d9;
+  color: #a87500;
+}
+
+.status-pill.approved {
+  background: #e5f8eb;
+  color: #1f8a49;
+}
+
+.status-pill.rejected {
+  background: #fde8e8;
+  color: #b24444;
+}
+
+.status-chip.cancelled,
+.status-chip.completed,
+.status-chip.no_show,
+.status-pill.cancelled,
+.status-pill.completed,
+.status-pill.no_show {
+  background: #f0ece8;
+  color: #7d5b4c;
+}
+
+.arrival-box {
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f3;
+}
+
+.arrival-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.arrival-line {
+  margin-top: 10rpx;
+  color: #6f574b;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.cancel-button {
+  margin-top: 18rpx;
+}
+
 .booking-note {
   margin-top: 12rpx;
   color: #6f574b;

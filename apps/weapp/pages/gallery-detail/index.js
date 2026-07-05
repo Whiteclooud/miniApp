@@ -73,8 +73,10 @@ Page({
   },
 
   goBooking() {
+    const title = this.data.item && this.data.item.title ? this.data.item.title : '';
+    const styleNote = title ? `喜欢返图风格：${title}` : '';
     wx.navigateTo({
-      url: '/pages/booking/index'
+      url: `/pages/booking/index?galleryTitle=${encodeURIComponent(title)}&styleNote=${encodeURIComponent(styleNote)}`
     });
   }
 });

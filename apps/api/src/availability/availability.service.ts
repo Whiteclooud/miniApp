@@ -3,10 +3,14 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { BookingRulesService } from '../booking-rules/booking-rules.service';
 import {
   BookingDateReasonCode,
+  BookingRulesSnapshot,
+  BookingSlotReasonCode,
   addDaysToDateText,
   getTodayTextInShanghai,
   isDateText,
-  resolveBookingDateReasonCode
+  resolveBookingDateReasonCode,
+  resolveBookingSlotReasonCode,
+  resolveDailySlotsForDate
 } from '../booking-rules/booking-rules.shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -14,14 +18,14 @@ export interface AvailabilityItem {
   date: string;
   timeSlot: string;
   status: 'active' | 'disabled';
-  reasonCode: 'AVAILABLE' | 'DATE_CLOSED' | 'DATE_OUT_OF_RANGE' | 'SLOT_OCCUPIED';
+  reasonCode: BookingSlotReasonCode;
   reasonText: string;
 }
 
 export interface AvailabilityCalendarDay {
   date: string;
   status: 'active' | 'disabled';
-  reasonCode: 'AVAILABLE' | 'DATE_CLOSED' | 'DATE_OUT_OF_RANGE' | 'SLOT_OCCUPIED';
+  reasonCode: BookingSlotReasonCode;
   reasonText: string;
 }
 
@@ -38,8 +42,14 @@ function toSlotReasonText(reasonCode: AvailabilityItem['reasonCode']) {
       return '当日关闭';
     case 'DATE_OUT_OF_RANGE':
       return '当前日期未开放预约';
+    case 'WEEKDAY_CLOSED':
+      return '非营业日';
+    case 'BOOKING_CUTOFF_PASSED':
+      return '已过当天预约截止时间';
     case 'SLOT_OCCUPIED':
-      return '该时间段已被预约';
+      return '该时段已被预约';
+    case 'MIN_ADVANCE_REQUIRED':
+      return '未满足提前预约时间';
     case 'AVAILABLE':
     default:
       return '可预约';
@@ -52,8 +62,14 @@ function toCalendarReasonText(reasonCode: AvailabilityCalendarDay['reasonCode'])
       return '门店休息';
     case 'DATE_OUT_OF_RANGE':
       return '超出开放窗口';
+    case 'WEEKDAY_CLOSED':
+      return '非营业日';
+    case 'BOOKING_CUTOFF_PASSED':
+      return '当天预约已截止';
     case 'SLOT_OCCUPIED':
       return '当日已满';
+    case 'MIN_ADVANCE_REQUIRED':
+      return '需更早预约';
     case 'AVAILABLE':
     default:
       return '可预约';
@@ -72,13 +88,26 @@ function buildMonthDates(dateText: string) {
   const year = Number(yearText);
   const month = Number(monthText);
   const firstDate = `${yearText}-${monthText}-01`;
-  const nextMonthFirst = month === 12 ? `${year + 1}-01-01` : `${yearText}-${`${month + 1}`.padStart(2, '0')}-01`;
+  const nextMonthFirst =
+    month === 12 ? `${year + 1}-01-01` : `${yearText}-${`${month + 1}`.padStart(2, '0')}-01`;
   const lastDate = addDaysToDateText(nextMonthFirst, -1);
   const totalDays = Number(lastDate.slice(-2));
 
   return Array.from({ length: totalDays }, (_value, index) =>
     addDaysToDateText(firstDate, index)
   );
+}
+
+function pickCalendarDisabledReason(reasonCodes: BookingSlotReasonCode[]) {
+  if (reasonCodes.every((code) => code === 'SLOT_OCCUPIED')) {
+    return 'SLOT_OCCUPIED';
+  }
+
+  if (reasonCodes.every((code) => code === 'MIN_ADVANCE_REQUIRED')) {
+    return 'MIN_ADVANCE_REQUIRED';
+  }
+
+  return reasonCodes[0] || 'DATE_CLOSED';
 }
 
 @Injectable()
@@ -125,16 +154,24 @@ export class AvailabilityService {
       return result;
     }, {});
 
-    const bookingDateReasonCode = resolveBookingDateReasonCode(selectedDate, bookingRules);
+    const selectedDateReasonCode = resolveBookingDateReasonCode(selectedDate, bookingRules);
     const selectedDateApprovedSlots = approvedSlotsByDate[selectedDate] || new Set<string>();
-    const items = bookingRules.dailySlots.map((timeSlot) =>
-      this.toAvailabilityItem(selectedDate, timeSlot, bookingDateReasonCode, selectedDateApprovedSlots)
+    const selectedDateSlots = resolveDailySlotsForDate(bookingRules, selectedDate);
+    const items = selectedDateSlots.map((timeSlot) =>
+      this.toAvailabilityItem(
+        selectedDate,
+        timeSlot,
+        selectedDateReasonCode,
+        selectedDateApprovedSlots,
+        bookingRules
+      )
     );
 
     const calendarDays = monthDates.map((dateText) => {
       const dateReasonCode = resolveBookingDateReasonCode(dateText, bookingRules);
       const approvedSlots = approvedSlotsByDate[dateText] || new Set<string>();
-      return this.toCalendarDay(dateText, dateReasonCode, bookingRules.dailySlots, approvedSlots);
+      const slots = resolveDailySlotsForDate(bookingRules, dateText);
+      return this.toCalendarDay(dateText, dateReasonCode, slots, approvedSlots, bookingRules);
     });
 
     return {
@@ -149,34 +186,23 @@ export class AvailabilityService {
     date: string,
     timeSlot: string,
     bookingDateReasonCode: BookingDateReasonCode,
-    approvedSlots: Set<string>
+    approvedSlots: Set<string>,
+    rules: Pick<BookingRulesSnapshot, 'minAdvanceHours'>
   ): AvailabilityItem {
-    if (bookingDateReasonCode !== 'AVAILABLE') {
-      return {
-        date,
-        timeSlot,
-        status: 'disabled',
-        reasonCode: bookingDateReasonCode,
-        reasonText: toSlotReasonText(bookingDateReasonCode)
-      };
-    }
-
-    if (approvedSlots.has(timeSlot)) {
-      return {
-        date,
-        timeSlot,
-        status: 'disabled',
-        reasonCode: 'SLOT_OCCUPIED',
-        reasonText: toSlotReasonText('SLOT_OCCUPIED')
-      };
-    }
+    const reasonCode = resolveBookingSlotReasonCode(
+      date,
+      timeSlot,
+      rules,
+      bookingDateReasonCode,
+      approvedSlots
+    );
 
     return {
       date,
       timeSlot,
-      status: 'active',
-      reasonCode: 'AVAILABLE',
-      reasonText: toSlotReasonText('AVAILABLE')
+      status: reasonCode === 'AVAILABLE' ? 'active' : 'disabled',
+      reasonCode,
+      reasonText: toSlotReasonText(reasonCode)
     };
   }
 
@@ -184,7 +210,8 @@ export class AvailabilityService {
     date: string,
     bookingDateReasonCode: BookingDateReasonCode,
     dailySlots: string[],
-    approvedSlots: Set<string>
+    approvedSlots: Set<string>,
+    rules: Pick<BookingRulesSnapshot, 'minAdvanceHours'>
   ): AvailabilityCalendarDay {
     if (bookingDateReasonCode !== 'AVAILABLE') {
       return {
@@ -195,21 +222,34 @@ export class AvailabilityService {
       };
     }
 
-    const hasAvailableSlot = dailySlots.some((timeSlot) => !approvedSlots.has(timeSlot));
-    if (!hasAvailableSlot) {
+    if (!dailySlots.length) {
       return {
         date,
         status: 'disabled',
-        reasonCode: 'SLOT_OCCUPIED',
-        reasonText: toCalendarReasonText('SLOT_OCCUPIED')
+        reasonCode: 'DATE_CLOSED',
+        reasonText: toCalendarReasonText('DATE_CLOSED')
       };
     }
 
+    const reasonCodes = dailySlots.map((timeSlot) =>
+      resolveBookingSlotReasonCode(date, timeSlot, rules, bookingDateReasonCode, approvedSlots)
+    );
+
+    if (reasonCodes.some((reasonCode) => reasonCode === 'AVAILABLE')) {
+      return {
+        date,
+        status: 'active',
+        reasonCode: 'AVAILABLE',
+        reasonText: toCalendarReasonText('AVAILABLE')
+      };
+    }
+
+    const reasonCode = pickCalendarDisabledReason(reasonCodes);
     return {
       date,
-      status: 'active',
-      reasonCode: 'AVAILABLE',
-      reasonText: toCalendarReasonText('AVAILABLE')
+      status: 'disabled',
+      reasonCode,
+      reasonText: toCalendarReasonText(reasonCode)
     };
   }
 }

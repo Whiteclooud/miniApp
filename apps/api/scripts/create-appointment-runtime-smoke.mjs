@@ -41,6 +41,7 @@ async function main() {
   const openDatePlusOne = '2030-03-23';
   const openDatePlusTwo = '2030-03-24';
   const openDatePlusThree = '2030-03-25';
+  const cancelReleaseDate = '2030-03-26';
   const outOfRangeDate = '2050-03-22';
   const sharedTimeSlot = '10:00-11:00';
   const secondTimeSlot = '14:00-15:00';
@@ -60,7 +61,11 @@ async function main() {
         id: bookingRuleId,
         advanceOpenDays: 5000,
         closedDatesJson: JSON.stringify([]),
-        dailySlotsJson: JSON.stringify([sharedTimeSlot, secondTimeSlot])
+        dailySlotsJson: JSON.stringify([sharedTimeSlot, secondTimeSlot]),
+        weeklyOpenDaysJson: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
+        sameDayCutoffTime: null,
+        minAdvanceHours: 0,
+        dateSlotOverridesJson: JSON.stringify({})
       }
     });
 
@@ -234,8 +239,77 @@ async function main() {
       return result.json;
     });
 
+    await runCase('approved appointment can be cancelled by customer and releases slot', async () => {
+      const customerOpenId = `${cleanupCustomerPrefix}-cancel-release`;
+      const createResult = await request('/api/v1/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': customerOpenId
+        },
+        body: JSON.stringify({
+          appointmentDate: cancelReleaseDate,
+          timeSlot: sharedTimeSlot,
+          customerName: 'Cancel Release'
+        })
+      });
+
+      assert(createResult.status === 201, `expected create 201, got ${createResult.status}`);
+      const appointmentId = createResult.json?.item?.id;
+      const approveResult = await request(`/api/v1/staff/appointments/${appointmentId}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': 'staff-openid-demo'
+        },
+        body: JSON.stringify({ status: 'approved', reviewNote: 'approve before cancel' })
+      });
+
+      assert(approveResult.status === 200, `expected approve 200, got ${approveResult.status}`);
+      assert(approveResult.json?.item?.status === 'approved', 'expected approved before cancel');
+
+      const cancelResult = await request(`/api/v1/my/appointments/${appointmentId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': customerOpenId
+        },
+        body: JSON.stringify({ reason: 'smoke cancel' })
+      });
+
+      assert(cancelResult.status === 200, `expected cancel 200, got ${cancelResult.status}`);
+      assert(cancelResult.json?.item?.status === 'cancelled', 'expected cancelled status');
+
+      const availabilityResult = await request(`/api/v1/availability?date=${cancelReleaseDate}`);
+      const releasedSlot = (availabilityResult.json?.items || []).find((item) => item.timeSlot === sharedTimeSlot);
+      assert(releasedSlot?.status === 'active', 'expected cancelled approved slot to be active again');
+
+      return {
+        appointmentId,
+        releasedSlot
+      };
+    });
+
     console.log(JSON.stringify({ ok: true, baseUrl: BASE_URL, cases }, null, 2));
   } finally {
+    const cleanupAppointments = await prisma.appointment.findMany({
+      where: {
+        OR: [
+          { id: approvedConflictId },
+          { customerOpenId: { startsWith: cleanupCustomerPrefix } }
+        ]
+      },
+      select: {
+        id: true
+      }
+    });
+    await prisma.appointmentAuditLog.deleteMany({
+      where: {
+        appointmentId: {
+          in: cleanupAppointments.map((item) => item.id)
+        }
+      }
+    });
     await prisma.appointment.deleteMany({
       where: {
         OR: [

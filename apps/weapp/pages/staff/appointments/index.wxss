@@ -5,6 +5,8 @@
 .nav-card,
 .state-card,
 .summary-card,
+.workbench-card,
+.filter-card,
 .review-notice-card,
 .calendar-card,
 .detail-card,
@@ -36,6 +38,43 @@
   border-radius: 20rpx;
   padding: 20rpx;
   font-size: 28rpx;
+}
+
+.picker-trigger {
+  margin-top: 12rpx;
+  min-height: 82rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 22rpx;
+  border-radius: 20rpx;
+  background: #fff6f2;
+  color: #5f4a42;
+  font-size: 26rpx;
+}
+
+.workbench-grid,
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.workbench-panel {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f3;
+}
+
+.mini-list {
+  margin-top: 18rpx;
+}
+
+.mini-list-row {
+  padding: 12rpx 0;
+  color: #5f4a42;
+  font-size: 24rpx;
+  border-top: 1rpx solid #f0e2dc;
 }
 
 .summary-grid {
@@ -233,6 +272,13 @@
   color: #b24444;
 }
 
+.status-pill.cancelled,
+.status-pill.completed,
+.status-pill.no_show {
+  background: #f0ece8;
+  color: #7d5b4c;
+}
+
 .detail-filter-scroll {
   margin-top: 18rpx;
   white-space: nowrap;
@@ -356,6 +402,52 @@
 
 .review-action-row {
   margin-top: 16rpx;
+}
+
+.reschedule-box {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border-radius: 20rpx;
+  background: #fff8f3;
+}
+
+.compact-picker,
+.compact-input {
+  min-height: 72rpx;
+  font-size: 24rpx;
+}
+
+.audit-button {
+  margin-top: 14rpx;
+}
+
+.audit-list {
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border-radius: 20rpx;
+  background: #fff8f3;
+}
+
+.audit-row {
+  padding: 12rpx 0;
+  border-top: 1rpx solid #f0e2dc;
+}
+
+.audit-row:first-child {
+  border-top: 0;
+}
+
+.audit-title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #3d2d28;
+}
+
+.audit-desc {
+  margin-top: 8rpx;
+  color: #6d4f43;
+  font-size: 22rpx;
+  line-height: 1.5;
 }
 
 .empty-subcard {
