@@ -1,5 +1,11 @@
-<view class="container">
-  <view class="card identity-card">
+<view class="container staff-page staff-appointments-page">
+  <view class="staff-navigation">
+    <view class="staff-navigation-tab staff-navigation-tab-active">预约总览</view>
+    <view class="staff-navigation-tab" bindtap="goRules">预约规则</view>
+    <view class="staff-navigation-tab" bindtap="goGallery">返图管理</view>
+  </view>
+
+  <view wx:if="{{!staffIdentity.canUse}}" class="card identity-card">
     <view class="identity-label">店员身份主键</view>
     <view class="identity-value">{{staffIdentity.openId || staffIdentity.label}}</view>
     <view class="helper-text">{{staffIdentity.sourceText}}</view>
@@ -13,15 +19,6 @@
       <button class="button-secondary compact-button" bindtap="generateStaffOpenId">生成模拟 OpenID</button>
     </view>
     <button class="button-ghost compact-button button-row-spacer" bindtap="clearStaffOpenId">清空店员 OpenID</button>
-  </view>
-
-  <view class="card nav-card">
-    <view class="nav-title">店员工作台</view>
-    <view class="action-row action-row-wrap">
-      <button class="button-secondary compact-button" bindtap="goRules">预约规则</button>
-      <button class="button-secondary compact-button" bindtap="goGallery">返图管理</button>
-      <button class="button-primary compact-button">预约列表</button>
-    </view>
   </view>
 
   <view wx:if="{{pageState === 'loading'}}" class="card state-card">
@@ -42,8 +39,8 @@
   </view>
 
   <block wx:else>
-    <view class="section-title">店员预约总览</view>
-    <view class="section-desc">默认覆盖待审核 / 已通过 / 已拒绝 / 历史预约，并基于未传 status 的 staff appointments 数据在前端聚合出月历总览。</view>
+    <view class="section-title">预约总览</view>
+    <view class="section-desc">查看待审核、今日到店和已通过预约，继续在下方处理完整的预约列表。</view>
     <view class="card review-notice-card">
       <view class="review-notice-title">审核口径</view>
       <view class="review-notice-text">当前支持对已审核结果再次修改，系统以最新审核结果为准；改回通过时仍会校验时段冲突。</view>
@@ -52,32 +49,19 @@
     <view class="card summary-card">
       <view class="summary-grid summary-grid-quad">
         <view class="summary-item">
-          <view class="summary-label">预约总数</view>
-          <view class="summary-value">{{summary.total}}</view>
+          <view class="summary-label">待处理</view>
+          <view class="summary-value">{{summary.pending}}</view>
+          <view class="summary-caption">需要审核</view>
         </view>
         <view class="summary-item">
-          <view class="summary-label">待审核</view>
-          <view class="summary-value">{{summary.pending}}</view>
+          <view class="summary-label">今日到店</view>
+          <view class="summary-value">{{workbenchSummary.today}}</view>
+          <view class="summary-caption">已安排 {{workbenchSummary.todayApproved}}</view>
         </view>
         <view class="summary-item">
           <view class="summary-label">已通过</view>
           <view class="summary-value">{{summary.approved}}</view>
-        </view>
-        <view class="summary-item">
-          <view class="summary-label">已拒绝</view>
-          <view class="summary-value">{{summary.rejected}}</view>
-        </view>
-        <view class="summary-item">
-          <view class="summary-label">已取消</view>
-          <view class="summary-value">{{summary.cancelled}}</view>
-        </view>
-        <view class="summary-item">
-          <view class="summary-label">已完成</view>
-          <view class="summary-value">{{summary.completed}}</view>
-        </view>
-        <view class="summary-item">
-          <view class="summary-label">未到店</view>
-          <view class="summary-value">{{summary.no_show}}</view>
+          <view class="summary-caption">当前累计</view>
         </view>
       </view>
       <view wx:if="{{stateMessage}}" class="helper-text summary-helper">{{stateMessage}}</view>
@@ -160,6 +144,21 @@
           <view class="day-detail-meta">{{item.customerName}}<text wx:if="{{item.phone && item.phone !== '未填写'}}"> · {{item.phone}}</text></view>
           <view wx:if="{{item.note}}" class="day-detail-note">备注：{{item.note}}</view>
           <view wx:if="{{item.reviewNote}}" class="day-detail-note">审核说明：{{item.reviewNote}}</view>
+          <scroll-view wx:if="{{item.referenceImageUrls.length}}" class="appointment-reference-scroll" scroll-x="true" enable-flex="true">
+            <view class="appointment-reference-row">
+              <image
+                wx:for="{{item.referenceImageUrls}}"
+                wx:for-item="imageUrl"
+                wx:key="*this"
+                class="appointment-reference-image"
+                mode="aspectFill"
+                src="{{imageUrl}}"
+                data-id="{{item.id}}"
+                data-url="{{imageUrl}}"
+                bindtap="previewReferenceImage"
+              />
+            </view>
+          </scroll-view>
         </view>
       </view>
       <view wx:else class="helper-text">选中日期后，会在这里按时间段展示顾客信息与预约状态。</view>
@@ -196,6 +195,24 @@
         <view class="info-row"><view class="info-label">预约时间</view><view class="info-value">{{item.date}} {{item.timeSlot}}</view></view>
         <view class="info-row"><view class="info-label">联系电话</view><view class="info-value">{{item.phone}}</view></view>
         <view wx:if="{{item.note}}" class="info-row"><view class="info-label">备注</view><view class="info-value">{{item.note}}</view></view>
+        <view wx:if="{{item.referenceImageUrls.length}}" class="appointment-reference-block">
+          <view class="info-label">参考图</view>
+          <scroll-view class="appointment-reference-scroll" scroll-x="true" enable-flex="true">
+            <view class="appointment-reference-row">
+              <image
+                wx:for="{{item.referenceImageUrls}}"
+                wx:for-item="imageUrl"
+                wx:key="*this"
+                class="appointment-reference-image"
+                mode="aspectFill"
+                src="{{imageUrl}}"
+                data-id="{{item.id}}"
+                data-url="{{imageUrl}}"
+                bindtap="previewReferenceImage"
+              />
+            </view>
+          </scroll-view>
+        </view>
         <view wx:if="{{item.createdAtText}}" class="info-row"><view class="info-label">提交时间</view><view class="info-value">{{item.createdAtText}}</view></view>
         <view wx:if="{{item.reviewedAtText}}" class="info-row"><view class="info-label">审核时间</view><view class="info-value">{{item.reviewedAtText}}</view></view>
         <view wx:if="{{item.reviewNote}}" class="info-row"><view class="info-label">审核说明</view><view class="info-value">{{item.reviewNote}}</view></view>

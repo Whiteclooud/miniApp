@@ -71,15 +71,19 @@ function parseTags(text) {
 
 function getStaffIdentityMeta() {
   const identity = ensureStaffIdentity();
-  const develop = isDevelopEnv();
+  const app = getApp();
+  const develop = isDevelopEnv() && !!(app && app.globalData && app.globalData.allowHeaderAuthFallback);
   return {
     openId: identity.openId,
     label: identity.label,
     canUse: identity.canUse,
     isMock: identity.isMock,
+    isSession: identity.isSession,
     isDevelopEnv: develop,
     sourceText: identity.canUse
-      ? identity.isMock
+      ? identity.isSession
+        ? '当前使用微信店员 Bearer 会话；返图管理接口会按当前登录身份校验。'
+        : identity.isMock
         ? '当前为开发环境模拟店员身份；返图管理接口将通过 X-Staff-OpenId 调用。'
         : '当前为店员身份；返图管理接口将通过 X-Staff-OpenId 调用。'
       : develop
@@ -168,6 +172,7 @@ Page({
     saveState: 'idle',
     uploadState: 'idle',
     editingId: '',
+    isEditorVisible: false,
     staffOpenIdInput: '',
     items: [],
     form: buildDefaultForm(),
@@ -238,6 +243,7 @@ Page({
       stateMessage: '店员 OpenID 已清空，返图管理页不会继续请求 staff 接口。',
       items: [],
       editingId: '',
+      isEditorVisible: false,
       form: buildDefaultForm(),
       staffOpenIdInput: ''
     });
@@ -316,7 +322,8 @@ Page({
     try {
       const chooser = await new Promise((resolve, reject) => {
         wx.chooseMedia({
-          count: 9,
+          // Keep the picker aligned with the API's default multipart limit.
+          count: 6,
           mediaType: ['image'],
           sourceType: ['album', 'camera'],
           success: resolve,
@@ -361,9 +368,15 @@ Page({
   startCreate() {
     this.setData({
       editingId: '',
+      isEditorVisible: true,
       submitMessage: '',
       uploadMessage: '',
       form: buildDefaultForm()
+    }, () => {
+      wx.pageScrollTo({
+        selector: '#gallery-editor',
+        duration: 250
+      });
     });
   },
 
@@ -376,9 +389,25 @@ Page({
 
     this.setData({
       editingId: target.id,
+      isEditorVisible: true,
       submitMessage: '',
       uploadMessage: '',
       form: normalizeFormFromItem(target)
+    }, () => {
+      wx.pageScrollTo({
+        selector: '#gallery-editor',
+        duration: 250
+      });
+    });
+  },
+
+  closeEditor() {
+    this.setData({
+      editingId: '',
+      isEditorVisible: false,
+      submitMessage: '',
+      uploadMessage: '',
+      form: buildDefaultForm()
     });
   },
 
@@ -457,6 +486,7 @@ Page({
       wx.showToast({ title: editingId ? '返图已更新' : '返图已创建', icon: 'success' });
       this.setData({
         editingId: '',
+        isEditorVisible: false,
         form: buildDefaultForm()
       });
       await this.loadData();

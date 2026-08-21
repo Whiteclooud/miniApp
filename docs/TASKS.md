@@ -13,7 +13,7 @@
 > **P0 UAT 6 项已通过，当前进入“体验升级 + 店员运营能力补齐”的执行阶段。**
 
 这轮新增范围已经明确收敛为 4 块：
-- 返图灵感从“首页 3 条”扩展到“全部返图列表 + 详情多图”
+- 返图灵感采用“首页单张卡片 + 全部返图列表 + 详情多图”结构
 - 店员端新增返图上传 / 标签 / 文字说明管理能力
 - 顾客预约日期组件改为复用店员端月历能力
 - 店员审核结果支持再次修改，并以最新结果为准
@@ -26,7 +26,7 @@
 - 完成定义：团队对“做什么 / 不做什么 / 接口边界”只有一份事实源
 
 ### P0：Frontend 实施包
-- 首页返图灵感区保留最近 3 条，并新增“查看全部返图灵感”入口
+- 首页返图灵感区只展示最近 1 条，并保留“查看全部返图灵感”入口
 - 新增 `pages/gallery-list`，按时间倒序展示全部已发布返图，列表风格参考小红书式双列封面卡片
 - 顾客预约页复用 / 适配店员端月历组件，替换原横向日期条
 - 新增 / 改造店员返图管理页面，支持上传多图、填写标签与文字说明
@@ -34,14 +34,14 @@
 - 完成定义：相关页面交互闭环可自测，且不自行发明后端字段
 
 ### P0：Backend 实施包
-- 扩展 `GET /api/v1/gallery` 以支撑首页 3 条、全部返图列表、详情多图三种视图
+- 扩展 `GET /api/v1/gallery` 以支撑首页最近 1 条、全部返图列表、详情多图三种视图
 - 新增店员图片上传与返图内容管理接口：`/api/v1/staff/uploads/images`、`/api/v1/staff/gallery`
 - 扩展 `GET /api/v1/availability` 返回 `calendarDays`，支撑顾客端月历日期状态展示
 - 调整审核接口语义为“可修改最终审核状态”，并处理改回通过 / 改回拒绝时的占用逻辑
 - 完成定义：接口契约、自测与数据约束闭环成立，且不回退当前主链路
 
 ### P1：页面级回归 UAT（本轮体验优化完成后）
-- 重点确认：首页 3 条返图、全部返图列表、返图详情多图、顾客月历选日期、店员上传返图、审核结果修改
+- 重点确认：首页单张返图卡片、全部返图列表、返图详情多图、顾客月历选日期、店员上传返图、审核结果修改
 - 完成定义：`docs/UAT_RESULTS.md` 补出新一轮通过 / 不通过结论
 
 > 状态更新（2026-03-29 13:0x Asia/Shanghai）：architect 已完成 2026-03-29 新阶段文档收口，并已分别向 `miniapp-frontend` / `miniapp-backend` 派发本轮体验优化 run；当前项目状态已从“待继续定义任务”推进到“worker 正在按冻结范围实施”，下一次高价值动作将是回收实现结果并组织本轮页面级体验 UAT。
@@ -81,12 +81,12 @@
 | ID | Owner | Task | Input | Output | Depends On | Done Definition | Risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ARCH-012 | architect | 冻结 2026-03-29 新增体验优化范围并下发执行 brief | Lan 最新需求、当前主仓文档、现有页面结构 | 更新后的 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/API.md`、`docs/TASKS.md`、frontend/backend brief | 无 | 新范围被明确收敛为“返图列表、店员返图管理、顾客月历、审核结果可修改”四块，不继续发散到范围外 | 若不先冻结，前后端会自行猜字段和页面职责 |
-| FE-018 | frontend | 首页返图灵感区增加“查看全部”入口并新增全部返图列表页 | `docs/PRD.md`、`docs/API.md`、现有 `pages/home/*`、`pages/gallery-detail/*` | `pages/home/*`、新增 `pages/gallery-list/*`、相关服务/样式、自测结论 | ARCH-012 | 首页仅展示最近 3 条；可跳转列表页；列表页按时间倒序展示全部已发布返图；点击后可进入现有详情页 | 若列表页与首页各自消费不同字段，会再次造成口径漂移 |
+| FE-018 | frontend | 首页返图灵感区增加“查看全部”入口并新增全部返图列表页 | `docs/PRD.md`、`docs/API.md`、现有 `pages/home/*`、`pages/gallery-detail/*` | `pages/home/*`、新增 `pages/gallery-list/*`、相关服务/样式、自测结论 | ARCH-012 | 首页仅展示最近 1 条；可跳转列表页；列表页按时间倒序展示全部已发布返图；点击后可进入现有详情页 | 若列表页与首页各自消费不同字段，会再次造成口径漂移 |
 | FE-019 | frontend | 顾客预约页复用 / 适配店员端月历组件作为日期选择器 | `docs/PRD.md`、`docs/API.md` availability 新口径、现有 `pages/booking/*`、`pages/staff/appointments/*` | `pages/booking/*`、共享月历组件/工具层、自测结论 | ARCH-012 | 顾客可在月历中清晰看到可约/不可约日期并完成选日；不再依赖旧横向日期条；日期状态直接消费后端口径 | 若前端只复制 UI 不复用状态逻辑，会产生两套日期判断 |
 | FE-020 | frontend | 新增店员返图管理页，支持上传多图、标签、文字说明 | `docs/PRD.md`、`docs/API.md`、现有 staff 页面结构 | 新增 `pages/staff/gallery/*`、上传/表单交互、自测结论 | ARCH-012, BE-025 | 店员可完成图片上传、封面选择/默认封面、标签输入、文字说明填写与发布；顾客侧可读取已发布内容 | 若上传与保存拆分不清，前端容易把临时文件状态与业务记录混淆 |
 | FE-021 | frontend | 店员审核页支持修改已审核结果 | `docs/PRD.md`、`docs/API.md` review 新语义、现有 `pages/staff/appointments/*` | `pages/staff/appointments/*`、必要交互与提示、自测结论 | ARCH-012, BE-028 | 已通过可改拒绝、已拒绝可改通过；冲突与结果变更提示清晰；不回退当前月历能力 | 若页面仍默认“已审核不可操作”，会与后端新语义脱节 |
 | BE-025 | backend | 新增店员图片上传接口并确定图片存储策略 | `docs/API.md`、现有 `apps/api` 模块结构 | `apps/api/src/**`、上传接口、自测结论 | ARCH-012 | `POST /api/v1/staff/uploads/images` 可返回可持久化图片 URL；校验最小可用且不影响现有接口 | 若直接把二进制与返图业务模型强耦合，后续维护成本高 |
-| BE-026 | backend | 扩展 gallery 数据模型与查询口径，支撑首页 3 条 / 列表 / 详情 | `docs/API.md`、现有 `apps/api/src/gallery/**` | `gallery` 模块与必要 schema/seed、自测结论 | ARCH-012 | `GET /api/v1/gallery` 可按 `publishedAt` 稳定返回已发布内容，并包含 `description` / `publishedAt` / `imageUrls` | 若仍只按旧 sortOrder 或缺失发布时间，列表排序会不稳定 |
+| BE-026 | backend | 扩展 gallery 数据模型与查询口径，支撑首页单条 / 列表 / 详情 | `docs/API.md`、现有 `apps/api/src/gallery/**` | `gallery` 模块与必要 schema/seed、自测结论 | ARCH-012 | `GET /api/v1/gallery` 可按 `publishedAt` 稳定返回已发布内容，并包含 `description` / `publishedAt` / `imageUrls` | 若仍只按旧 sortOrder 或缺失发布时间，列表排序会不稳定 |
 | BE-027 | backend | 新增店员返图管理接口 | `docs/API.md`、现有 `apps/api` 模块结构 | `/api/v1/staff/gallery` 读写接口、自测结论 | ARCH-012, BE-025, BE-026 | 店员可创建 / 编辑返图内容，字段至少覆盖标题、封面、多图、标签、说明、发布时间、状态 | 若写接口校验过松，会把无封面/空图内容发布到顾客侧 |
 | BE-028 | backend | 扩展 availability 与 review 语义，支持顾客月历与审核结果修改 | `docs/API.md`、现有 `apps/api/src/availability/**`、`staff-appointments/**` | `calendarDays` 返回、review 逻辑调整、自测结论 | ARCH-012 | availability 返回日期级状态；审核结果可修改且占用逻辑正确；改回通过时冲突校验、改回拒绝时释放占用 | 若只改接口返回不改占用逻辑，会造成日历与真实可约状态不一致 |
 | QA-007 | frontend/backend | 本轮体验优化完成后的页面级回归 UAT | `docs/UAT_RESULTS.md`、本轮 frontend/backend 结果 | 回填后的 UAT 结论、残余问题清单 | FE-018, FE-019, FE-020, FE-021, BE-025, BE-026, BE-027, BE-028 | 首页返图、列表页、详情、多图、顾客月历、店员上传、审核结果修改全部形成明确结论 | 若只做局部自测不做整体验收，会把联动回归带到下一轮 |

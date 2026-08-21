@@ -33,7 +33,7 @@ export class BookingRulesController {
     @Body() payload: UpdateBookingRulesInput = {}
   ) {
     assertStaffAuthorized(await this.authService.resolveStaffOpenId(authorization, staffOpenId));
-    const item = await this.bookingRulesService.updateBookingRules(payload || {});
+    const item = await this.bookingRulesService.updateBookingRules(payload);
     return { item };
   }
 }

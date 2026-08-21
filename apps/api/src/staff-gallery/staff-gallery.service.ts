@@ -4,6 +4,7 @@ import { assertStaffAuthorized } from '../staff-auth/staff-auth';
 import {
   mapStaffGalleryItem,
   normalizeGalleryUpsertInput,
+  assertGalleryPayload,
   safeParseStringArray,
   StaffGalleryItem,
   UpsertGalleryInput
@@ -20,6 +21,12 @@ export class StaffGalleryService {
     });
 
     return rows.map(mapStaffGalleryItem);
+  }
+
+  async getItem(staffOpenId?: string, itemId?: string): Promise<StaffGalleryItem> {
+    assertStaffAuthorized(staffOpenId);
+    const row = await this.findItemOrThrow(itemId);
+    return mapStaffGalleryItem(row);
   }
 
   async createItem(staffOpenId?: string, input: UpsertGalleryInput = {}): Promise<StaffGalleryItem> {
@@ -49,27 +56,12 @@ export class StaffGalleryService {
     input: UpsertGalleryInput = {}
   ): Promise<StaffGalleryItem> {
     assertStaffAuthorized(staffOpenId);
-    const normalizedItemId = `${itemId || ''}`.trim();
-
-    const existing = normalizedItemId
-      ? await this.prisma.galleryItem.findUnique({
-          where: {
-            id: normalizedItemId
-          }
-        })
-      : null;
-
-    if (!existing) {
-      throw new NotFoundException({
-        error: 'Gallery item not found',
-        code: 'GALLERY_ITEM_NOT_FOUND'
-      });
-    }
+    assertGalleryPayload(input);
+    const existing = await this.findItemOrThrow(itemId);
 
     const normalized = normalizeGalleryUpsertInput({
       title: input.title ?? existing.title,
-      imageUrl: input.imageUrl ?? existing.imageUrl,
-      coverImageUrl: input.coverImageUrl,
+      imageUrl: input.imageUrl ?? input.coverImageUrl ?? existing.imageUrl,
       imageUrls:
         input.imageUrls ?? safeParseStringArray(existing.imageUrlsJson),
       description: input.description ?? existing.description ?? '',
@@ -79,22 +71,76 @@ export class StaffGalleryService {
       status: input.status ?? existing.status.toLowerCase()
     });
 
-    const row = await this.prisma.galleryItem.update({
+    let row;
+    try {
+      row = await this.prisma.galleryItem.update({
+        where: {
+          id: existing.id
+        },
+        data: {
+          title: normalized.title,
+          imageUrl: normalized.imageUrl,
+          imageUrlsJson: JSON.stringify(normalized.imageUrls),
+          description: normalized.description || null,
+          tagsJson: JSON.stringify(normalized.tags),
+          publishedAt: normalized.publishedAt,
+          sortOrder: normalized.sortOrder,
+          status: normalized.status
+        }
+      });
+    } catch (error) {
+      // A concurrent hard-delete can invalidate the earlier read. Preserve the
+      // resource contract instead of leaking Prisma's P2025 as a 500 response.
+      if (
+        error &&
+        typeof error === 'object' &&
+        (error as { code?: string }).code === 'P2025'
+      ) {
+        this.throwItemNotFound();
+      }
+      throw error;
+    }
+
+    return mapStaffGalleryItem(row);
+  }
+
+  async deleteItem(staffOpenId?: string, itemId?: string): Promise<StaffGalleryItem> {
+    assertStaffAuthorized(staffOpenId);
+    const existing = await this.findItemOrThrow(itemId);
+    const result = await this.prisma.galleryItem.deleteMany({
       where: {
         id: existing.id
-      },
-      data: {
-        title: normalized.title,
-        imageUrl: normalized.imageUrl,
-        imageUrlsJson: JSON.stringify(normalized.imageUrls),
-        description: normalized.description || null,
-        tagsJson: JSON.stringify(normalized.tags),
-        publishedAt: normalized.publishedAt,
-        sortOrder: normalized.sortOrder,
-        status: normalized.status
       }
     });
 
-    return mapStaffGalleryItem(row);
+    if (!result.count) {
+      this.throwItemNotFound();
+    }
+
+    return mapStaffGalleryItem(existing);
+  }
+
+  private async findItemOrThrow(itemId?: string) {
+    const normalizedItemId = `${itemId || ''}`.trim();
+    const row = normalizedItemId
+      ? await this.prisma.galleryItem.findUnique({
+          where: {
+            id: normalizedItemId
+          }
+        })
+      : null;
+
+    if (!row) {
+      this.throwItemNotFound();
+    }
+
+    return row;
+  }
+
+  private throwItemNotFound(): never {
+    throw new NotFoundException({
+      error: 'Gallery item not found',
+      code: 'GALLERY_ITEM_NOT_FOUND'
+    });
   }
 }

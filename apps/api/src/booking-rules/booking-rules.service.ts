@@ -24,6 +24,36 @@ export interface UpdateBookingRulesInput {
   dateSlotOverrides?: Record<string, string[]>;
 }
 
+function assertRulesPayload(input: unknown): asserts input is UpdateBookingRulesInput {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new BadRequestException({
+      error: 'Booking rules payload must be an object',
+      code: 'INVALID_BOOKING_RULE_PAYLOAD'
+    });
+  }
+}
+
+function resolveStringArrayField(
+  input: UpdateBookingRulesInput,
+  field: 'closedDates' | 'dailySlots',
+  fallback: string[],
+  code: string
+) {
+  const value = input[field];
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new BadRequestException({
+      error: `${field} must be an array of strings`,
+      code
+    });
+  }
+
+  return value;
+}
+
 function parseSlotBoundaryMinutes(text: string) {
   const [hourText, minuteText] = text.split(':');
   return Number(hourText) * 60 + Number(minuteText);
@@ -82,20 +112,60 @@ function validateClosedDates(closedDates: string[]) {
   return normalizeClosedDates(JSON.stringify(closedDates));
 }
 
-function validateAdvanceOpenDays(value: number) {
-  if (!Number.isInteger(value) || value < 0) {
+function validateNonNegativeInteger(value: unknown, field: string, code: string, fallback: number) {
+  const source = value === undefined ? fallback : value;
+  if (
+    typeof source === 'boolean' ||
+    (typeof source !== 'number' && typeof source !== 'string') ||
+    (typeof source === 'string' && !source.trim())
+  ) {
     throw new BadRequestException({
-      error: 'advanceOpenDays must be a non-negative integer',
-      code: 'INVALID_ADVANCE_OPEN_DAYS'
+      error: `${field} must be a non-negative integer`,
+      code
     });
   }
 
-  return value;
+  const numberValue = Number(source);
+  if (!Number.isInteger(numberValue) || numberValue < 0) {
+    throw new BadRequestException({
+      error: `${field} must be a non-negative integer`,
+      code
+    });
+  }
+
+  return numberValue;
+}
+
+function validateAdvanceOpenDays(value: unknown) {
+  return validateNonNegativeInteger(
+    value,
+    'advanceOpenDays',
+    'INVALID_ADVANCE_OPEN_DAYS',
+    DEFAULT_BOOKING_RULE.advanceOpenDays
+  );
 }
 
 function validateWeeklyOpenDays(value: unknown) {
-  const source = Array.isArray(value) ? value : DEFAULT_BOOKING_RULE.weeklyOpenDays;
+  const source = value === undefined
+    ? DEFAULT_BOOKING_RULE.weeklyOpenDays
+    : value;
+
+  if (!Array.isArray(source)) {
+    throw new BadRequestException({
+      error: 'weeklyOpenDays must be an array',
+      code: 'INVALID_WEEKLY_OPEN_DAYS'
+    });
+  }
+
   const invalidDay = source.find((item) => {
+    if (
+      item === null ||
+      (typeof item === 'string' && !item.trim()) ||
+      (typeof item !== 'number' && typeof item !== 'string')
+    ) {
+      return true;
+    }
+
     const numberValue = Number(item);
     return !Number.isInteger(numberValue) || numberValue < 0 || numberValue > 6;
   });
@@ -119,6 +189,13 @@ function validateWeeklyOpenDays(value: unknown) {
 }
 
 function validateSameDayCutoffTime(value: unknown) {
+  if (value !== undefined && value !== null && typeof value !== 'string') {
+    throw new BadRequestException({
+      error: 'sameDayCutoffTime must use HH:mm format',
+      code: 'INVALID_SAME_DAY_CUTOFF_TIME'
+    });
+  }
+
   const normalized = `${value || ''}`.trim();
   if (!normalized) {
     return '';
@@ -135,21 +212,27 @@ function validateSameDayCutoffTime(value: unknown) {
 }
 
 function validateMinAdvanceHours(value: unknown) {
-  const numberValue = Number(value || 0);
-  if (!Number.isInteger(numberValue) || numberValue < 0) {
-    throw new BadRequestException({
-      error: 'minAdvanceHours must be a non-negative integer',
-      code: 'INVALID_MIN_ADVANCE_HOURS'
-    });
-  }
-
-  return numberValue;
+  return validateNonNegativeInteger(
+    value,
+    'minAdvanceHours',
+    'INVALID_MIN_ADVANCE_HOURS',
+    0
+  );
 }
 
 function validateDateSlotOverrides(value: unknown) {
-  const source = value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  if (value === undefined || value === null) {
+    return {};
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new BadRequestException({
+      error: 'dateSlotOverrides must be an object',
+      code: 'INVALID_DATE_SLOT_OVERRIDES'
+    });
+  }
+
+  const source = value as Record<string, unknown>;
 
   const result = Object.entries(source).reduce<Record<string, string[]>>((next, [dateText, rawSlots]) => {
     if (!isDateText(dateText)) {
@@ -166,7 +249,14 @@ function validateDateSlotOverrides(value: unknown) {
       });
     }
 
-    next[dateText] = validateSlotList(rawSlots.map((slot) => `${slot}`), 'INVALID_DATE_SLOT_OVERRIDES');
+    if (rawSlots.some((slot) => typeof slot !== 'string')) {
+      throw new BadRequestException({
+        error: `Invalid override slots for ${dateText}`,
+        code: 'INVALID_DATE_SLOT_OVERRIDES'
+      });
+    }
+
+    next[dateText] = validateSlotList(rawSlots, 'INVALID_DATE_SLOT_OVERRIDES');
     return next;
   }, {});
 
@@ -207,12 +297,14 @@ export class BookingRulesService {
   }
 
   async updateBookingRules(input: UpdateBookingRulesInput): Promise<BookingRulesSnapshot> {
-    const advanceOpenDays = validateAdvanceOpenDays(
-      Number(input.advanceOpenDays ?? DEFAULT_BOOKING_RULE.advanceOpenDays)
+    assertRulesPayload(input);
+
+    const advanceOpenDays = validateAdvanceOpenDays(input.advanceOpenDays);
+    const closedDates = validateClosedDates(
+      resolveStringArrayField(input, 'closedDates', [], 'INVALID_CLOSED_DATE')
     );
-    const closedDates = validateClosedDates(Array.isArray(input.closedDates) ? input.closedDates : []);
     const dailySlots = validateDailySlots(
-      Array.isArray(input.dailySlots) ? input.dailySlots : DEFAULT_BOOKING_RULE.dailySlots
+      resolveStringArrayField(input, 'dailySlots', DEFAULT_BOOKING_RULE.dailySlots, 'INVALID_SLOT')
     );
     const weeklyOpenDays = validateWeeklyOpenDays(input.weeklyOpenDays);
     const sameDayCutoffTime = validateSameDayCutoffTime(input.sameDayCutoffTime);
@@ -238,17 +330,17 @@ export class BookingRulesService {
       dateSlotOverridesJson: JSON.stringify(dateSlotOverrides)
     };
 
-    const row = latestRule
-      ? await this.prisma.bookingRule.update({
-          where: { id: latestRule.id },
-          data
-        })
-      : await this.prisma.bookingRule.create({
-          data: {
-            id: DEFAULT_BOOKING_RULE_ID,
-            ...data
-          }
-        });
+    // Upsert the singleton rule so two first-time saves cannot race on the
+    // fixed default id and turn a valid request into a 500/P2002 response.
+    const ruleId = latestRule?.id || DEFAULT_BOOKING_RULE_ID;
+    const row = await this.prisma.bookingRule.upsert({
+      where: { id: ruleId },
+      update: data,
+      create: {
+        id: ruleId,
+        ...data
+      }
+    });
 
     return {
       advanceOpenDays: row.advanceOpenDays,

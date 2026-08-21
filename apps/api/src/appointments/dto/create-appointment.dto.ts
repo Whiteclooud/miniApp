@@ -5,5 +5,6 @@ export interface CreateAppointmentDto {
   customerName?: string;
   phone?: string;
   note?: string;
+  referenceImageUrls?: string[];
   customerOpenId?: string;
 }

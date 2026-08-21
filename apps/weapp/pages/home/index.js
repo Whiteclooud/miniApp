@@ -20,9 +20,9 @@ Page({
   async loadData() {
     this.setData({ loading: true, hasError: false });
     try {
-      const res = await listGallery({ limit: 3 });
+      const res = await listGallery({ limit: 1 });
       this.setData({
-        galleryItems: normalizeGalleryItems(res.items || []),
+        galleryItems: normalizeGalleryItems(res.items || []).slice(0, 1),
         loading: false,
         hasError: false
       });
@@ -64,6 +64,12 @@ Page({
   goMyBookings() {
     wx.navigateTo({
       url: '/pages/my-bookings/index'
+    });
+  },
+
+  goMyInspirations() {
+    wx.navigateTo({
+      url: '/pages/my-inspirations/index'
     });
   },
 

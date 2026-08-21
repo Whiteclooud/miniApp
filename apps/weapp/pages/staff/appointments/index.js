@@ -130,6 +130,9 @@ function normalizeAppointments(items) {
       date,
       timeSlot: item.timeSlot || '-',
       note: item.note || '',
+      referenceImageUrls: Array.isArray(item.referenceImageUrls)
+        ? item.referenceImageUrls.filter((url) => typeof url === 'string' && url.trim())
+        : [],
       reviewNote: item.reviewNote || '',
       status,
       statusText: formatStatus(status),
@@ -385,15 +388,19 @@ function buildDetailListView(filterKey, allAppointments, remoteAppointments) {
 
 function getStaffIdentityMeta() {
   const identity = ensureStaffIdentity();
-  const develop = isDevelopEnv();
+  const app = getApp();
+  const develop = isDevelopEnv() && !!(app && app.globalData && app.globalData.allowHeaderAuthFallback);
   return {
     openId: identity.openId,
     label: identity.label,
     canUse: identity.canUse,
     isMock: identity.isMock,
+    isSession: identity.isSession,
     isDevelopEnv: develop,
     sourceText: identity.canUse
-      ? identity.isMock
+      ? identity.isSession
+        ? '当前使用微信店员 Bearer 会话；预约工作台会按当前登录身份校验。'
+        : identity.isMock
         ? '当前为开发环境模拟店员身份；店员接口将通过 X-Staff-OpenId 调用。'
         : '当前为店员身份；店员接口将通过 X-Staff-OpenId 调用。'
       : develop
@@ -758,6 +765,11 @@ Page({
 
   async rescheduleAppointment(event) {
     const { id, date, timeSlot } = event.currentTarget.dataset;
+    const appointment = (this.data.appointments || []).find((item) => item.id === id);
+    if (appointment && !['pending', 'approved'].includes(appointment.status)) {
+      wx.showToast({ title: '当前状态不可改期', icon: 'none' });
+      return;
+    }
     const draft = this.data.rescheduleDraftMap[id] || {};
     const appointmentDate = draft.date || date;
     const nextTimeSlot = (draft.timeSlot || timeSlot || '').trim();
@@ -782,6 +794,14 @@ Page({
       wx.showToast({ title: '已改期', icon: 'success' });
       await this.loadData();
     } catch (error) {
+      if (error && error.isUnauthorized) {
+        this.setData({
+          pageState: 'unauthorized',
+          stateMessage: formatPageErrorMessage(error, '当前身份无权执行改期。'),
+          [stateKey]: 'idle'
+        });
+        return;
+      }
       this.setData({
         reviewMessage: formatReviewErrorMessage(error, '改期'),
         [stateKey]: 'idle'
@@ -814,11 +834,32 @@ Page({
         [`auditStateMap.${id}`]: 'ready'
       });
     } catch (error) {
+      if (error && error.isUnauthorized) {
+        this.setData({
+          pageState: 'unauthorized',
+          stateMessage: formatPageErrorMessage(error, '当前身份无权查看操作日志。'),
+          [`auditStateMap.${id}`]: 'idle'
+        });
+        return;
+      }
       this.setData({
         reviewMessage: formatPageErrorMessage(error, '操作日志加载失败，请稍后重试。'),
         [`auditStateMap.${id}`]: 'error'
       });
     }
+  },
+
+  previewReferenceImage(event) {
+    const { id, url } = event.currentTarget.dataset;
+    const appointment = this.data.appointments.find((item) => item.id === id);
+    if (!appointment || !url || !appointment.referenceImageUrls.length) {
+      return;
+    }
+
+    wx.previewImage({
+      current: url,
+      urls: appointment.referenceImageUrls
+    });
   },
 
   async loadData() {

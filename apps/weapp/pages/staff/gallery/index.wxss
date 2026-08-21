@@ -188,3 +188,212 @@
   color: #a45f67;
   font-size: 22rpx;
 }
+
+.staff-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx;
+  background: #fffaf8;
+}
+
+.staff-page button::after {
+  border: 0;
+}
+
+.staff-navigation {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-bottom: 36rpx;
+}
+
+.staff-navigation-tab {
+  display: flex;
+  min-width: 0;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24rpx;
+  background: #fff0eb;
+  color: #e8856c;
+  font-size: 26rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.staff-navigation-tab-active {
+  background: #e8856c;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.staff-page .card {
+  box-sizing: border-box;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.045);
+}
+
+.staff-page .identity-card,
+.staff-page .dev-card,
+.staff-page .state-card {
+  margin-bottom: 28rpx;
+}
+
+.staff-page .identity-label,
+.staff-page .field-label,
+.staff-page .section-title {
+  color: #3d2c2c;
+}
+
+.staff-page .helper-text,
+.staff-page .state-desc {
+  color: #a89999;
+  font-size: 24rpx;
+  line-height: 34rpx;
+}
+
+.staff-page .dev-card {
+  border: 2rpx solid #fff0eb;
+  background: #fff8f5;
+  box-shadow: none;
+}
+
+.staff-page .button-primary {
+  background: #e8856c;
+  color: #ffffff;
+}
+
+.staff-page .button-secondary {
+  background: #fff6f2;
+  color: #e8856c;
+}
+
+.gallery-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 4rpx;
+  margin-bottom: 32rpx;
+}
+
+.gallery-overview .section-title {
+  font-size: 32rpx;
+  line-height: 42rpx;
+}
+
+.gallery-overview .helper-text {
+  margin-top: 2rpx;
+}
+
+.gallery-create-button {
+  flex: 0 0 auto;
+  width: 188rpx;
+  height: 92rpx;
+  margin: 0;
+  border-radius: 46rpx;
+  font-size: 28rpx;
+  line-height: 92rpx;
+}
+
+.staff-gallery-page .list-title {
+  display: none;
+}
+
+.staff-gallery-page .gallery-list {
+  gap: 32rpx;
+}
+
+.staff-gallery-page .list-card {
+  display: flex;
+  min-height: 312rpx;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 32rpx;
+}
+
+.staff-gallery-page .list-cover {
+  flex: 0 0 224rpx;
+  width: 224rpx;
+  height: 312rpx;
+  background: #f5eeee;
+}
+
+.staff-gallery-page .list-body {
+  min-width: 0;
+  flex: 1;
+  padding: 28rpx;
+}
+
+.staff-gallery-page .list-head {
+  gap: 12rpx;
+}
+
+.staff-gallery-page .list-name {
+  color: #3d2c2c;
+  font-size: 30rpx;
+  line-height: 38rpx;
+}
+
+.staff-gallery-page .status-pill {
+  flex: 0 0 auto;
+  padding: 8rpx 16rpx;
+  border-radius: 22rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
+}
+
+.staff-gallery-page .status-pill.active {
+  background: #f0f7f2;
+  color: #45976b;
+}
+
+.staff-gallery-page .status-pill.inactive {
+  background: #fff6f2;
+  color: #e8856c;
+}
+
+.staff-gallery-page .tag-list {
+  margin-top: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staff-gallery-page .tag-item {
+  margin-right: 8rpx;
+  margin-bottom: 0;
+  border-radius: 18rpx;
+  background: #fff0eb;
+  color: #e8856c;
+}
+
+.staff-gallery-page .list-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #6b5555;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.staff-gallery-page .list-edit-button {
+  min-width: 96rpx;
+  height: 56rpx;
+  margin: 12rpx 0 0 auto;
+  padding: 0 18rpx;
+  border-radius: 28rpx;
+  font-size: 24rpx;
+  line-height: 56rpx;
+}
+
+.staff-gallery-page .editor-card {
+  margin-top: 32rpx;
+  border-radius: 32rpx;
+}
+
+.staff-gallery-page .gallery-empty-card {
+  min-height: 280rpx;
+  text-align: center;
+}

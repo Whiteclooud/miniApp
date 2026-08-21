@@ -1,24 +1,37 @@
-import { Controller, Get, Headers, Param, Post, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  UploadedFiles,
+  UseFilters,
+  UseGuards,
+  UseInterceptors
+} from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { AuthService } from '../auth/auth.service';
-import { UploadsService } from './uploads.service';
+import { UploadedImageFile, UploadsService } from './uploads.service';
+import {
+  AuthenticatedUploadRequest,
+  StaffUploadAuthGuard,
+  UploadHttpExceptionFilter,
+  uploadMulterOptions
+} from './uploads.security';
 
 @Controller('api/v1/staff/uploads/images')
 export class UploadsController {
-  constructor(
-    private readonly uploadsService: UploadsService,
-    private readonly authService: AuthService
-  ) {}
+  constructor(private readonly uploadsService: UploadsService) {}
 
   @Post()
-  @UseInterceptors(AnyFilesInterceptor())
+  @UseGuards(StaffUploadAuthGuard)
+  @UseFilters(UploadHttpExceptionFilter)
+  @UseInterceptors(AnyFilesInterceptor(uploadMulterOptions))
   async uploadImages(
-    @Headers('authorization') authorization?: string,
-    @Headers('x-staff-openid') staffOpenId?: string,
-    @UploadedFiles() files: Array<{ originalname?: string; mimetype?: string; size?: number; buffer: Buffer }> = []
+    @Req() request: AuthenticatedUploadRequest,
+    @UploadedFiles() files: UploadedImageFile[] = []
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const items = await this.uploadsService.uploadImages(resolvedStaffOpenId, files);
+    const items = await this.uploadsService.uploadImages(request.staffOpenId, files);
     return { items };
   }
 

@@ -360,6 +360,29 @@
   line-height: 1.6;
 }
 
+.appointment-reference-block,
+.appointment-reference-scroll {
+  margin-top: 14rpx;
+}
+
+.appointment-reference-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.appointment-reference-row {
+  display: inline-flex;
+  gap: 14rpx;
+  padding-right: 20rpx;
+}
+
+.appointment-reference-image {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 16rpx;
+  background: #f5eeee;
+}
+
 .compact-state-card {
   margin-top: 18rpx;
 }
@@ -453,4 +476,194 @@
 .empty-subcard {
   color: #8a665a;
   font-size: 24rpx;
+}
+
+.staff-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx;
+  background: #fffaf8;
+}
+
+.staff-page button::after {
+  border: 0;
+}
+
+.staff-navigation {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-bottom: 36rpx;
+}
+
+.staff-navigation-tab {
+  display: flex;
+  min-width: 0;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24rpx;
+  background: #fff0eb;
+  color: #e8856c;
+  font-size: 26rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.staff-navigation-tab-active {
+  background: #e8856c;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.staff-page .card {
+  box-sizing: border-box;
+  border-radius: 32rpx;
+  padding: 40rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.05);
+}
+
+.staff-page .identity-card,
+.staff-page .dev-card,
+.staff-page .state-card {
+  margin-top: 0;
+  margin-bottom: 28rpx;
+}
+
+.staff-page .identity-label {
+  color: #6b5555;
+  font-size: 28rpx;
+  line-height: 34rpx;
+}
+
+.staff-page .identity-value {
+  margin-top: 10rpx;
+  color: #3d2c2c;
+  font-size: 26rpx;
+  line-height: 34rpx;
+  word-break: break-all;
+}
+
+.staff-page .helper-text,
+.staff-page .section-desc,
+.staff-page .state-desc {
+  color: #a89999;
+  font-size: 24rpx;
+  line-height: 34rpx;
+}
+
+.staff-page .dev-card {
+  border: 2rpx solid #fff0eb;
+  background: #fff8f5;
+  box-shadow: none;
+}
+
+.staff-page .button-primary {
+  background: #e8856c;
+  color: #ffffff;
+}
+
+.staff-page .button-secondary {
+  background: #fff6f2;
+  color: #e8856c;
+}
+
+.staff-page .section-title {
+  color: #3d2c2c;
+  font-size: 32rpx;
+  line-height: 42rpx;
+}
+
+.staff-appointments-page .review-notice-card {
+  display: none;
+}
+
+.staff-appointments-page .summary-card {
+  margin-top: 28rpx;
+  padding: 32rpx 24rpx;
+}
+
+.staff-appointments-page .summary-grid-quad {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20rpx;
+}
+
+.staff-appointments-page .summary-item {
+  min-width: 0;
+  padding: 24rpx;
+  border-radius: 28rpx;
+  background: #fff8f5;
+}
+
+.staff-appointments-page .summary-label {
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 30rpx;
+}
+
+.staff-appointments-page .summary-value {
+  margin-top: 8rpx;
+  color: #e8856c;
+  font-size: 50rpx;
+  line-height: 56rpx;
+}
+
+.summary-caption {
+  margin-top: 4rpx;
+  color: #a89999;
+  font-size: 22rpx;
+  line-height: 28rpx;
+}
+
+.staff-appointments-page .workbench-card,
+.staff-appointments-page .filter-card,
+.staff-appointments-page .calendar-card,
+.staff-appointments-page .detail-card,
+.staff-appointments-page .booking-card {
+  border-radius: 32rpx;
+}
+
+.staff-appointments-page .workbench-panel,
+.staff-appointments-page .day-detail-item,
+.staff-appointments-page .reschedule-box,
+.staff-appointments-page .audit-list {
+  border-radius: 24rpx;
+  background: #fff8f5;
+}
+
+.staff-appointments-page .booking-card {
+  margin-top: 28rpx;
+  padding: 40rpx;
+}
+
+.staff-appointments-page .booking-header {
+  gap: 20rpx;
+}
+
+.staff-appointments-page .booking-title,
+.staff-appointments-page .day-detail-slot {
+  color: #3d2c2c;
+}
+
+.staff-appointments-page .status-pill {
+  min-width: 100rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 26rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
+  text-align: center;
+}
+
+.staff-appointments-page .detail-filter-chip {
+  border-radius: 24rpx;
+  background: #fff0eb;
+  color: #e8856c;
+  box-shadow: none;
+}
+
+.staff-appointments-page .detail-filter-chip-active {
+  border-color: #e8856c;
+  background: #e8856c;
+  color: #ffffff;
 }

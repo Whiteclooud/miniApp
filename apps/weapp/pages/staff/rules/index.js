@@ -165,15 +165,19 @@ function buildSubmitPayload(form) {
 
 function getStaffIdentityMeta() {
   const identity = ensureStaffIdentity();
-  const develop = isDevelopEnv();
+  const app = getApp();
+  const develop = isDevelopEnv() && !!(app && app.globalData && app.globalData.allowHeaderAuthFallback);
   return {
     openId: identity.openId,
     label: identity.label,
     canUse: identity.canUse,
     isMock: identity.isMock,
+    isSession: identity.isSession,
     isDevelopEnv: develop,
     sourceText: identity.canUse
-      ? identity.isMock
+      ? identity.isSession
+        ? '当前使用微信店员 Bearer 会话；店员接口会按当前登录身份校验。'
+        : identity.isMock
         ? '当前为开发环境模拟店员身份；店员接口将通过 X-Staff-OpenId 调用。'
         : '当前为店员身份；店员接口将通过 X-Staff-OpenId 调用。'
       : develop

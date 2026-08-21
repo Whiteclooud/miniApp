@@ -17,6 +17,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApiAppointmentItem, toApiAppointmentItem } from './appointment-response';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 
+const MAX_REFERENCE_IMAGE_COUNT = 6;
+
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -44,6 +46,7 @@ export class AppointmentsService {
     const customerOpenId = this.assertCustomerAuthorized(customerOpenIdHeader);
     const appointmentDate = this.resolveAppointmentDate(payload);
     const timeSlot = `${payload.timeSlot || ''}`.trim();
+    const referenceImageUrls = this.normalizeReferenceImageUrls(payload.referenceImageUrls);
 
     if (!isDateText(appointmentDate)) {
       throw new BadRequestException({
@@ -129,6 +132,7 @@ export class AppointmentsService {
           timeSlot,
           approvedSlotKey: null,
           note: `${payload.note || ''}`.trim() || null,
+          referenceImageUrlsJson: JSON.stringify(referenceImageUrls),
           status: AppointmentStatus.PENDING,
           reviewedAt: null,
           reviewedByOpenId: null,
@@ -163,5 +167,50 @@ export class AppointmentsService {
 
   private resolveAppointmentDate(payload: CreateAppointmentDto) {
     return `${payload.appointmentDate || payload.date || ''}`.trim();
+  }
+
+  private normalizeReferenceImageUrls(value: unknown): string[] {
+    if (value === undefined) {
+      return [];
+    }
+
+    if (!Array.isArray(value)) {
+      throw new BadRequestException({
+        error: 'Invalid reference image URLs',
+        code: 'INVALID_REFERENCE_IMAGE_URLS'
+      });
+    }
+
+    if (value.length > MAX_REFERENCE_IMAGE_COUNT) {
+      throw new BadRequestException({
+        error: 'Too many reference images',
+        code: 'REFERENCE_IMAGE_COUNT_EXCEEDED'
+      });
+    }
+
+    return value.map((item) => {
+      if (typeof item !== 'string' || !item.trim()) {
+        throw new BadRequestException({
+          error: 'Invalid reference image URLs',
+          code: 'INVALID_REFERENCE_IMAGE_URLS'
+        });
+      }
+
+      const normalizedUrl = item.trim();
+
+      try {
+        const parsedUrl = new URL(normalizedUrl);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          throw new Error('Unsupported URL protocol');
+        }
+      } catch (_error) {
+        throw new BadRequestException({
+          error: 'Invalid reference image URLs',
+          code: 'INVALID_REFERENCE_IMAGE_URLS'
+        });
+      }
+
+      return normalizedUrl;
+    });
   }
 }

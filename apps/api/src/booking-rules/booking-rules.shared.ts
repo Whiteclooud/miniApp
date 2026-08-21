@@ -38,7 +38,22 @@ export function isDateText(value: string) {
 }
 
 export function isSlotText(value: string) {
-  return /^\d{2}:\d{2}-\d{2}:\d{2}$/.test(value);
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const match = value.match(/^([0-9]{2}):([0-9]{2})-([0-9]{2}):([0-9]{2})$/);
+  if (!match) {
+    return false;
+  }
+
+  const startText = `${match[1]}:${match[2]}`;
+  const endText = `${match[3]}:${match[4]}`;
+  if (!isTimeText(startText) || !isTimeText(endText)) {
+    return false;
+  }
+
+  return parseTimeTextToMinutes(startText)! < parseTimeTextToMinutes(endText)!;
 }
 
 export function isTimeText(value: string) {
@@ -80,7 +95,16 @@ function parseJsonObject(value: string | null | undefined): Record<string, unkno
 }
 
 export function sortSlots(slots: string[]) {
-  return [...slots].sort((left, right) => left.localeCompare(right));
+  return [...slots].sort((left, right) => {
+    const leftStart = parseTimeTextToMinutes(`${left}`.split('-')[0] || '');
+    const rightStart = parseTimeTextToMinutes(`${right}`.split('-')[0] || '');
+
+    if (leftStart !== null && rightStart !== null && leftStart !== rightStart) {
+      return leftStart - rightStart;
+    }
+
+    return left.localeCompare(right);
+  });
 }
 
 export function normalizeClosedDates(value: string | null | undefined) {

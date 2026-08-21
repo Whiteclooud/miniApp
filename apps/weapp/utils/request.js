@@ -129,6 +129,19 @@ function isSessionUnauthorized(statusCode, payload) {
   return code === 'SESSION_UNAUTHORIZED';
 }
 
+// A 401 received after sending a Bearer token means the cached session is no
+// longer usable. Header-auth development requests must keep their local mock
+// identity, so only clear storage when the effective request header carries a
+// session token.
+function shouldClearBearerSession(statusCode, requestHeader) {
+  if (statusCode !== 401 || !requestHeader) {
+    return false;
+  }
+
+  const authorization = requestHeader.Authorization || requestHeader.authorization;
+  return typeof authorization === 'string' && /^Bearer\s+\S+/i.test(authorization);
+}
+
 function normalizeSuccessPayload(responseData) {
   if (!responseData) {
     return {};
@@ -150,16 +163,17 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
 
   const runRequest = () => new Promise((resolve, reject) => {
     const authHeader = buildAuthHeader(auth);
+    const requestHeader = {
+      'content-type': 'application/json',
+      ...authHeader,
+      ...header
+    };
 
     wx.request({
       url: buildUrl(app.globalData.apiBaseUrl, url, params),
       method,
       data,
-      header: {
-        'content-type': 'application/json',
-        ...authHeader,
-        ...header
-      },
+      header: requestHeader,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data || {});
@@ -167,7 +181,10 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
         }
 
         const payload = normalizeSuccessPayload(res.data);
-        if (isSessionUnauthorized(res.statusCode, payload)) {
+        if (
+          isSessionUnauthorized(res.statusCode, payload) ||
+          shouldClearBearerSession(res.statusCode, requestHeader)
+        ) {
           clearAuthSession();
         }
 
@@ -218,16 +235,17 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
 
   const uploadOne = (filePath) => new Promise((resolve, reject) => {
     const authHeader = buildAuthHeader(auth);
+    const requestHeader = {
+      ...authHeader,
+      ...header
+    };
 
     wx.uploadFile({
       url: buildUrl(app.globalData.apiBaseUrl, url),
       filePath,
       name,
       formData,
-      header: {
-        ...authHeader,
-        ...header
-      },
+      header: requestHeader,
       success: (res) => {
         const payload = normalizeSuccessPayload(res.data);
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -235,7 +253,10 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
           return;
         }
 
-        if (isSessionUnauthorized(res.statusCode, payload)) {
+        if (
+          isSessionUnauthorized(res.statusCode, payload) ||
+          shouldClearBearerSession(res.statusCode, requestHeader)
+        ) {
           clearAuthSession();
         }
 

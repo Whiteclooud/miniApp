@@ -347,6 +347,49 @@ async function main() {
       };
     });
 
+    await runCase('PATCH approved -> cancelled -> approved clears cancellation metadata', async () => {
+      const cancelResult = await request(`/api/v1/staff/appointments/${ids.occupiedApproved}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          status: 'cancelled',
+          reviewNote: 'temporary cancellation'
+        })
+      });
+
+      assert(cancelResult.status === 200, `expected 200 cancelling, got ${cancelResult.status}`);
+      assert(cancelResult.json?.item?.status === 'cancelled', 'expected cancelled status');
+
+      const approveResult = await request(`/api/v1/staff/appointments/${ids.occupiedApproved}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: JSON.stringify({
+          status: 'approved',
+          reviewNote: 'restored after cancellation'
+        })
+      });
+
+      assert(approveResult.status === 200, `expected 200 approving, got ${approveResult.status}`);
+      assert(approveResult.json?.item?.status === 'approved', 'expected approved status after restore');
+
+      const detailResult = await request(`/api/v1/staff/appointments/${ids.occupiedApproved}`, {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+      assert(detailResult.status === 200, `expected detail 200, got ${detailResult.status}`);
+      assert(detailResult.json?.item?.cancelledAt === null, 'expected cancelledAt cleared');
+      assert(detailResult.json?.item?.cancelledBy === null, 'expected cancelledBy cleared');
+      assert(detailResult.json?.item?.cancelReason === '', 'expected cancelReason cleared');
+      return detailResult.json.item;
+    });
+
     await runCase('GET /api/v1/staff/appointments default -> full list', async () => {
       const result = await request('/api/v1/staff/appointments', {
         headers: {
@@ -373,6 +416,75 @@ async function main() {
       assert(result.json.items.every((item) => item.status === 'pending'), 'expected only pending items');
       assert(result.json.items.some((item) => item.id === ids.occupiedPending), 'expected pending item in filtered list');
       return { count: result.json.items.length };
+    });
+
+    await runCase('GET staff appointments invalid date -> INVALID_DATE', async () => {
+      const result = await request('/api/v1/staff/appointments?date=not-a-date', {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'INVALID_DATE', `expected INVALID_DATE, got ${result.json?.code}`);
+      return result.json;
+    });
+
+    await runCase('GET staff appointments invalid date range -> INVALID_DATE_RANGE', async () => {
+      const result = await request('/api/v1/staff/appointments?dateFrom=2030-04-03&dateTo=2030-04-01', {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'INVALID_DATE_RANGE', `expected INVALID_DATE_RANGE, got ${result.json?.code}`);
+      return result.json;
+    });
+
+    await runCase('GET staff appointments exact date takes precedence over invalid range', async () => {
+      const result = await request(`/api/v1/staff/appointments?date=${openDate}&dateFrom=not-a-date&dateTo=also-not-a-date`, {
+        headers: {
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.items), 'expected items array');
+      assert(result.json.items.length > 0, 'expected exact-date appointments');
+      assert(result.json.items.every((item) => item.date === openDate), 'expected only exact-date appointments');
+      assert(result.json.items.some((item) => item.id === ids.happy), 'expected happy appointment in exact-date list');
+      return { count: result.json.items.length, date: openDate };
+    });
+
+    await runCase('POST review malformed body -> INVALID_REVIEW_PAYLOAD', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.happy}/review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: '[]'
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'INVALID_REVIEW_PAYLOAD', `expected INVALID_REVIEW_PAYLOAD, got ${result.json?.code}`);
+      return result.json;
+    });
+
+    await runCase('PATCH reschedule malformed body -> INVALID_RESCHEDULE_PAYLOAD', async () => {
+      const result = await request(`/api/v1/staff/appointments/${ids.happy}/reschedule`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-OpenId': STAFF_OPEN_ID
+        },
+        body: '[]'
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'INVALID_RESCHEDULE_PAYLOAD', `expected INVALID_RESCHEDULE_PAYLOAD, got ${result.json?.code}`);
+      return result.json;
     });
 
     await runCase('GET staff appointments keyword filter -> finds customer name', async () => {

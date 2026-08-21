@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'miniapp.customerOpenId';
 const DISABLED_STORAGE_KEY = 'miniapp.customerOpenId.disabled';
 const DEFAULT_DEVELOP_CUSTOMER_OPENID = 'customer-openid-demo';
+const { getCurrentUser, isWechatAuthEnabled } = require('./auth');
 
 function getEnvProfile() {
   try {
@@ -31,11 +32,12 @@ function buildIdentity(openId, extra = {}) {
   if (!nextOpenId) {
     return {
       openId: '',
-      source: 'missing',
+      source: extra.source || 'missing',
       isMock: false,
       isDefaultMock: false,
+      isSession: !!extra.isSession,
       canUse: false,
-      label: '未设置顾客 OpenID'
+      label: extra.label || '未设置顾客 OpenID'
     };
   }
 
@@ -46,13 +48,34 @@ function buildIdentity(openId, extra = {}) {
     source: extra.source || (isDefaultMock ? 'mock-default' : isMock ? 'mock' : 'real'),
     isMock,
     isDefaultMock,
+    isSession: !!extra.isSession,
     canUse: true,
-    label: isDefaultMock
+    label: extra.label || (isDefaultMock
       ? '开发环境默认顾客 OpenID'
       : isMock
         ? '开发环境模拟顾客 OpenID'
-        : '微信顾客 OpenID'
+        : '微信顾客 OpenID')
   };
+}
+
+function buildSessionPendingIdentity() {
+  return {
+    openId: '',
+    source: 'session-pending',
+    isMock: false,
+    isDefaultMock: false,
+    isSession: true,
+    canUse: true,
+    label: '正在使用微信顾客会话'
+  };
+}
+
+function shouldUseBearerSession() {
+  try {
+    return isWechatAuthEnabled();
+  } catch (_error) {
+    return !isDevelopEnv();
+  }
 }
 
 function isDevelopFallbackDisabled() {
@@ -66,9 +89,34 @@ function getStoredCustomerIdentity() {
 
 function ensureCustomerIdentity(options = {}) {
   const { persistDevelopFallback = false } = options;
+  const currentUser = getCurrentUser();
+  const currentRole = `${currentUser && currentUser.role || ''}`.trim().toLowerCase();
+
+  if (currentUser && currentRole === 'customer' && `${currentUser.openId || ''}`.trim()) {
+    return buildIdentity(currentUser.openId, {
+      source: 'session',
+      isSession: true,
+      label: '微信顾客会话'
+    });
+  }
+
+  // Do not let a stale local OpenID masquerade as the identity of a valid
+  // non-customer Bearer session.
+  if (currentUser) {
+    return buildIdentity('', {
+      source: 'session-non-customer',
+      isSession: true,
+      label: '当前微信账号不是顾客'
+    });
+  }
+
   const storedIdentity = getStoredCustomerIdentity();
   if (storedIdentity.canUse) {
     return storedIdentity;
+  }
+
+  if (shouldUseBearerSession()) {
+    return buildSessionPendingIdentity();
   }
 
   if (!isDevelopEnv() || isDevelopFallbackDisabled()) {

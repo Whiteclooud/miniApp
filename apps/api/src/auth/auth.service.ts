@@ -78,11 +78,22 @@ export class AuthService {
     }
 
     const role = resolveAllowedStaffIds().includes(openId) ? UserRole.STAFF : UserRole.CUSTOMER;
+    const existingUser = await this.prisma.user.findUnique({
+      where: { openId },
+      select: { status: true }
+    });
+
+    if (existingUser?.status === UserStatus.DISABLED) {
+      throw new UnauthorizedException({
+        error: 'Account disabled',
+        code: 'ACCOUNT_DISABLED'
+      });
+    }
+
     const user = await this.prisma.user.upsert({
       where: { openId },
       update: {
-        role,
-        status: UserStatus.ACTIVE
+        role
       },
       create: {
         openId,
@@ -173,24 +184,76 @@ export class AuthService {
       return null;
     }
 
+    // Auth sessions intentionally keep a snapshot of the role for auditability,
+    // but the user record remains the source of truth for revocation. A token
+    // must stop working as soon as the account is disabled or its role changes.
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: session.userId
+      },
+      select: {
+        id: true,
+        openId: true,
+        role: true,
+        status: true
+      }
+    });
+
+    if (
+      !user ||
+      user.status !== UserStatus.ACTIVE ||
+      user.openId !== session.openId ||
+      user.role !== session.role
+    ) {
+      return null;
+    }
+
     return {
-      userId: session.userId,
-      openId: session.openId,
-      role: session.role
+      userId: user.id,
+      openId: user.openId,
+      role: user.role
     };
   }
 
   async resolveCustomerOpenId(authorization?: string, fallbackOpenId?: string) {
+    const hasBearerToken = !!this.resolveBearerToken(authorization);
     const identity = await this.resolveIdentityFromAuthorization(authorization);
 
+    // A supplied Bearer token is authoritative. Do not silently downgrade an
+    // invalid, expired, disabled, or role-stale session to a develop header.
     if (identity) {
+      if (identity.role !== UserRole.CUSTOMER) {
+        throw new UnauthorizedException({
+          error: 'Customer unauthorized',
+          code: 'CUSTOMER_UNAUTHORIZED'
+        });
+      }
       return identity.openId;
     }
 
-    return isOpenIdHeaderFallbackEnabled() ? `${fallbackOpenId || ''}`.trim() : '';
+    if (hasBearerToken) {
+      throw new UnauthorizedException({
+        error: 'Customer unauthorized',
+        code: 'CUSTOMER_UNAUTHORIZED'
+      });
+    }
+
+    const normalizedFallbackOpenId = `${fallbackOpenId || ''}`.trim();
+    if (
+      normalizedFallbackOpenId &&
+      resolveAllowedStaffIds().includes(normalizedFallbackOpenId)
+    ) {
+      throw new UnauthorizedException({
+        error: 'Customer unauthorized',
+        code: 'CUSTOMER_UNAUTHORIZED'
+      });
+    }
+
+    return isOpenIdHeaderFallbackEnabled() ? normalizedFallbackOpenId : '';
   }
 
   async resolveStaffOpenId(authorization?: string, fallbackOpenId?: string) {
+    const hasBearerToken = !!this.resolveBearerToken(authorization);
     const identity = await this.resolveIdentityFromAuthorization(authorization);
 
     if (identity) {
@@ -202,6 +265,13 @@ export class AuthService {
       }
 
       return assertStaffAuthorized(identity.openId);
+    }
+
+    if (hasBearerToken) {
+      throw new UnauthorizedException({
+        error: 'Staff unauthorized',
+        code: 'STAFF_UNAUTHORIZED'
+      });
     }
 
     return isOpenIdHeaderFallbackEnabled() ? `${fallbackOpenId || ''}`.trim() : '';

@@ -78,8 +78,17 @@ function buildWhereFromQuery(query: ListStaffAppointmentsQuery = {}) {
   const normalizedStatus = toPrismaAppointmentStatus(query.status);
   const keyword = `${query.keyword || ''}`.trim();
   const date = validateDateQuery(query.date);
-  const dateFrom = validateDateQuery(query.dateFrom, 'INVALID_DATE_FROM');
-  const dateTo = validateDateQuery(query.dateTo, 'INVALID_DATE_TO');
+  // An exact date takes precedence over a range. Ignore range values entirely
+  // in that mode so stale picker values cannot make a valid query fail.
+  const dateFrom = date ? '' : validateDateQuery(query.dateFrom, 'INVALID_DATE_FROM');
+  const dateTo = date ? '' : validateDateQuery(query.dateTo, 'INVALID_DATE_TO');
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    throw new BadRequestException({
+      error: 'dateFrom must be before or equal to dateTo',
+      code: 'INVALID_DATE_RANGE'
+    });
+  }
 
   const where: Prisma.AppointmentWhereInput = {};
 

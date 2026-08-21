@@ -1,4 +1,5 @@
 const { request, uploadFiles } = require('../utils/request');
+const { getCustomerReferenceImageFilename } = require('../utils/reference-images');
 
 function listGallery(params = {}) {
   return request({
@@ -7,9 +8,63 @@ function listGallery(params = {}) {
   });
 }
 
+function getGalleryDetail(itemId) {
+  return request({
+    url: `/api/v1/gallery/${encodeURIComponent(itemId)}`
+  });
+}
+
+function listMyInspirations(params = {}) {
+  return request({
+    url: '/api/v1/my/inspirations',
+    params,
+    auth: 'customer'
+  });
+}
+
+function getMyInspiration(inspirationId) {
+  return request({
+    url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`,
+    auth: 'customer'
+  });
+}
+
+function createMyInspiration(payload = {}) {
+  return request({
+    url: '/api/v1/my/inspirations',
+    method: 'POST',
+    data: payload,
+    auth: 'customer'
+  });
+}
+
+function updateMyInspiration(inspirationId, payload = {}) {
+  return request({
+    url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`,
+    method: 'PATCH',
+    data: payload,
+    auth: 'customer'
+  });
+}
+
+function deleteMyInspiration(inspirationId) {
+  return request({
+    url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`,
+    method: 'DELETE',
+    auth: 'customer'
+  });
+}
+
 function listStaffGallery() {
   return request({
     url: '/api/v1/staff/gallery',
+    auth: 'staff'
+  });
+}
+
+function getStaffGalleryDetail(itemId) {
+  return request({
+    url: `/api/v1/staff/gallery/${encodeURIComponent(itemId)}`,
     auth: 'staff'
   });
 }
@@ -25,9 +80,17 @@ function createStaffGallery(payload = {}) {
 
 function updateStaffGallery(itemId, payload = {}) {
   return request({
-    url: `/api/v1/staff/gallery/${itemId}`,
+    url: `/api/v1/staff/gallery/${encodeURIComponent(itemId)}`,
     method: 'PATCH',
     data: payload,
+    auth: 'staff'
+  });
+}
+
+function deleteStaffGallery(itemId) {
+  return request({
+    url: `/api/v1/staff/gallery/${encodeURIComponent(itemId)}`,
+    method: 'DELETE',
     auth: 'staff'
   });
 }
@@ -38,6 +101,46 @@ function uploadStaffGalleryImages(filePaths = []) {
     filePaths,
     name: 'files',
     auth: 'staff'
+  });
+}
+
+async function uploadCustomerReferenceImages(filePaths = []) {
+  const targets = (filePaths || []).filter(
+    (filePath) => typeof filePath === 'string' && filePath.trim()
+  );
+  const uploadedItems = [];
+
+  try {
+    for (const filePath of targets) {
+      const response = await uploadFiles({
+        url: '/api/v1/uploads/images',
+        filePaths: [filePath],
+        name: 'files',
+        auth: 'customer'
+      });
+      uploadedItems.push(...((response && response.items) || []));
+    }
+  } catch (error) {
+    const uploadError = error && typeof error === 'object'
+      ? error
+      : new Error('参考图上传失败');
+    uploadError.uploadedItems = uploadedItems.slice();
+    throw uploadError;
+  }
+
+  return { items: uploadedItems };
+}
+
+function deleteCustomerReferenceImage(imageUrl) {
+  const filename = getCustomerReferenceImageFilename(imageUrl);
+  if (!filename) {
+    return Promise.resolve({ item: null, skipped: true });
+  }
+
+  return request({
+    url: `/api/v1/uploads/images/${encodeURIComponent(filename)}`,
+    method: 'DELETE',
+    auth: 'customer'
   });
 }
 
@@ -64,6 +167,10 @@ function createAppointment(payload = {}) {
 
   if (payload.note !== undefined) {
     data.note = payload.note;
+  }
+
+  if (payload.referenceImageUrls !== undefined) {
+    data.referenceImageUrls = payload.referenceImageUrls;
   }
 
   return request({
@@ -114,9 +221,16 @@ function listStaffAppointments(params = {}) {
   });
 }
 
+function getStaffAppointmentDetail(appointmentId) {
+  return request({
+    url: `/api/v1/staff/appointments/${encodeURIComponent(appointmentId)}`,
+    auth: 'staff'
+  });
+}
+
 function reviewStaffAppointment(appointmentId, payload, method = 'PATCH') {
   return request({
-    url: `/api/v1/staff/appointments/${appointmentId}/review`,
+    url: `/api/v1/staff/appointments/${encodeURIComponent(appointmentId)}/review`,
     method,
     data: payload,
     auth: 'staff'
@@ -125,7 +239,7 @@ function reviewStaffAppointment(appointmentId, payload, method = 'PATCH') {
 
 function rescheduleStaffAppointment(appointmentId, payload = {}) {
   return request({
-    url: `/api/v1/staff/appointments/${appointmentId}/reschedule`,
+    url: `/api/v1/staff/appointments/${encodeURIComponent(appointmentId)}/reschedule`,
     method: 'PATCH',
     data: payload,
     auth: 'staff'
@@ -134,17 +248,27 @@ function rescheduleStaffAppointment(appointmentId, payload = {}) {
 
 function listStaffAppointmentAuditLogs(appointmentId) {
   return request({
-    url: `/api/v1/staff/appointments/${appointmentId}/audit-logs`,
+    url: `/api/v1/staff/appointments/${encodeURIComponent(appointmentId)}/audit-logs`,
     auth: 'staff'
   });
 }
 
 module.exports = {
   listGallery,
+  getGalleryDetail,
+  listMyInspirations,
+  getMyInspiration,
+  createMyInspiration,
+  updateMyInspiration,
+  deleteMyInspiration,
   listStaffGallery,
+  getStaffGalleryDetail,
   createStaffGallery,
   updateStaffGallery,
+  deleteStaffGallery,
   uploadStaffGalleryImages,
+  uploadCustomerReferenceImages,
+  deleteCustomerReferenceImage,
   getAvailability,
   createAppointment,
   listMyAppointments,
@@ -152,6 +276,7 @@ module.exports = {
   listStaffRules,
   updateStaffRules,
   listStaffAppointments,
+  getStaffAppointmentDetail,
   reviewStaffAppointment,
   rescheduleStaffAppointment,
   listStaffAppointmentAuditLogs

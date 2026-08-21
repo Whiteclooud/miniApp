@@ -1,10 +1,19 @@
 const { listGallery } = require('../../services/appointment');
 const { normalizeGalleryItems } = require('../../utils/gallery');
 
+const GALLERY_FILTERS = [
+  { label: '推荐', tag: '' },
+  { label: '通勤', tag: '通勤' },
+  { label: '约会', tag: '约会' },
+  { label: '热门', tag: '热门' }
+];
+
 Page({
   data: {
     pageState: 'loading',
     stateMessage: '',
+    filters: GALLERY_FILTERS,
+    activeTag: '',
     galleryItems: []
   },
 
@@ -24,12 +33,16 @@ Page({
     });
 
     try {
-      const response = await listGallery();
+      const response = await listGallery(this.data.activeTag ? { tag: this.data.activeTag } : {});
       const galleryItems = normalizeGalleryItems(response.items || []);
       this.setData({
         galleryItems,
         pageState: galleryItems.length ? 'ready' : 'empty',
-        stateMessage: galleryItems.length ? '' : '当前还没有已发布返图。'
+        stateMessage: galleryItems.length
+          ? ''
+          : this.data.activeTag
+            ? `当前没有“${this.data.activeTag}”分类的已发布返图。`
+            : '当前还没有已发布返图。'
       });
     } catch (_error) {
       this.setData({
@@ -38,6 +51,16 @@ Page({
         galleryItems: []
       });
     }
+  },
+
+  async onFilterTap(event) {
+    const tag = event.currentTarget.dataset.tag || '';
+    if (tag === this.data.activeTag) {
+      return;
+    }
+
+    this.setData({ activeTag: tag });
+    await this.loadData();
   },
 
   goGalleryDetail(event) {

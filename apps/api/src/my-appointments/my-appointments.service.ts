@@ -47,6 +47,14 @@ export class MyAppointmentsService {
     const normalizedReason = `${reason || ''}`.trim();
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Customer cancellation must serialize with staff review/reschedule so
+      // an approved slot cannot be resurrected from a stale appointment read.
+      await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM appointments
+        WHERE id = ${normalizedAppointmentId}
+        FOR UPDATE
+      `;
       const appointment = await tx.appointment.findFirst({
         where: {
           id: normalizedAppointmentId,

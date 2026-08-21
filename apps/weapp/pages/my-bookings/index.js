@@ -40,6 +40,9 @@ function normalizeAppointments(items) {
     date: item.appointmentDate || item.date || '-',
     timeSlot: item.timeSlot || '-',
     note: item.note || '',
+    referenceImageUrls: Array.isArray(item.referenceImageUrls)
+      ? item.referenceImageUrls.filter((url) => typeof url === 'string' && url.trim())
+      : [],
     reviewNote: item.reviewNote || '',
     cancelReason: item.cancelReason || '',
     cancelledAtText: formatTime(item.cancelledAt),
@@ -56,6 +59,7 @@ function getIdentityMeta() {
   const app = getApp();
   const identity = app.getCustomerIdentity ? app.getCustomerIdentity() : app.globalData.customerIdentity;
   const isDefaultMock = identity.isDefaultMock || identity.openId === DEFAULT_DEVELOP_CUSTOMER_OPENID;
+  const headerFallbackEnabled = !!(app.globalData && app.globalData.allowHeaderAuthFallback);
 
   return {
     openId: identity.openId,
@@ -63,9 +67,11 @@ function getIdentityMeta() {
     canUse: identity.canUse,
     isMock: identity.isMock,
     isDefaultMock,
-    isDevelopEnv: !!app.globalData.isDevelopEnv,
+    isDevelopEnv: !!app.globalData.isDevelopEnv && headerFallbackEnabled,
     sourceText: identity.canUse
-      ? isDefaultMock
+      ? identity.isSession
+        ? '当前使用微信顾客 Bearer 会话；“我的预约”会按当前登录身份查询。'
+        : isDefaultMock
         ? '当前使用开发环境默认顾客 OpenID（customer-openid-demo）；“我的预约”将按该 OpenID 自动查询。'
         : identity.isMock
           ? '当前为开发环境自定义顾客 OpenID；“我的预约”将按该 OpenID 自动查询。'
@@ -229,6 +235,19 @@ Page({
           });
         }
       }
+    });
+  },
+
+  previewReferenceImage(event) {
+    const { id, url } = event.currentTarget.dataset;
+    const appointment = this.data.appointments.find((item) => item.id === id);
+    if (!appointment || !url || !appointment.referenceImageUrls.length) {
+      return;
+    }
+
+    wx.previewImage({
+      current: url,
+      urls: appointment.referenceImageUrls
     });
   }
 });

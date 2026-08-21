@@ -1,52 +1,56 @@
-<view class="container">
+<view class="container my-bookings-page">
   <view class="card identity-card">
     <view class="identity-label">当前顾客 OpenID</view>
     <view class="identity-value">{{customerIdentity.openId || customerIdentity.label}}</view>
-    <view class="helper-text">{{customerIdentity.sourceText}}</view>
+    <view class="helper-text identity-helper">{{customerIdentity.sourceText}}</view>
   </view>
 
   <view wx:if="{{customerIdentity.isDevelopEnv}}" class="card dev-card">
-    <view class="identity-label">开发环境模拟顾客 OpenID</view>
-    <input class="field-input" value="{{customerOpenIdInput}}" bindinput="onCustomerOpenIdInput" placeholder="填写与提交预约时一致的 mock OpenID" />
-    <view class="action-row">
-      <button class="button-primary compact-button" bindtap="applyCustomerOpenId">保存并查询</button>
-      <button class="button-secondary compact-button" bindtap="generateCustomerOpenId">生成模拟 OpenID</button>
+    <view class="dev-title">开发环境模拟顾客 OpenID</view>
+    <input class="dev-input" value="{{customerOpenIdInput}}" bindinput="onCustomerOpenIdInput" placeholder="填写与提交预约时一致的 mock OpenID" />
+    <view class="dev-action-row">
+      <button class="dev-button dev-button-primary" bindtap="applyCustomerOpenId">保存并查询</button>
+      <button class="dev-button" bindtap="generateCustomerOpenId">生成模拟 OpenID</button>
     </view>
-    <button class="button-ghost compact-button button-row-spacer" bindtap="clearCustomerOpenId">清空顾客 OpenID</button>
+    <button class="dev-button dev-button-clear" bindtap="clearCustomerOpenId">清空顾客 OpenID</button>
   </view>
 
   <view wx:if="{{pageState === 'loading'}}" class="card state-card">
     <view class="state-title">预约记录加载中</view>
-    <view class="state-desc">正在按当前顾客 OpenID 查询 /api/v1/my/appointments。</view>
+    <view class="state-desc">正在按当前顾客身份查询预约记录，请稍候。</view>
   </view>
 
   <view wx:elif="{{pageState === 'error'}}" class="card state-card">
     <view class="state-title">“我的预约”加载失败</view>
     <view class="state-desc">{{stateMessage || '接口未跑通时，会在这里显式提示。'}}</view>
-    <button class="button-secondary" bindtap="loadData">重新加载</button>
+    <button class="button-secondary state-action" bindtap="loadData">重新加载</button>
   </view>
 
   <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
     <view class="state-title">顾客身份不可用</view>
     <view class="state-desc">{{stateMessage || '缺少顾客 OpenID，不能继续查询“我的预约”。'}}</view>
-    <button class="button-secondary" bindtap="loadData">重新检查</button>
+    <button class="button-secondary state-action" bindtap="loadData">重新检查</button>
   </view>
 
   <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
     <view class="state-title">暂无预约记录</view>
     <view class="state-desc">{{stateMessage || '当前顾客 OpenID 下还没有预约记录。'}}</view>
-    <button class="button-secondary" bindtap="loadData">重新加载</button>
+    <button class="button-secondary state-action" bindtap="loadData">重新加载</button>
   </view>
 
   <block wx:else>
-    <view class="section-title">我的预约</view>
-    <view class="section-desc">系统会按当前顾客 OpenID 自动查询；姓名和手机号仅作展示与联系信息，不再作为主查询条件。</view>
+    <view class="bookings-section">
+      <view class="section-title">我的预约</view>
+      <view class="section-desc">共 {{appointments.length}} 条记录</view>
+    </view>
+
     <block wx:for="{{appointments}}" wx:key="id">
       <view class="card booking-card">
         <view class="booking-header">
           <view class="booking-title">预约记录</view>
           <view class="status-pill {{item.status}}">{{item.statusText}}</view>
         </view>
+
         <view class="info-row">
           <view class="info-label">预约时间</view>
           <view class="info-value">{{item.date}} {{item.timeSlot}}</view>
@@ -62,6 +66,10 @@
         <view wx:if="{{item.note}}" class="info-row">
           <view class="info-label">备注</view>
           <view class="info-value">{{item.note}}</view>
+        </view>
+        <view wx:if="{{item.referenceImageUrls.length}}" class="info-row">
+          <view class="info-label">参考图</view>
+          <view class="info-value info-value-muted">{{item.referenceImageUrls.length}} 张参考图 · 点击查看</view>
         </view>
         <view wx:if="{{item.createdAtText}}" class="info-row">
           <view class="info-label">提交时间</view>
@@ -83,13 +91,33 @@
           <view class="info-label">取消原因</view>
           <view class="info-value">{{item.cancelReason}}</view>
         </view>
+
+        <view wx:if="{{item.referenceImageUrls.length}}" class="appointment-reference-block">
+          <view class="booking-divider"></view>
+          <scroll-view class="appointment-reference-scroll" scroll-x="true" enable-flex="true">
+            <view class="appointment-reference-row">
+              <image
+                wx:for="{{item.referenceImageUrls}}"
+                wx:for-item="imageUrl"
+                wx:key="*this"
+                class="appointment-reference-image"
+                mode="aspectFill"
+                src="{{imageUrl}}"
+                data-id="{{item.id}}"
+                data-url="{{imageUrl}}"
+                bindtap="previewReferenceImage"
+              />
+            </view>
+          </scroll-view>
+        </view>
+
         <view wx:if="{{item.arrivalInstructions}}" class="arrival-box">
           <view class="arrival-title">{{item.arrivalInstructions.title}}</view>
           <view class="arrival-line">地址：{{item.arrivalInstructions.address}}</view>
           <view class="arrival-line">联系：{{item.arrivalInstructions.contact}}</view>
           <view wx:for="{{item.arrivalInstructions.notes}}" wx:key="*this" class="arrival-line">{{item}}</view>
         </view>
-        <button wx:if="{{item.canCancel}}" class="button-secondary compact-button cancel-button" bindtap="cancelAppointment" data-id="{{item.id}}">取消预约</button>
+        <button wx:if="{{item.canCancel}}" class="button-secondary cancel-button" bindtap="cancelAppointment" data-id="{{item.id}}">取消预约</button>
       </view>
     </block>
   </block>

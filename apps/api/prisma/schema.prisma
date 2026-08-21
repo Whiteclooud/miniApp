@@ -69,6 +69,7 @@ model Appointment {
   timeSlot         String             @map("time_slot") @db.VarChar(32)
   approvedSlotKey  String?            @unique @map("approved_slot_key") @db.VarChar(64)
   note             String?            @db.Text
+  referenceImageUrlsJson String       @default("[]") @map("reference_image_urls_json") @db.LongText
   status           AppointmentStatus  @default(PENDING)
   createdAt        DateTime           @default(now()) @map("created_at")
   reviewedAt       DateTime?          @map("reviewed_at")
@@ -130,9 +131,25 @@ model GalleryItem {
   status          GalleryStatus @default(ACTIVE)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  customerInspirations CustomerInspiration[]
 
   @@index([publishedAt], map: "idx_gallery_items_published_at")
   @@index([sortOrder], map: "idx_gallery_items_sort_order")
   @@index([status], map: "idx_gallery_items_status")
   @@map("gallery_items")
+}
+
+model CustomerInspiration {
+  id             String      @id @default(cuid())
+  customerOpenId String      @map("customer_open_id") @db.VarChar(191)
+  galleryItemId  String      @map("gallery_item_id") @db.VarChar(191)
+  note           String?     @db.Text
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  galleryItem    GalleryItem @relation(fields: [galleryItemId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_customer_inspirations_gallery_item")
+
+  @@unique([customerOpenId, galleryItemId], map: "uq_customer_inspirations_owner_gallery")
+  @@index([customerOpenId, createdAt], map: "idx_customer_inspirations_owner_created_at")
+  @@index([galleryItemId], map: "idx_customer_inspirations_gallery_item_id")
+  @@map("customer_inspirations")
 }

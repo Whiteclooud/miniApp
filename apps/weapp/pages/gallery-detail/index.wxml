@@ -1,30 +1,92 @@
-<view class="container">
-  <view wx:if="{{pageState === 'loading'}}" class="card state-card">返图详情加载中...</view>
-  <view wx:elif="{{pageState === 'error'}}" class="card state-card">{{stateMessage}}</view>
-  <view wx:elif="{{pageState === 'empty'}}" class="card state-card">{{stateMessage}}</view>
+<view class="detail-page">
+  <view wx:if="{{pageState === 'loading'}}" class="container">
+    <view class="state-card card">
+      <view class="state-symbol">⌛</view>
+      <view class="state-title">返图详情加载中</view>
+      <view class="state-desc">正在读取返图细节</view>
+    </view>
+  </view>
+
+  <view wx:elif="{{pageState === 'empty'}}" class="container">
+    <view class="state-card card">
+      <view class="state-symbol">⌁</view>
+      <view class="state-title">暂无返图</view>
+      <view class="state-desc">{{stateMessage}}</view>
+    </view>
+  </view>
+
+  <view wx:elif="{{pageState === 'error'}}" class="container">
+    <view class="state-card state-card-error card">
+      <view class="state-symbol">⚠</view>
+      <view class="state-title">加载失败</view>
+      <view class="state-desc">{{stateMessage}}</view>
+    </view>
+  </view>
+
   <view wx:else class="detail-wrapper">
-    <view class="card detail-card">
-      <view class="detail-title">{{item.title}}</view>
-      <view wx:if="{{item.publishedAtText}}" class="detail-time">发布时间：{{item.publishedAtText}}</view>
+    <view class="detail-media">
+      <image wx:if="{{activeImageUrl}}" class="detail-image" mode="aspectFill" src="{{activeImageUrl}}" data-url="{{activeImageUrl}}" bindtap="previewImage" />
+      <view wx:else class="detail-image detail-image-placeholder"></view>
+      <view wx:if="{{previewUrls.length}}" class="image-counter">{{selectedImageIndex + 1}} / {{previewUrls.length}}</view>
+    </view>
+
+    <view class="detail-content-card">
+      <view class="studio-row">
+        <view class="studio-avatar">M</view>
+        <view>
+          <view class="studio-name">MANI STUDIO</view>
+          <view wx:if="{{item.publishedAtText}}" class="detail-time">发布于 {{item.publishedAtText}}</view>
+        </view>
+      </view>
+
+      <view class="detail-title-row">
+        <view class="detail-title">{{item.title}}</view>
+      </view>
+
       <view wx:if="{{item.tags.length}}" class="detail-tags">
         <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
       </view>
+
       <view wx:if="{{item.description}}" class="detail-desc">{{item.description}}</view>
-      <view class="detail-helper">点击图片可预览大图；若后端未提供多图，前端会自动使用封面图兜底。</view>
-    </view>
 
-    <view class="image-list">
-      <image
-        wx:for="{{previewUrls}}"
-        wx:key="*this"
-        class="detail-image"
-        mode="aspectFill"
-        src="{{item}}"
-        data-url="{{item}}"
-        bindtap="previewImage"
-      />
-    </view>
+      <view class="detail-gallery-header">
+        <view class="detail-gallery-title">返图细节</view>
+        <view class="detail-gallery-count">{{previewUrls.length}} 张返图</view>
+      </view>
 
-    <button class="button-primary" bindtap="goBooking">预约这一款</button>
+      <scroll-view class="thumbnail-scroll" scroll-x="true" enable-flex="true">
+        <view class="thumbnail-row">
+          <image
+            wx:for="{{previewUrls}}"
+            wx:key="*this"
+            class="detail-thumbnail {{selectedImageIndex === index ? 'is-active' : ''}}"
+            mode="aspectFill"
+            src="{{item}}"
+            data-index="{{index}}"
+            bindtap="selectImage"
+          />
+        </view>
+      </scroll-view>
+
+      <view class="inspiration-save-block">
+        <view class="inspiration-save-title">保存到我的灵感</view>
+        <textarea
+          class="inspiration-note-input"
+          value="{{inspirationNote}}"
+          maxlength="2000"
+          auto-height="true"
+          bindinput="onInspirationNoteInput"
+          placeholder="记录想调整的颜色、长度或细节（可选）"
+        />
+        <button
+          class="button-secondary inspiration-save-button"
+          loading="{{inspirationState === 'saving'}}"
+          disabled="{{inspirationState === 'saving' || inspirationState === 'saved'}}"
+          bindtap="saveToInspirations"
+        >{{inspirationState === 'saved' ? '已保存到我的灵感' : '保存这款返图'}}</button>
+      </view>
+
+      <button class="button-primary detail-booking-button" bindtap="goBooking">预约同款</button>
+    </view>
   </view>
 </view>

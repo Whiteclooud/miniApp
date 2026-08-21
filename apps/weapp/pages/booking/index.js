@@ -1,6 +1,12 @@
-const { getAvailability, createAppointment } = require('../../services/appointment');
+const {
+  getAvailability,
+  createAppointment,
+  uploadCustomerReferenceImages,
+  deleteCustomerReferenceImage
+} = require('../../services/appointment');
 const { getErrorKind, getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
+const { isCustomerReferenceImageUrl } = require('../../utils/reference-images');
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const CALENDAR_LEGEND = [
@@ -9,6 +15,54 @@ const CALENDAR_LEGEND = [
   { key: 'DATE_CLOSED', label: '休息', status: 'disabled' },
   { key: 'DATE_OUT_OF_RANGE', label: '超窗', status: 'disabled' }
 ];
+const MAX_REFERENCE_IMAGE_COUNT = 6;
+
+function decodeRouteOption(value) {
+  try {
+    return decodeURIComponent(value || '');
+  } catch (_error) {
+    return `${value || ''}`;
+  }
+}
+
+function chooseReferenceImagePaths(count) {
+  return new Promise((resolve, reject) => {
+    if (typeof wx.chooseMedia === 'function') {
+      wx.chooseMedia({
+        count,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        success: (result) => resolve(
+          (result.tempFiles || []).map((item) => item.tempFilePath).filter(Boolean)
+        ),
+        fail: reject
+      });
+      return;
+    }
+
+    wx.chooseImage({
+      count,
+      sourceType: ['album', 'camera'],
+      success: (result) => resolve(result.tempFilePaths || []),
+      fail: reject
+    });
+  });
+}
+
+function getUploadedReferenceImageUrls(items = []) {
+  return [...new Set((items || [])
+    .map((item) => item && item.url)
+    .filter((url) => typeof url === 'string' && url.trim()))];
+}
+
+async function cleanupUploadedReferenceImages(items = []) {
+  const imageUrls = getUploadedReferenceImageUrls(items)
+    .filter(isCustomerReferenceImageUrl);
+
+  await Promise.all(imageUrls.map((imageUrl) => (
+    deleteCustomerReferenceImage(imageUrl).catch(() => null)
+  )));
+}
 
 function padNumber(value) {
   return `${value}`.padStart(2, '0');
@@ -260,6 +314,7 @@ function getIdentityMeta() {
   const app = getApp();
   const identity = app.getCustomerIdentity ? app.getCustomerIdentity() : app.globalData.customerIdentity;
   const isDefaultMock = identity.isDefaultMock || identity.openId === DEFAULT_DEVELOP_CUSTOMER_OPENID;
+  const headerFallbackEnabled = !!(app.globalData && app.globalData.allowHeaderAuthFallback);
 
   return {
     openId: identity.openId,
@@ -267,9 +322,11 @@ function getIdentityMeta() {
     canUse: identity.canUse,
     isMock: identity.isMock,
     isDefaultMock,
-    isDevelopEnv: !!app.globalData.isDevelopEnv,
+    isDevelopEnv: !!app.globalData.isDevelopEnv && headerFallbackEnabled,
     sourceText: identity.canUse
-      ? isDefaultMock
+      ? identity.isSession
+        ? '当前使用微信顾客 Bearer 会话；提交预约时会按当前登录身份校验。'
+        : isDefaultMock
         ? '当前使用开发环境默认顾客 OpenID（customer-openid-demo）；提交预约时会自动通过 X-Customer-OpenId 传递。'
         : identity.isMock
           ? '当前为开发环境自定义顾客 OpenID；提交预约时会自动通过 X-Customer-OpenId 传递。'
@@ -318,6 +375,11 @@ Page({
     submitState: 'idle',
     submitResult: null,
     sourceGalleryTitle: '',
+    sourceGalleryId: '',
+    referenceImageUrls: [],
+    referenceImageState: 'idle',
+    referenceImageMessage: '',
+    maxReferenceImageCount: MAX_REFERENCE_IMAGE_COUNT,
     timeSlotStateMessage: '',
     availabilityNoticeText: '',
     customerIdentity: {
@@ -351,12 +413,14 @@ Page({
   },
 
   onLoad(options = {}) {
-    const galleryTitle = decodeURIComponent(options.galleryTitle || '');
-    const styleNote = decodeURIComponent(options.styleNote || '');
-    if (galleryTitle || styleNote) {
+    const galleryId = decodeRouteOption(options.galleryId);
+    const galleryTitle = decodeRouteOption(options.galleryTitle);
+    const referenceImageUrl = decodeRouteOption(options.referenceImageUrl);
+    if (galleryId || galleryTitle || referenceImageUrl) {
       this.setData({
+        sourceGalleryId: galleryId,
         sourceGalleryTitle: galleryTitle,
-        'form.note': styleNote || (galleryTitle ? `喜欢返图风格：${galleryTitle}` : this.data.form.note)
+        referenceImageUrls: referenceImageUrl ? [referenceImageUrl] : []
       });
     }
   },
@@ -421,6 +485,141 @@ Page({
     const { value } = event.detail;
     this.setData({
       [`form.${field}`]: value
+    });
+  },
+
+  async addReferenceImages() {
+    const remainingCount = MAX_REFERENCE_IMAGE_COUNT - this.data.referenceImageUrls.length;
+    if (
+      remainingCount <= 0 ||
+      this.data.submitState !== 'idle' ||
+      this.data.referenceImageState !== 'idle'
+    ) {
+      if (remainingCount <= 0) {
+        wx.showToast({ title: `最多上传 ${MAX_REFERENCE_IMAGE_COUNT} 张`, icon: 'none' });
+      }
+      return;
+    }
+
+    this.setData({
+      referenceImageState: 'choosing',
+      referenceImageMessage: ''
+    });
+
+    try {
+      const filePaths = await chooseReferenceImagePaths(remainingCount);
+      if (this.data.submitState !== 'idle') {
+        if (this.data.referenceImageState === 'choosing') {
+          this.setData({ referenceImageState: 'idle' });
+        }
+        return;
+      }
+      if (this.data.referenceImageState !== 'choosing') {
+        return;
+      }
+
+      if (!filePaths.length) {
+        this.setData({ referenceImageState: 'idle' });
+        return;
+      }
+
+      this.setData({
+        referenceImageState: 'uploading',
+        referenceImageMessage: ''
+      });
+      const response = await uploadCustomerReferenceImages(filePaths);
+      const uploadedUrls = getUploadedReferenceImageUrls(response.items);
+      const referenceImageUrls = [...new Set([
+        ...this.data.referenceImageUrls,
+        ...uploadedUrls
+      ])].slice(0, MAX_REFERENCE_IMAGE_COUNT);
+
+      this.setData({
+        referenceImageUrls,
+        referenceImageState: 'idle',
+        referenceImageMessage: ''
+      });
+    } catch (error) {
+      const isCancelled = error && /cancel/i.test(`${error.errMsg || error.message || ''}`);
+      await cleanupUploadedReferenceImages(error && error.uploadedItems);
+      this.setData({
+        referenceImageState: 'idle',
+        referenceImageMessage: isCancelled ? '' : getErrorMessage(error, '参考图上传失败，请重试。')
+      });
+      if (!isCancelled) {
+        wx.showToast({ title: '参考图上传失败', icon: 'none' });
+      }
+    }
+  },
+
+  async removeReferenceImage(event) {
+    if (
+      this.data.submitState !== 'idle' ||
+      this.data.referenceImageState !== 'idle'
+    ) {
+      return;
+    }
+
+    const index = Number(event.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index >= this.data.referenceImageUrls.length) {
+      return;
+    }
+
+    const imageUrl = this.data.referenceImageUrls[index];
+    if (!isCustomerReferenceImageUrl(imageUrl)) {
+      this.setData({
+        referenceImageUrls: this.data.referenceImageUrls.filter(
+          (_url, itemIndex) => itemIndex !== index
+        ),
+        referenceImageMessage: ''
+      });
+      return;
+    }
+
+    this.setData({
+      referenceImageState: 'deleting',
+      referenceImageMessage: ''
+    });
+
+    try {
+      await deleteCustomerReferenceImage(imageUrl);
+      this.setData({
+        referenceImageUrls: this.data.referenceImageUrls.filter(
+          (_url, itemIndex) => itemIndex !== index
+        ),
+        referenceImageState: 'idle',
+        referenceImageMessage: ''
+      });
+    } catch (error) {
+      if (error && (error.statusCode === 404 || error.code === 'CUSTOMER_UPLOAD_NOT_FOUND')) {
+        this.setData({
+          referenceImageUrls: this.data.referenceImageUrls.filter(
+            (_url, itemIndex) => itemIndex !== index
+          ),
+          referenceImageState: 'idle',
+          referenceImageMessage: ''
+        });
+        return;
+      }
+
+      const detail = getErrorMessage(error, '请稍后重试。');
+      this.setData({
+        referenceImageState: 'idle',
+        referenceImageMessage: `参考图删除失败，图片已保留：${detail}`
+      });
+      wx.showToast({ title: '删除失败，图片已保留', icon: 'none' });
+    }
+  },
+
+  previewReferenceImage(event) {
+    const current = event.currentTarget.dataset.url;
+    if (!current || !this.data.referenceImageUrls.length) {
+      return;
+    }
+
+    wx.previewImage({
+      current,
+      urls: this.data.referenceImageUrls
     });
   },
 
@@ -588,8 +787,23 @@ Page({
       timeSlotOptions,
       selectedTimeSlotValue,
       form,
+      referenceImageUrls,
+      referenceImageState,
+      submitState,
       customerIdentity
     } = this.data;
+
+    if (referenceImageState !== 'idle') {
+      this.setData({
+        submitMessage: '参考图正在处理，请等待完成后再提交。'
+      });
+      wx.showToast({ title: '参考图正在处理', icon: 'none' });
+      return;
+    }
+
+    if (submitState === 'submitting') {
+      return;
+    }
 
     if (!customerIdentity.canUse) {
       this.setData({
@@ -653,7 +867,8 @@ Page({
         timeSlot: timeSlotOption.value,
         customerName,
         phone,
-        note
+        note,
+        referenceImageUrls
       });
 
       wx.showToast({ title: '预约已提交', icon: 'success' });

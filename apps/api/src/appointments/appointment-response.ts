@@ -27,6 +27,7 @@ export interface ApiAppointmentItem {
   date: string;
   timeSlot: string;
   note: string;
+  referenceImageUrls: string[];
   status: ApiAppointmentStatus;
   createdAt: string;
   reviewedAt: string | null;
@@ -36,6 +37,21 @@ export interface ApiAppointmentItem {
   cancelledBy: string | null;
   cancelReason: string;
   arrivalInstructions: typeof ARRIVAL_INSTRUCTIONS | null;
+}
+
+function parseReferenceImageUrls(value: string | null | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && !!item.trim())
+      : [];
+  } catch (_error) {
+    return [];
+  }
 }
 
 export function mapAppointmentStatus(status: AppointmentStatus): ApiAppointmentStatus {
@@ -65,6 +81,7 @@ export function toApiAppointmentItem(item: Appointment): ApiAppointmentItem {
     date: item.date,
     timeSlot: item.timeSlot,
     note: item.note ?? '',
+    referenceImageUrls: parseReferenceImageUrls(item.referenceImageUrlsJson),
     status: mapAppointmentStatus(item.status),
     createdAt: item.createdAt.toISOString(),
     reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,

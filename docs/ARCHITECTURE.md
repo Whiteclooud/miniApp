@@ -41,7 +41,7 @@
 
 ## 本轮体验优化补充（2026-03-29）
 
-- 首页返图灵感从“首页封面 + 详情多图”升级为“首页最近 3 条 + 全部返图列表 + 详情多图”三级结构：首页只负责最近内容与入口，`pages/gallery-list` 承担历史内容浏览，详情仍复用 gallery 数据，不新增独立 detail 接口。
+- 首页返图灵感采用“首页单卡片 + 全部返图列表 + 详情多图”三级结构：首页只展示最近 1 条内容与入口，`pages/gallery-list` 承担其余内容浏览，详情通过 `GET /api/v1/gallery/:id` 按 ID 单独读取。
 - 顾客预约页的日期选择组件改为复用 / 适配店员端月历能力，因此 `availability` 除 `dateOptions` 外，还需提供可支撑月历格渲染的日期状态信息（如可约、已满、闭店、超窗）。
 - 店员端新增返图内容管理能力；架构上拆为“图片上传能力 + 返图内容元数据管理”两层，避免把二进制上传与返图业务字段耦合成一个超大接口。
 - 店员审核从“一次性 review”改为“可修改最终结果”的 set-status 语义：最新一次审核结果生效；当状态改回 `approved` 时，仍需重新校验 slot 冲突；从 `approved` 改回 `rejected` 时，需要立即释放该时段占用。
@@ -84,6 +84,7 @@
 - 返图详情页 `pages/gallery-detail`
 - 预约页 `pages/booking`
 - 我的预约 `pages/my-bookings`
+- 我的灵感 `pages/my-inspirations`
 - 店员规则配置 `pages/staff/rules`
 - 店员返图管理 `pages/staff/gallery`
 - 店员预约审核 `pages/staff/appointments`
@@ -96,12 +97,14 @@
 
 - 健康检查 `/health`
 - 首页 / 全部返图库 `/api/v1/gallery`
-- 返图详情仍复用 `/api/v1/gallery` 返回的案例明细（V1 不新增独立详情接口）
+- 返图详情 `/api/v1/gallery/:id`
 - 店员图片上传 `/api/v1/staff/uploads/images`
-- 店员返图管理 `GET/POST/PATCH /api/v1/staff/gallery`
+- 顾客预约参考图上传 `/api/v1/uploads/images`
+- 店员返图管理 `GET/POST/PATCH/DELETE /api/v1/staff/gallery`
 - 可预约时段 `/api/v1/availability`
 - 顾客创建预约 `POST /api/v1/appointments`
 - 顾客查询我的预约 `GET /api/v1/my/appointments`
+- 顾客查看我的灵感 `GET/POST /api/v1/my/inspirations`、`GET/PATCH/DELETE /api/v1/my/inspirations/:id`
 - 店员规则读写 `GET/PUT /api/v1/staff/booking-rules`
 - 店员预约列表 `/api/v1/staff/appointments`
 - 店员预约详情 `/api/v1/staff/appointments/:id`
@@ -109,13 +112,15 @@
 
 ## 接口冻结说明（2026-03-16 复核，2026-03-29 增补）
 
-- 当前顾客身份主键固定为 `customerOpenId`。
-- 顾客侧身份统一从请求头 `X-Customer-OpenId` 读取。
-- 店员侧身份统一从请求头 `X-Staff-OpenId` 读取。
+- 当前顾客身份主键固定为服务端解析出的 `customerOpenId`；体验版 / 正式版优先从 Bearer session 读取。
+- 顾客侧身份优先从 `Authorization: Bearer <token>` session 读取；仅在 develop 环境允许 `X-Customer-OpenId` 作为兼容兜底。
+- 店员侧身份优先从 `Authorization: Bearer <token>` session 读取；仅在 develop 环境允许 `X-Staff-OpenId` 作为兼容兜底。
 - 顾客预约页以“可预约日期 + 时间段”为核心，不再要求先选服务项目。
 - 首页展示实体固定为 `gallery`，不再引入 `hot-styles`、`artists`、`services` 作为当前 V1 主链路接口。
-- `GET /api/v1/gallery` 同时承载首页最近 3 条、全部返图列表与详情多图字段（`imageUrl` + `imageUrls`），通过排序 / limit 控制不同页面视图，V1 不新增独立详情接口。
+- `GET /api/v1/gallery` 承载首页最近 1 条与全部返图列表，可通过 `limit` / `tag` 控制视图；`GET /api/v1/gallery/:id` 返回单条详情及多图字段（`imageUrl` + `imageUrls`）。
 - 店员返图维护走 `/api/v1/staff/uploads/images` + `/api/v1/staff/gallery` 两段式契约：先上传图片，再保存返图元数据。
+- 顾客参考图先通过 `POST /api/v1/uploads/images` 上传，再把返回 URL 作为 `referenceImageUrls` 随预约创建；预约记录只持久化 URL JSON，不存图片二进制。预约提交前，前端可通过受身份与文件归属校验的 `DELETE /api/v1/uploads/images/:filename` 移除顾客上传图；预约成功后不再删除，返图库文件也不在该删除范围内。
+- 本地实现把图片写入 `apps/api/uploads/gallery`（容器内 `/app/uploads/gallery`）；生产环境必须挂载持久卷并备份，或迁移到对象存储，不能依赖容器可写层。
 - `GET /api/v1/availability?date=...` 需要返回该日应展示的全部时段，并同时携带 `status`、`reasonCode`、`reasonText` 供前端做卡片化禁用提示；为支持顾客端月历组件，还需补充日期级状态数据。
 - 店员审核接口从“一次性 review”改为“最终状态可修改”，最新审核结果生效；改回 `approved` 时仍需校验冲突。
 - 本地 UAT 默认店员身份固定包含 `staff-openid-demo`，避免文档环境与服务默认白名单漂移。
@@ -142,17 +147,39 @@
 - `description` 承载店员填写的文字说明；`tags` 承载返图标签；`publishedAt` 用于顾客侧列表按时间倒序展示。
 - V1 支持店员端轻量维护，不扩展为复杂内容管理系统。
 
+### CustomerInspiration
+
+- `id`
+- `customerOpenId`
+- `galleryItemId`
+- `note`
+- `createdAt`
+- `updatedAt`
+
+说明：
+- `CustomerInspiration` 是顾客保存公共返图的关系记录，不是顾客上传作品，也不复制公共返图字段。
+- `(customerOpenId, galleryItemId)` 唯一，重复保存幂等返回原记录。
+- 详情、修改和删除均按当前顾客过滤，其他顾客统一返回 `INSPIRATION_NOT_FOUND`；分页游标绑定顾客身份，伪造或跨顾客游标返回 `INVALID_INSPIRATION_CURSOR`。
+- 返图下线时保留关系但隐藏 `galleryItem`；返图硬删除时由外键级联清理关系。
+
 ### BookingRule
 
 - `advanceOpenDays`
 - `closedDates`
 - `dailySlots`
+- `weeklyOpenDays`
+- `sameDayCutoffTime`
+- `minAdvanceHours`
+- `dateSlotOverrides`
 - `updatedAt`
 
 说明：
 - `advanceOpenDays` 表示提前开放预约天数。
 - `closedDates` 表示不可预约日期列表。
 - `dailySlots` 表示每日可预约时间段配置，例如 `10:00-11:00`。
+- `weeklyOpenDays` 表示周日到周六对应的营业日编号（`0-6`）。
+- `sameDayCutoffTime` 控制当天整体预约截止时间；`minAdvanceHours` 控制具体时段最短提前预约时间。
+- `dateSlotOverrides` 按 `YYYY-MM-DD` 覆盖某日时段；每个时段仍须满足合法 `HH:mm-HH:mm` 且不重叠。
 - V1 仅覆盖单店、单员工场景，不支持排班、多员工产能与多门店规则。
 
 ### Appointment
@@ -164,6 +191,7 @@
 - `date`
 - `timeSlot`
 - `note`
+- `referenceImageUrls`
 - `status`
 - `createdAt`
 - `reviewedAt`
@@ -173,14 +201,15 @@
 说明：
 - `id` 是预约主键；`customerOpenId` 是顾客身份键，一个顾客可有多条预约记录。
 - `customerName` / `phone` 仅作联系补充信息，不再作为“我的预约”主查询条件。
-- `status` 仅允许：`pending`、`approved`、`rejected`。
+- `referenceImageUrls` 由数据库 LongText JSON 映射为字符串数组，最多 6 个 HTTP(S) 图片 URL。
+- `status` 允许：`pending`、`approved`、`rejected`、`cancelled`、`completed`、`no_show`。
 - 审核结果允许被后续店员操作覆盖，系统以最新一次 `status / reviewedAt / reviewedBy / reviewNote` 为准。
 - 单员工模式下，同一 `date + timeSlot` 最多只能有 1 条 `approved` 预约。
 
 ## 接口边界与兼容策略
 
-- 顾客侧只保留 `POST /api/v1/appointments` 与 `GET /api/v1/my/appointments` 两个预约相关接口。
-- 顾客身份只从请求头 `X-Customer-OpenId` 读取并持久化为 `customerOpenId`。
+- 顾客预约主链路包括参考图上传、创建预约、查询和取消；接口详见 `docs/API.md`。
+- 顾客身份优先从 Bearer session 读取，develop 环境可从 `X-Customer-OpenId` 兜底，并持久化为 `customerOpenId`。
 - `customerOpenId` 不放入 body，也不再使用手机号作为“我的预约”主查询键。
 - 店员侧统一使用 `/api/v1/staff/*` 前缀，并统一做 `X-Staff-OpenId` 白名单校验。
 - 店员侧继续返回 `customerName` / `phone` 字段，便于识别顾客。
@@ -192,7 +221,7 @@
 
 ### 顾客侧
 
-1. 首页只承载品牌展示、返图封面展示、顾客入口 / 店员入口分流与预约 CTA；返图区默认只显示最近 3 条内容，并提供“查看全部返图灵感”入口。
+1. 首页只承载品牌展示、返图封面展示、顾客入口 / 店员入口分流与预约 CTA；返图区默认只显示最近 1 条内容，并提供“查看全部返图灵感”入口。
 2. 预约页只承载“在月历中选择日期 -> 以时段卡片展示可选/不可选时间段 -> 填写补充联系信息 -> 提交申请”。
 3. “我的预约”只按当前顾客 OpenID 查询。
 4. 页面必须对 loading / empty / error / unauthorized 给出显性反馈。

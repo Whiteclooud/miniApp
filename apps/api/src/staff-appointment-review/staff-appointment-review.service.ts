@@ -38,7 +38,39 @@ function toApprovedSlotKey(date: string, timeSlot: string) {
 }
 
 function resolveAppointmentDate(payload: RescheduleStaffAppointmentDto) {
-  return `${payload.appointmentDate || payload.date || ''}`.trim();
+  const value = payload.appointmentDate !== undefined ? payload.appointmentDate : payload.date;
+  if (value !== undefined && typeof value !== 'string') {
+    throw new BadRequestException({
+      error: 'appointmentDate must be a string',
+      code: 'INVALID_APPOINTMENT_DATE'
+    });
+  }
+
+  return `${value || ''}`.trim();
+}
+
+function assertObjectPayload(value: unknown, code: string, label: string): asserts value is object {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BadRequestException({
+      error: `${label} payload must be an object`,
+      code
+    });
+  }
+}
+
+function normalizeReviewNote(value: unknown) {
+  if (value === undefined) {
+    return '';
+  }
+
+  if (typeof value !== 'string' || value.trim().length > 2000) {
+    throw new BadRequestException({
+      error: 'reviewNote must be a string with at most 2000 characters',
+      code: 'INVALID_REVIEW_NOTE'
+    });
+  }
+
+  return value.trim();
 }
 
 @Injectable()
@@ -56,12 +88,16 @@ export class StaffAppointmentReviewService {
   ): Promise<ReviewStaffAppointmentResultItem> {
     const normalizedStaffOpenId = this.staffAppointmentsService.assertStaffAuthorized(staffOpenId);
     const normalizedAppointmentId = this.normalizeAppointmentId(appointmentId);
+    assertObjectPayload(payload, 'INVALID_REVIEW_PAYLOAD', 'Review');
     const targetStatus = this.resolveTargetStatus(payload);
-    const normalizedReviewNote = `${payload.reviewNote || ''}`.trim();
+    const normalizedReviewNote = normalizeReviewNote(payload.reviewNote);
 
     try {
       const updatedAppointment = await this.prisma.$transaction(async (tx) => {
-        const appointment = await this.findAppointmentOrThrow(tx, normalizedAppointmentId);
+        // Serialize all status/slot transitions for this appointment. Without a
+        // current-row lock, a concurrent review and reschedule can each read
+        // APPROVED and leave a rejected row carrying an approved slot key.
+        const appointment = await this.findAppointmentForUpdate(tx, normalizedAppointmentId);
 
         if (targetStatus === AppointmentStatus.APPROVED) {
           await this.assertSlotNotOccupied(tx, appointment.id, appointment.date, appointment.timeSlot);
@@ -81,15 +117,17 @@ export class StaffAppointmentReviewService {
             reviewedAt: now,
             reviewedByOpenId: normalizedStaffOpenId,
             reviewNote: normalizedReviewNote,
-            cancelledAt: targetStatus === AppointmentStatus.CANCELLED ? now : appointment.cancelledAt,
+            cancelledAt: targetStatus === AppointmentStatus.CANCELLED ? now : null,
             cancelledByOpenId:
               targetStatus === AppointmentStatus.CANCELLED
                 ? normalizedStaffOpenId
-                : appointment.cancelledByOpenId,
+                : null,
             cancelReason:
               targetStatus === AppointmentStatus.CANCELLED
-                ? normalizedReviewNote || appointment.cancelReason
-                : appointment.cancelReason
+                ? normalizedReviewNote || (appointment.status === AppointmentStatus.CANCELLED
+                    ? appointment.cancelReason
+                    : null)
+                : null
           }
         });
 
@@ -121,6 +159,10 @@ export class StaffAppointmentReviewService {
         });
       }
 
+      if (this.isRecordNotFound(error)) {
+        this.throwAppointmentNotFound();
+      }
+
       throw error;
     }
   }
@@ -132,15 +174,20 @@ export class StaffAppointmentReviewService {
   ): Promise<ApiAppointmentItem> {
     const normalizedStaffOpenId = this.staffAppointmentsService.assertStaffAuthorized(staffOpenId);
     const normalizedAppointmentId = this.normalizeAppointmentId(appointmentId);
+    assertObjectPayload(payload, 'INVALID_RESCHEDULE_PAYLOAD', 'Reschedule');
     const appointmentDate = resolveAppointmentDate(payload);
+    if (payload.timeSlot !== undefined && typeof payload.timeSlot !== 'string') {
+      throw new BadRequestException({
+        error: 'timeSlot must be a string',
+        code: 'INVALID_SLOT'
+      });
+    }
     const timeSlot = `${payload.timeSlot || ''}`.trim();
-    const reviewNote = `${payload.reviewNote || ''}`.trim();
-
-    await this.assertSlotAllowedByRules(appointmentDate, timeSlot);
+    const reviewNote = normalizeReviewNote(payload.reviewNote);
 
     try {
       const updatedAppointment = await this.prisma.$transaction(async (tx) => {
-        const appointment = await this.findAppointmentOrThrow(tx, normalizedAppointmentId);
+        const appointment = await this.findAppointmentForUpdate(tx, normalizedAppointmentId);
 
         if (
           appointment.status !== AppointmentStatus.PENDING &&
@@ -152,6 +199,9 @@ export class StaffAppointmentReviewService {
           });
         }
 
+        // Validate against the current rules after locking the appointment row,
+        // so a concurrent status change cannot use stale appointment data.
+        await this.assertSlotAllowedByRules(appointmentDate, timeSlot);
         await this.assertSlotNotOccupied(tx, appointment.id, appointmentDate, timeSlot);
 
         const updated = await tx.appointment.update({
@@ -199,6 +249,10 @@ export class StaffAppointmentReviewService {
         });
       }
 
+      if (this.isRecordNotFound(error)) {
+        this.throwAppointmentNotFound();
+      }
+
       throw error;
     }
   }
@@ -216,12 +270,23 @@ export class StaffAppointmentReviewService {
     return normalizedAppointmentId;
   }
 
-  private async findAppointmentOrThrow(tx: Prisma.TransactionClient, appointmentId: string) {
-    const appointment = await tx.appointment.findUnique({
-      where: {
-        id: appointmentId
-      }
-    });
+  private async findAppointmentForUpdate(tx: Prisma.TransactionClient, appointmentId: string) {
+    // Prisma's regular findUnique does not expose SELECT ... FOR UPDATE. Lock
+    // the row first, then read it through Prisma for the mapped model.
+    const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM appointments
+      WHERE id = ${appointmentId}
+      FOR UPDATE
+    `;
+
+    const appointment = lockedRows.length
+      ? await tx.appointment.findUnique({
+          where: {
+            id: lockedRows[0].id
+          }
+        })
+      : null;
 
     if (!appointment) {
       throw new NotFoundException({
@@ -234,33 +299,46 @@ export class StaffAppointmentReviewService {
   }
 
   private resolveTargetStatus(payload: ReviewStaffAppointmentDto): AppointmentStatus {
+    if (payload.status !== undefined && typeof payload.status !== 'string') {
+      throw new BadRequestException({
+        error: 'status must be a string',
+        code: 'INVALID_REVIEW_STATUS'
+      });
+    }
+    if (payload.action !== undefined && typeof payload.action !== 'string') {
+      throw new BadRequestException({
+        error: 'action must be a string',
+        code: 'INVALID_REVIEW_STATUS'
+      });
+    }
+
     const normalizedStatus = `${payload.status || ''}`.trim().toLowerCase();
     const normalizedAction = `${payload.action || ''}`.trim().toLowerCase();
+    const statusMap: Record<string, AppointmentStatus> = {
+      approved: AppointmentStatus.APPROVED,
+      rejected: AppointmentStatus.REJECTED,
+      cancelled: AppointmentStatus.CANCELLED,
+      canceled: AppointmentStatus.CANCELLED,
+      completed: AppointmentStatus.COMPLETED,
+      no_show: AppointmentStatus.NO_SHOW,
+      'no-show': AppointmentStatus.NO_SHOW,
+      noshow: AppointmentStatus.NO_SHOW
+    };
+    const actionMap: Record<string, AppointmentStatus> = {
+      approve: AppointmentStatus.APPROVED,
+      reject: AppointmentStatus.REJECTED,
+      cancel: AppointmentStatus.CANCELLED,
+      complete: AppointmentStatus.COMPLETED,
+      no_show: AppointmentStatus.NO_SHOW,
+      mark_no_show: AppointmentStatus.NO_SHOW
+    };
 
-    if (normalizedStatus === 'approved' || normalizedAction === 'approve') {
-      return AppointmentStatus.APPROVED;
-    }
-
-    if (normalizedStatus === 'rejected' || normalizedAction === 'reject') {
-      return AppointmentStatus.REJECTED;
-    }
-
-    if (normalizedStatus === 'cancelled' || normalizedStatus === 'canceled' || normalizedAction === 'cancel') {
-      return AppointmentStatus.CANCELLED;
-    }
-
-    if (normalizedStatus === 'completed' || normalizedAction === 'complete') {
-      return AppointmentStatus.COMPLETED;
-    }
-
-    if (
-      normalizedStatus === 'no_show' ||
-      normalizedStatus === 'no-show' ||
-      normalizedStatus === 'noshow' ||
-      normalizedAction === 'no_show' ||
-      normalizedAction === 'mark_no_show'
-    ) {
-      return AppointmentStatus.NO_SHOW;
+    if (normalizedStatus) {
+      if (statusMap[normalizedStatus]) {
+        return statusMap[normalizedStatus];
+      }
+    } else if (normalizedAction && actionMap[normalizedAction]) {
+      return actionMap[normalizedAction];
     }
 
     throw new BadRequestException({
@@ -346,6 +424,22 @@ export class StaffAppointmentReviewService {
       'code' in error &&
       (error as { code?: string }).code === 'P2002'
     );
+  }
+
+  private isRecordNotFound(error: unknown) {
+    return !!(
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2025'
+    );
+  }
+
+  private throwAppointmentNotFound(): never {
+    throw new NotFoundException({
+      error: 'Appointment not found',
+      code: 'APPOINTMENT_NOT_FOUND'
+    });
   }
 
   private toReviewResultItem(item: Appointment): ReviewStaffAppointmentResultItem {

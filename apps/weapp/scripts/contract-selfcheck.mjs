@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { runReferenceImageLogicSelfcheck } from './reference-image-logic-selfcheck.mjs';
 
 const workspaceDir = process.cwd();
 const issues = [];
@@ -68,6 +69,38 @@ function getFunctionBody(text, functionName) {
   return '';
 }
 
+function getObjectMethodBody(text, methodName) {
+  let start = text.indexOf(`async ${methodName}(`);
+  if (start < 0) {
+    start = text.indexOf(`${methodName}(`);
+  }
+  if (start < 0) {
+    return '';
+  }
+
+  const signatureEnd = text.indexOf(')', start);
+  const openBraceIndex = signatureEnd < 0 ? -1 : text.indexOf('{', signatureEnd);
+  if (openBraceIndex < 0) {
+    return '';
+  }
+
+  let depth = 0;
+  for (let index = openBraceIndex; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '{') {
+      depth += 1;
+    }
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, index + 1);
+      }
+    }
+  }
+
+  return '';
+}
+
 function scanLegacyTokens(dirPath) {
   const scanExtensions = new Set(['.js', '.json', '.wxml']);
   const tokens = ['/api/v1/staff/rules', 'bookingEnabled', 'bookingNotice', 'confirmed'];
@@ -103,14 +136,99 @@ expectIncludes(requestText, 'getCustomerIdentityOrThrow', requestPath);
 const appointmentServicePath = 'apps/weapp/services/appointment.js';
 const appointmentServiceText = readText(appointmentServicePath);
 const listGalleryBody = getFunctionBody(appointmentServiceText, 'listGallery');
+const getGalleryDetailBody = getFunctionBody(appointmentServiceText, 'getGalleryDetail');
+const listMyInspirationsBody = getFunctionBody(appointmentServiceText, 'listMyInspirations');
+const getMyInspirationBody = getFunctionBody(appointmentServiceText, 'getMyInspiration');
+const createMyInspirationBody = getFunctionBody(appointmentServiceText, 'createMyInspiration');
+const updateMyInspirationBody = getFunctionBody(appointmentServiceText, 'updateMyInspiration');
+const deleteMyInspirationBody = getFunctionBody(appointmentServiceText, 'deleteMyInspiration');
+const uploadCustomerReferenceImagesBody = getFunctionBody(
+  appointmentServiceText,
+  'uploadCustomerReferenceImages'
+);
+const deleteCustomerReferenceImageBody = getFunctionBody(
+  appointmentServiceText,
+  'deleteCustomerReferenceImage'
+);
 const getAvailabilityBody = getFunctionBody(appointmentServiceText, 'getAvailability');
 const createAppointmentBody = getFunctionBody(appointmentServiceText, 'createAppointment');
 const listMyAppointmentsBody = getFunctionBody(appointmentServiceText, 'listMyAppointments');
 const listStaffRulesBody = getFunctionBody(appointmentServiceText, 'listStaffRules');
 const updateStaffRulesBody = getFunctionBody(appointmentServiceText, 'updateStaffRules');
+const getStaffAppointmentDetailBody = getFunctionBody(
+  appointmentServiceText,
+  'getStaffAppointmentDetail'
+);
 
 expectIncludes(listGalleryBody, "url: '/api/v1/gallery'", `${appointmentServicePath}#listGallery`);
 expectExcludes(listGalleryBody, '/api/v1/gallery/', `${appointmentServicePath}#listGallery`);
+expectIncludes(
+  getGalleryDetailBody,
+  'url: `/api/v1/gallery/${encodeURIComponent(itemId)}`',
+  `${appointmentServicePath}#getGalleryDetail`
+);
+expectIncludes(
+  listMyInspirationsBody,
+  "url: '/api/v1/my/inspirations'",
+  `${appointmentServicePath}#listMyInspirations`
+);
+expectIncludes(listMyInspirationsBody, "auth: 'customer'", `${appointmentServicePath}#listMyInspirations`);
+expectIncludes(
+  getMyInspirationBody,
+  'url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`',
+  `${appointmentServicePath}#getMyInspiration`
+);
+expectIncludes(createMyInspirationBody, "method: 'POST'", `${appointmentServicePath}#createMyInspiration`);
+expectIncludes(
+  createMyInspirationBody,
+  "url: '/api/v1/my/inspirations'",
+  `${appointmentServicePath}#createMyInspiration`
+);
+expectIncludes(createMyInspirationBody, "auth: 'customer'", `${appointmentServicePath}#createMyInspiration`);
+expectIncludes(
+  updateMyInspirationBody,
+  'url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`',
+  `${appointmentServicePath}#updateMyInspiration`
+);
+expectIncludes(updateMyInspirationBody, "method: 'PATCH'", `${appointmentServicePath}#updateMyInspiration`);
+expectIncludes(updateMyInspirationBody, "auth: 'customer'", `${appointmentServicePath}#updateMyInspiration`);
+expectIncludes(
+  deleteMyInspirationBody,
+  'url: `/api/v1/my/inspirations/${encodeURIComponent(inspirationId)}`',
+  `${appointmentServicePath}#deleteMyInspiration`
+);
+expectIncludes(deleteMyInspirationBody, "method: 'DELETE'", `${appointmentServicePath}#deleteMyInspiration`);
+expectIncludes(deleteMyInspirationBody, "auth: 'customer'", `${appointmentServicePath}#deleteMyInspiration`);
+expectIncludes(
+  uploadCustomerReferenceImagesBody,
+  'filePaths: [filePath]',
+  `${appointmentServicePath}#uploadCustomerReferenceImages`
+);
+expectIncludes(
+  uploadCustomerReferenceImagesBody,
+  'uploadError.uploadedItems = uploadedItems.slice()',
+  `${appointmentServicePath}#uploadCustomerReferenceImages`
+);
+expectIncludes(
+  deleteCustomerReferenceImageBody,
+  'getCustomerReferenceImageFilename(imageUrl)',
+  `${appointmentServicePath}#deleteCustomerReferenceImage`
+);
+expectIncludes(
+  deleteCustomerReferenceImageBody,
+  'url: `/api/v1/uploads/images/${encodeURIComponent(filename)}`',
+  `${appointmentServicePath}#deleteCustomerReferenceImage`
+);
+expectIncludes(
+  deleteCustomerReferenceImageBody,
+  "method: 'DELETE'",
+  `${appointmentServicePath}#deleteCustomerReferenceImage`
+);
+expectIncludes(
+  deleteCustomerReferenceImageBody,
+  "auth: 'customer'",
+  `${appointmentServicePath}#deleteCustomerReferenceImage`
+);
 expectIncludes(appointmentServiceText, "url: '/api/v1/availability'", appointmentServicePath);
 expectRegex(
   getAvailabilityBody,
@@ -174,6 +292,26 @@ expectRegex(
   'must use staff auth'
 );
 expectExcludes(appointmentServiceText, '/api/v1/staff/rules', appointmentServicePath);
+expectIncludes(
+  getStaffAppointmentDetailBody,
+  'url: `/api/v1/staff/appointments/${encodeURIComponent(appointmentId)}`',
+  `${appointmentServicePath}#getStaffAppointmentDetail`
+);
+expectIncludes(
+  getStaffAppointmentDetailBody,
+  "auth: 'staff'",
+  `${appointmentServicePath}#getStaffAppointmentDetail`
+);
+
+const staffIdentityPath = 'apps/weapp/utils/staff.js';
+const staffIdentityText = readText(staffIdentityPath);
+expectIncludes(staffIdentityText, 'getCurrentUser', staffIdentityPath);
+expectIncludes(staffIdentityText, "source: 'session-pending'", staffIdentityPath);
+
+const customerIdentityPath = 'apps/weapp/utils/customer.js';
+const customerIdentityText = readText(customerIdentityPath);
+expectIncludes(customerIdentityText, 'getCurrentUser', customerIdentityPath);
+expectIncludes(customerIdentityText, "source: 'session-pending'", customerIdentityPath);
 
 const appJsPath = 'apps/weapp/app.js';
 const appJsText = readText(appJsPath);
@@ -191,17 +329,41 @@ expectRegex(
   apiProfilePath,
   'must point api profile to an apps/api server on port 3100'
 );
+expectIncludes(apiProfileText, 'allowHeaderAuthFallback: true', apiProfilePath);
+expectRegex(
+  apiProfileText,
+  /trial:\s*\{[\s\S]*?baseUrl:\s*'https:\/\/[^']+'[\s\S]*?enableWechatAuth:\s*true[\s\S]*?allowHeaderAuthFallback:\s*false/,
+  apiProfilePath,
+  'trial profile must use HTTPS WeChat auth without header fallback'
+);
+expectRegex(
+  apiProfileText,
+  /release:\s*\{[\s\S]*?baseUrl:\s*'https:\/\/[^']+'[\s\S]*?enableWechatAuth:\s*true[\s\S]*?allowHeaderAuthFallback:\s*false/,
+  apiProfilePath,
+  'release profile must use HTTPS WeChat auth without header fallback'
+);
+expectIncludes(apiProfileText, "envVersion === 'trial'", apiProfilePath);
+expectIncludes(apiProfileText, "envVersion === 'release'", apiProfilePath);
+expectIncludes(
+  apiProfileText,
+  'allowHeaderAuthFallback: !!profile.allowHeaderAuthFallback',
+  apiProfilePath
+);
 expectExcludes(apiProfileText, 'apps/server', apiProfilePath);
 expectExcludes(apiProfileText, '127.0.0.1:3000', apiProfilePath);
 expectExcludes(apiProfileText, "'legacy'", apiProfilePath);
 
 const homePagePath = 'apps/weapp/pages/home/index.js';
 const homePageText = readText(homePagePath);
+const homeLoadDataBody = getObjectMethodBody(homePageText, 'loadData');
 expectIncludes(homePageText, 'goGalleryDetail', homePagePath);
 expectIncludes(homePageText, 'goGalleryList', homePagePath);
 expectIncludes(homePageText, '/pages/gallery-detail/index?id=', homePagePath);
 expectIncludes(homePageText, '/pages/gallery-list/index', homePagePath);
 expectIncludes(homePageText, 'normalizeGalleryItems', homePagePath);
+expectIncludes(homeLoadDataBody, 'listGallery({ limit: 1 })', `${homePagePath}#loadData`);
+expectIncludes(homeLoadDataBody, '.slice(0, 1)', `${homePagePath}#loadData`);
+expectExcludes(homeLoadDataBody, 'limit: 3', `${homePagePath}#loadData`);
 expectExcludes(homePageText, 'switchToLegacyProfile', homePagePath);
 expectExcludes(homePageText, 'applyApiProfile', homePagePath);
 
@@ -219,10 +381,26 @@ expectExcludes(homeWxmlText, '恢复默认基线', homeWxmlPath);
 
 const galleryDetailPagePath = 'apps/weapp/pages/gallery-detail/index.js';
 const galleryDetailPageText = readText(galleryDetailPagePath);
-expectIncludes(galleryDetailPageText, 'listGallery', galleryDetailPagePath);
-expectIncludes(galleryDetailPageText, 'normalizeGalleryItems', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'getGalleryDetail', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'normalizeGalleryItem', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'GALLERY_ITEM_NOT_FOUND', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'referenceImageUrl=', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'createMyInspiration', galleryDetailPagePath);
+expectIncludes(galleryDetailPageText, 'saveToInspirations', galleryDetailPagePath);
+expectExcludes(galleryDetailPageText, 'listGallery', galleryDetailPagePath);
+expectExcludes(galleryDetailPageText, 'styleNote', galleryDetailPagePath);
 expectExcludes(galleryDetailPageText, '/api/v1/gallery/', galleryDetailPagePath);
-expectExcludes(galleryDetailPageText, 'detailApi', galleryDetailPagePath);
+
+const galleryListPagePath = 'apps/weapp/pages/gallery-list/index.js';
+const galleryListPageText = readText(galleryListPagePath);
+expectIncludes(galleryListPageText, 'GALLERY_FILTERS', galleryListPagePath);
+expectIncludes(galleryListPageText, 'onFilterTap', galleryListPagePath);
+expectIncludes(galleryListPageText, "{ tag: this.data.activeTag }", galleryListPagePath);
+
+const galleryListWxmlPath = 'apps/weapp/pages/gallery-list/index.wxml';
+const galleryListWxmlText = readText(galleryListWxmlPath);
+expectIncludes(galleryListWxmlText, 'bindtap="onFilterTap"', galleryListWxmlPath);
+expectIncludes(galleryListWxmlText, "activeTag === item.tag", galleryListWxmlPath);
 
 const galleryUtilsPath = 'apps/weapp/utils/gallery.js';
 const galleryUtilsText = readText(galleryUtilsPath);
@@ -230,8 +408,21 @@ expectIncludes(galleryUtilsText, 'item.imageUrls', galleryUtilsPath);
 expectIncludes(galleryUtilsText, 'item.imageUrl', galleryUtilsPath);
 expectIncludes(galleryUtilsText, 'const coverImageUrl = item.imageUrl || imageUrls[0] ||', galleryUtilsPath);
 
+const referenceImagesUtilsPath = 'apps/weapp/utils/reference-images.js';
+const referenceImagesUtilsText = readText(referenceImagesUtilsPath);
+expectIncludes(
+  referenceImagesUtilsText,
+  "const CUSTOMER_UPLOAD_PATH_PREFIX = '/api/v1/uploads/images/'",
+  referenceImagesUtilsPath
+);
+expectIncludes(referenceImagesUtilsText, 'getCustomerReferenceImageFilename', referenceImagesUtilsPath);
+expectIncludes(referenceImagesUtilsText, 'isCustomerReferenceImageUrl', referenceImagesUtilsPath);
+
 const bookingPagePath = 'apps/weapp/pages/booking/index.js';
 const bookingPageText = readText(bookingPagePath);
+const addReferenceImagesBody = getObjectMethodBody(bookingPageText, 'addReferenceImages');
+const removeReferenceImageBody = getObjectMethodBody(bookingPageText, 'removeReferenceImage');
+const submitBody = getObjectMethodBody(bookingPageText, 'submit');
 expectIncludes(bookingPageText, 'normalizeTimeSlotStatus', bookingPagePath);
 expectIncludes(bookingPageText, 'calendarDays', bookingPagePath);
 expectIncludes(bookingPageText, 'calendarWeeks', bookingPagePath);
@@ -242,6 +433,23 @@ expectIncludes(bookingPageText, 'selectedTimeSlotValue', bookingPagePath);
 expectIncludes(bookingPageText, 'onTimeSlotTap', bookingPagePath);
 expectIncludes(bookingPageText, "status !== 'active'", bookingPagePath);
 expectIncludes(bookingPageText, 'getTimeSlotReasonText', bookingPagePath);
+expectIncludes(bookingPageText, 'uploadCustomerReferenceImages', bookingPagePath);
+expectIncludes(bookingPageText, 'referenceImageUrls', bookingPagePath);
+expectIncludes(bookingPageText, 'removeReferenceImage', bookingPagePath);
+expectIncludes(bookingPageText, 'previewReferenceImage', bookingPagePath);
+expectIncludes(bookingPageText, 'deleteCustomerReferenceImage', bookingPagePath);
+expectIncludes(bookingPageText, 'isCustomerReferenceImageUrl', bookingPagePath);
+expectIncludes(addReferenceImagesBody, "this.data.submitState !== 'idle'", `${bookingPagePath}#addReferenceImages`);
+expectIncludes(addReferenceImagesBody, 'error && error.uploadedItems', `${bookingPagePath}#addReferenceImages`);
+expectIncludes(addReferenceImagesBody, 'cleanupUploadedReferenceImages', `${bookingPagePath}#addReferenceImages`);
+expectIncludes(removeReferenceImageBody, "this.data.submitState !== 'idle'", `${bookingPagePath}#removeReferenceImage`);
+expectIncludes(removeReferenceImageBody, "referenceImageState: 'deleting'", `${bookingPagePath}#removeReferenceImage`);
+expectIncludes(removeReferenceImageBody, 'await deleteCustomerReferenceImage(imageUrl)', `${bookingPagePath}#removeReferenceImage`);
+expectIncludes(removeReferenceImageBody, "error.code === 'CUSTOMER_UPLOAD_NOT_FOUND'", `${bookingPagePath}#removeReferenceImage`);
+expectIncludes(removeReferenceImageBody, '图片已保留', `${bookingPagePath}#removeReferenceImage`);
+expectIncludes(submitBody, "referenceImageState !== 'idle'", `${bookingPagePath}#submit`);
+expectExcludes(submitBody, 'deleteCustomerReferenceImage', `${bookingPagePath}#submit`);
+expectExcludes(bookingPageText, 'styleNote', bookingPagePath);
 expectRegex(
   bookingPageText,
   /createAppointment\(\{[\s\S]*appointmentDate:\s*availability\.selectedDate[\s\S]*timeSlot:\s*timeSlotOption\.value[\s\S]*\}\)/,
@@ -259,6 +467,24 @@ expectIncludes(bookingWxmlText, 'bindtap="onCalendarDayTap"', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'time-slot-grid', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'bindtap="onTimeSlotTap"', bookingWxmlPath);
 expectIncludes(bookingWxmlText, 'item.reasonText || item.reasonCode', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'bindtap="addReferenceImages"', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'catchtap="removeReferenceImage"', bookingWxmlPath);
+expectIncludes(bookingWxmlText, 'bindtap="previewReferenceImage"', bookingWxmlPath);
+expectIncludes(
+  bookingWxmlText,
+  "wx:if=\"{{submitState === 'idle' && referenceImageState === 'idle'}}\"",
+  `${bookingWxmlPath}#removeReferenceImage`
+);
+expectIncludes(
+  bookingWxmlText,
+  "referenceImageUrls.length < maxReferenceImageCount && submitState === 'idle' && referenceImageState === 'idle'",
+  `${bookingWxmlPath}#addReferenceImages`
+);
+expectIncludes(
+  bookingWxmlText,
+  "disabled=\"{{submitState === 'submitting' || referenceImageState !== 'idle'}}\"",
+  bookingWxmlPath
+);
 expectExcludes(bookingWxmlText, 'picker mode="selector" range="{{timeSlotOptions}}"', bookingWxmlPath);
 
 const bookingWxssPath = 'apps/weapp/pages/booking/index.wxss';
@@ -268,6 +494,8 @@ expectIncludes(bookingWxssText, '.calendar-cell', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-grid', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-card.is-disabled', bookingWxssPath);
 expectIncludes(bookingWxssText, '.time-slot-card.is-selected', bookingWxssPath);
+expectIncludes(bookingWxssText, '.reference-image-grid', bookingWxssPath);
+expectIncludes(bookingWxssText, '.reference-image-remove', bookingWxssPath);
 
 const myBookingsPagePath = 'apps/weapp/pages/my-bookings/index.js';
 const myBookingsPageText = readText(myBookingsPagePath);
@@ -281,6 +509,8 @@ expectIncludes(myBookingsPageText, 'approved', myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'rejected', myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'cancelled', myBookingsPagePath);
 expectIncludes(myBookingsPageText, 'completed', myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'referenceImageUrls', myBookingsPagePath);
+expectIncludes(myBookingsPageText, 'previewReferenceImage', myBookingsPagePath);
 
 const staffAppointmentsPagePath = 'apps/weapp/pages/staff/appointments/index.js';
 const staffAppointmentsPageText = readText(staffAppointmentsPagePath);
@@ -301,6 +531,8 @@ expectIncludes(staffAppointmentsPageText, 'detailFilters', staffAppointmentsPage
 expectIncludes(staffAppointmentsPageText, 'onDetailFilterTap', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'buildCalendarState', staffAppointmentsPagePath);
 expectIncludes(staffAppointmentsPageText, 'historyAppointments', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'referenceImageUrls', staffAppointmentsPagePath);
+expectIncludes(staffAppointmentsPageText, 'previewReferenceImage', staffAppointmentsPagePath);
 expectRegex(
   staffAppointmentsPageText,
   /const response = await listStaffAppointments\(\);/,
@@ -337,10 +569,18 @@ expectRegex(
   'must submit advanceOpenDays + dailySlots + closedDates'
 );
 
-const galleryListPagePath = 'apps/weapp/pages/gallery-list/index.js';
-const galleryListPageText = readText(galleryListPagePath);
 expectIncludes(galleryListPageText, 'listGallery', galleryListPagePath);
 expectIncludes(galleryListPageText, 'goGalleryDetail', galleryListPagePath);
+
+const myInspirationsPagePath = 'apps/weapp/pages/my-inspirations/index.js';
+const myInspirationsPageText = readText(myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, 'listMyInspirations', myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, 'getMyInspiration', myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, 'updateMyInspiration', myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, 'deleteMyInspiration', myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, 'pageInfo.nextCursor', myInspirationsPagePath);
+expectIncludes(myInspirationsPageText, "availability: item.availability === 'available'", myInspirationsPagePath);
+expectRegex(myInspirationsPageText, /galleryItem:[\s\S]*?: null,/, myInspirationsPagePath, 'must preserve unavailable galleryItem as null');
 
 const staffGalleryPagePath = 'apps/weapp/pages/staff/gallery/index.js';
 const staffGalleryPageText = readText(staffGalleryPagePath);
@@ -350,6 +590,35 @@ expectIncludes(staffGalleryPageText, 'updateStaffGallery', staffGalleryPagePath)
 expectIncludes(staffGalleryPageText, "publishedAt = `${form.publishDate}T${form.publishTime}:00`", staffGalleryPagePath);
 expectIncludes(staffGalleryPageText, "status: form.status === 'inactive' ? 'inactive' : 'active'", staffGalleryPagePath);
 
+const staffGalleryServicePath = 'apps/weapp/services/appointment.js';
+const getStaffGalleryDetailBody = getFunctionBody(appointmentServiceText, 'getStaffGalleryDetail');
+const deleteStaffGalleryBody = getFunctionBody(appointmentServiceText, 'deleteStaffGallery');
+expectIncludes(
+  getStaffGalleryDetailBody,
+  'url: `/api/v1/staff/gallery/${encodeURIComponent(itemId)}`',
+  `${staffGalleryServicePath}#getStaffGalleryDetail`
+);
+expectIncludes(
+  getStaffGalleryDetailBody,
+  "auth: 'staff'",
+  `${staffGalleryServicePath}#getStaffGalleryDetail`
+);
+expectIncludes(
+  deleteStaffGalleryBody,
+  'url: `/api/v1/staff/gallery/${encodeURIComponent(itemId)}`',
+  `${staffGalleryServicePath}#deleteStaffGallery`
+);
+expectIncludes(
+  deleteStaffGalleryBody,
+  "method: 'DELETE'",
+  `${staffGalleryServicePath}#deleteStaffGallery`
+);
+expectIncludes(
+  deleteStaffGalleryBody,
+  "auth: 'staff'",
+  `${staffGalleryServicePath}#deleteStaffGallery`
+);
+
 const appJsonPath = 'apps/weapp/app.json';
 const appJson = JSON.parse(readText(appJsonPath) || '{}');
 const requiredPages = [
@@ -358,6 +627,7 @@ const requiredPages = [
   'pages/gallery-detail/index',
   'pages/booking/index',
   'pages/my-bookings/index',
+  'pages/my-inspirations/index',
   'pages/staff/rules/index',
   'pages/staff/gallery/index',
   'pages/staff/appointments/index'
@@ -369,6 +639,12 @@ requiredPages.forEach((page) => {
 });
 
 scanLegacyTokens(resolveWorkspacePath('apps/weapp'));
+
+try {
+  await runReferenceImageLogicSelfcheck();
+} catch (error) {
+  issues.push(`reference image logic self-check failed: ${error.stack || error.message || error}`);
+}
 
 if (issues.length) {
   console.error(issues.join('\n'));

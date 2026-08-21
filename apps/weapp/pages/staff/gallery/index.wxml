@@ -1,5 +1,11 @@
-<view class="container">
-  <view class="card identity-card">
+<view class="container staff-page staff-gallery-page">
+  <view class="staff-navigation">
+    <view class="staff-navigation-tab" bindtap="goAppointments">预约总览</view>
+    <view class="staff-navigation-tab" bindtap="goRules">预约规则</view>
+    <view class="staff-navigation-tab staff-navigation-tab-active">返图管理</view>
+  </view>
+
+  <view wx:if="{{!staffIdentity.canUse}}" class="card identity-card">
     <view class="identity-label">店员身份主键</view>
     <view class="identity-value">{{staffIdentity.openId || staffIdentity.label}}</view>
     <view class="helper-text">{{staffIdentity.sourceText}}</view>
@@ -12,15 +18,6 @@
       <button class="button-primary compact-button" bindtap="applyStaffOpenId">保存并查询</button>
       <button class="button-secondary compact-button" bindtap="generateStaffOpenId">生成模拟 OpenID</button>
       <button class="button-ghost compact-button" bindtap="clearStaffOpenId">清空店员 OpenID</button>
-    </view>
-  </view>
-
-  <view class="card nav-card">
-    <view class="nav-title">店员工作台</view>
-    <view class="action-row action-row-wrap">
-      <button class="button-secondary compact-button" bindtap="goRules">预约规则</button>
-      <button class="button-primary compact-button">返图管理</button>
-      <button class="button-secondary compact-button" bindtap="goAppointments">预约列表</button>
     </view>
   </view>
 
@@ -42,13 +39,41 @@
   </view>
 
   <block wx:else>
-    <view class="card editor-card">
+    <view class="gallery-overview">
+      <view>
+        <view class="section-title">返图内容</view>
+        <view class="helper-text">共 {{items.length}} 条返图内容</view>
+      </view>
+      <button class="button-primary gallery-create-button" bindtap="startCreate">新建返图</button>
+    </view>
+
+    <view class="section-title list-title">已维护返图</view>
+    <view wx:if="{{items.length}}" class="gallery-list">
+      <view wx:for="{{items}}" wx:key="id" class="card list-card">
+        <image wx:if="{{item.imageUrl}}" class="list-cover" mode="aspectFill" src="{{item.imageUrl}}" />
+        <view class="list-body">
+          <view class="list-head">
+            <view class="list-name">{{item.title}}</view>
+            <view class="status-pill {{item.status}}">{{item.statusText}}</view>
+          </view>
+          <view wx:if="{{item.tags.length}}" class="tag-list">
+            <text wx:for="{{item.tags}}" wx:key="*this" class="tag-item">#{{item}}</text>
+          </view>
+          <view wx:if="{{item.description}}" class="list-desc">{{item.description}}</view>
+          <view class="helper-text">发布时间：{{item.publishedAtText || '未设置'}} · 图片 {{item.imageUrls.length}} 张</view>
+          <button class="button-secondary compact-button list-edit-button" data-id="{{item.id}}" bindtap="startEdit">编辑</button>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="card state-card gallery-empty-card">{{stateMessage || '当前还没有返图内容，先创建第一条灵感内容吧。'}}</view>
+
+    <view wx:if="{{isEditorVisible}}" id="gallery-editor" class="card editor-card">
       <view class="editor-header">
         <view>
           <view class="section-title">{{editingId ? '编辑返图内容' : '新建返图内容'}}</view>
           <view class="helper-text">支持多图上传、默认/手动封面、标签、说明、发布时间与草稿/发布状态。</view>
         </view>
-        <button class="button-secondary compact-button" bindtap="startCreate">新建</button>
+        <button class="button-secondary compact-button" bindtap="closeEditor">收起</button>
       </view>
 
       <view class="field-label">返图标题</view>
@@ -94,25 +119,5 @@
       <view wx:if="{{submitMessage}}" class="inline-error">{{submitMessage}}</view>
       <button class="button-primary" bindtap="submit" loading="{{saveState === 'submitting'}}">{{editingId ? '保存修改' : '创建返图'}}</button>
     </view>
-
-    <view class="section-title list-title">已维护返图</view>
-    <view wx:if="{{items.length}}" class="gallery-list">
-      <view wx:for="{{items}}" wx:key="id" class="card list-card">
-        <image wx:if="{{item.imageUrl}}" class="list-cover" mode="aspectFill" src="{{item.imageUrl}}" />
-        <view class="list-body">
-          <view class="list-head">
-            <view class="list-name">{{item.title}}</view>
-            <view class="status-pill {{item.status}}">{{item.statusText}}</view>
-          </view>
-          <view wx:if="{{item.description}}" class="list-desc">{{item.description}}</view>
-          <view wx:if="{{item.tags.length}}" class="tag-list">
-            <text wx:for="{{item.tags}}" wx:key="*this" class="tag-item">#{{item}}</text>
-          </view>
-          <view class="helper-text">发布时间：{{item.publishedAtText || '未设置'}} · 图片 {{item.imageUrls.length}} 张</view>
-          <button class="button-secondary compact-button" data-id="{{item.id}}" bindtap="startEdit">编辑</button>
-        </view>
-      </view>
-    </view>
-    <view wx:else class="card state-card">{{stateMessage || '当前还没有返图内容，先创建第一条灵感内容吧。'}}</view>
   </block>
 </view>

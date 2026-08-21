@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "提交预约"
+  "navigationBarTitleText": "提交预约",
+  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarTextStyle": "black"
 }

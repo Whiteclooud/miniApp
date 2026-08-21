@@ -1,0 +1,174 @@
+<view class="inspirations-page">
+  <view class="container">
+    <view class="card identity-card">
+      <view class="identity-label">当前顾客身份</view>
+      <view class="identity-value">{{customerIdentity.openId || customerIdentity.label}}</view>
+      <view class="helper-text">{{customerIdentity.sourceText}}</view>
+    </view>
+
+    <view wx:if="{{customerIdentity.isDevelopEnv}}" class="card dev-card">
+      <view class="identity-label">开发环境模拟顾客 OpenID</view>
+      <input class="dev-input" value="{{customerOpenIdInput}}" bindinput="onCustomerOpenIdInput" placeholder="填写与预约时一致的 mock OpenID" />
+      <view class="dev-actions">
+        <button class="button-primary compact-button" bindtap="applyCustomerOpenId">保存并查询</button>
+        <button class="button-secondary compact-button" bindtap="generateCustomerOpenId">生成模拟 OpenID</button>
+      </view>
+      <button class="button-plain clear-button" bindtap="clearCustomerOpenId">清空顾客 OpenID</button>
+    </view>
+
+    <block wx:if="{{mode === 'list'}}">
+      <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+        <view class="state-symbol">⌛</view>
+        <view class="state-title">我的灵感加载中</view>
+        <view class="state-desc">正在读取你保存的返图</view>
+      </view>
+
+      <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+        <view class="state-symbol">◌</view>
+        <view class="state-title">顾客身份不可用</view>
+        <view class="state-desc">{{stateMessage}}</view>
+        <button class="button-secondary state-action" bindtap="loadData">重新检查</button>
+      </view>
+
+      <view wx:elif="{{pageState === 'error'}}" class="card state-card state-card-error">
+        <view class="state-symbol">⚠</view>
+        <view class="state-title">我的灵感加载失败</view>
+        <view class="state-desc">{{stateMessage}}</view>
+        <button class="button-secondary state-action" bindtap="loadData">重新加载</button>
+      </view>
+
+      <view wx:elif="{{pageState === 'empty'}}" class="card state-card">
+        <view class="state-symbol">⌁</view>
+        <view class="state-title">还没有保存灵感</view>
+        <view class="state-desc">去返图灵感详情页收藏喜欢的款式吧。</view>
+        <button class="button-secondary state-action" bindtap="goGalleryList">浏览返图灵感</button>
+      </view>
+
+      <block wx:elif="{{pageState === 'ready'}}">
+        <view class="page-heading">
+          <view>
+            <view class="page-title">我的灵感</view>
+            <view class="page-subtitle">已保存 {{items.length}} 条返图</view>
+          </view>
+          <button class="button-plain refresh-button" bindtap="loadData">刷新</button>
+        </view>
+
+        <view wx:for="{{items}}" wx:key="id" class="card inspiration-card {{item.availability === 'unavailable' ? 'is-unavailable' : ''}}">
+          <block wx:if="{{item.availability === 'available'}}">
+            <image wx:if="{{item.coverImageUrl}}" class="inspiration-cover" mode="aspectFill" src="{{item.coverImageUrl}}" data-id="{{item.id}}" data-url="{{item.coverImageUrl}}" bindtap="previewImage" />
+            <view wx:else class="inspiration-cover placeholder-cover"></view>
+            <view class="inspiration-content">
+              <view class="inspiration-head">
+                <view class="inspiration-title">{{item.title}}</view>
+                <button class="button-plain detail-link" data-id="{{item.id}}" bindtap="openDetail">详情</button>
+              </view>
+              <view wx:if="{{item.galleryItem.tags.length}}" class="tag-row">
+                <text wx:for="{{item.galleryItem.tags}}" wx:key="*this" class="tag">{{item}}</text>
+              </view>
+              <view wx:if="{{item.galleryItem.description}}" class="inspiration-description">{{item.galleryItem.description}}</view>
+              <view class="note-label">我的备注</view>
+              <view wx:if="{{editingId !== item.id}}" class="note-view {{item.note ? '' : 'note-placeholder'}}">{{item.note || '还没有备注'}}</view>
+              <textarea wx:if="{{editingId === item.id}}" class="note-input" value="{{editNote}}" maxlength="2000" auto-height="true" bindinput="onEditNoteInput" placeholder="记录想调整的颜色、长度或细节" />
+              <view wx:if="{{editingId === item.id}}" class="note-actions">
+                <button class="button-secondary compact-button" data-id="{{item.id}}" bindtap="cancelEdit">取消</button>
+                <button class="button-primary compact-button" data-id="{{item.id}}" loading="{{savingId === item.id}}" bindtap="saveNote">保存备注</button>
+              </view>
+              <button wx:else class="button-plain note-edit-button" data-id="{{item.id}}" bindtap="beginEdit">编辑备注</button>
+              <view class="inspiration-meta">保存于 {{item.createdAtText}}</view>
+              <view class="inspiration-actions">
+                <button class="button-secondary compact-button" data-id="{{item.id}}" data-gallery-id="{{item.galleryItem.id}}" bindtap="goGalleryDetail">查看返图</button>
+                <button class="button-primary compact-button" data-id="{{item.id}}" bindtap="goBooking">预约同款</button>
+                <button class="button-plain compact-button danger-button" data-id="{{item.id}}" loading="{{deletingId === item.id}}" bindtap="confirmDelete">删除</button>
+              </view>
+            </view>
+          </block>
+          <block wx:else>
+            <view class="unavailable-content">
+              <view class="inspiration-head">
+                <view class="inspiration-title">返图已下线</view>
+                <button class="button-plain detail-link danger-button" data-id="{{item.id}}" loading="{{deletingId === item.id}}" bindtap="confirmDelete">删除</button>
+              </view>
+              <view class="inspiration-description">原返图暂时不可用，但这条记录仍保留在你的灵感列表中。</view>
+              <view class="note-label">我的备注</view>
+              <textarea wx:if="{{editingId === item.id}}" class="note-input" value="{{editNote}}" maxlength="2000" auto-height="true" bindinput="onEditNoteInput" placeholder="记录想调整的颜色、长度或细节" />
+              <view wx:else class="note-view {{item.note ? '' : 'note-placeholder'}}">{{item.note || '还没有备注'}}</view>
+              <view wx:if="{{editingId === item.id}}" class="note-actions">
+                <button class="button-secondary compact-button" data-id="{{item.id}}" bindtap="cancelEdit">取消</button>
+                <button class="button-primary compact-button" data-id="{{item.id}}" loading="{{savingId === item.id}}" bindtap="saveNote">保存备注</button>
+              </view>
+              <button wx:else class="button-plain note-edit-button" data-id="{{item.id}}" bindtap="beginEdit">编辑备注</button>
+              <view class="inspiration-meta">保存于 {{item.createdAtText}}</view>
+            </view>
+          </block>
+        </view>
+
+        <view wx:if="{{loadingMore}}" class="load-more-text">正在加载更多…</view>
+        <button wx:elif="{{pageInfo.hasMore}}" class="button-secondary load-more-button" bindtap="loadMore">加载更多</button>
+        <view wx:else class="load-more-text">已显示全部灵感</view>
+      </block>
+    </block>
+
+    <block wx:else>
+      <view wx:if="{{detailState === 'loading'}}" class="card state-card">
+        <view class="state-symbol">⌛</view>
+        <view class="state-title">灵感详情加载中</view>
+        <view class="state-desc">正在读取保存的返图</view>
+      </view>
+      <view wx:elif="{{detailState === 'unauthorized'}}" class="card state-card">
+        <view class="state-symbol">◌</view>
+        <view class="state-title">顾客身份不可用</view>
+        <view class="state-desc">{{detailMessage}}</view>
+        <button class="button-secondary state-action" bindtap="loadDetail">重新检查</button>
+      </view>
+      <view wx:elif="{{detailState === 'empty'}}" class="card state-card">
+        <view class="state-symbol">⌁</view>
+        <view class="state-title">灵感不存在</view>
+        <view class="state-desc">{{detailMessage}}</view>
+        <button class="button-secondary state-action" bindtap="backToList">返回我的灵感</button>
+      </view>
+      <view wx:elif="{{detailState === 'error'}}" class="card state-card state-card-error">
+        <view class="state-symbol">⚠</view>
+        <view class="state-title">详情加载失败</view>
+        <view class="state-desc">{{detailMessage}}</view>
+        <button class="button-secondary state-action" bindtap="loadDetail">重新加载</button>
+      </view>
+      <view wx:elif="{{detailState === 'ready' && detailItem && detailItem.availability === 'available'}}" class="card detail-card">
+        <button class="button-plain back-button" bindtap="backToList">‹ 返回我的灵感</button>
+        <image wx:if="{{detailItem.coverImageUrl}}" class="detail-cover" mode="aspectFill" src="{{detailItem.coverImageUrl}}" data-id="{{detailItem.id}}" data-url="{{detailItem.coverImageUrl}}" bindtap="previewImage" />
+        <view class="detail-title">{{detailItem.title}}</view>
+        <view wx:if="{{detailItem.galleryItem.tags.length}}" class="tag-row">
+          <text wx:for="{{detailItem.galleryItem.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+        <view wx:if="{{detailItem.galleryItem.description}}" class="inspiration-description">{{detailItem.galleryItem.description}}</view>
+        <view class="detail-section-title">我的备注</view>
+        <textarea wx:if="{{editingId === detailItem.id}}" class="note-input" value="{{editNote}}" maxlength="2000" auto-height="true" bindinput="onEditNoteInput" placeholder="记录想调整的颜色、长度或细节" />
+        <view wx:else class="note-view {{detailItem.note ? '' : 'note-placeholder'}}">{{detailItem.note || '还没有备注'}}</view>
+        <view wx:if="{{editingId === detailItem.id}}" class="note-actions">
+          <button class="button-secondary compact-button" data-id="{{detailItem.id}}" bindtap="cancelEdit">取消</button>
+          <button class="button-primary compact-button" data-id="{{detailItem.id}}" loading="{{savingId === detailItem.id}}" bindtap="saveNote">保存备注</button>
+        </view>
+        <button wx:else class="button-secondary detail-action" data-id="{{detailItem.id}}" bindtap="beginEdit">编辑备注</button>
+        <view class="detail-actions">
+          <button class="button-secondary compact-button" data-id="{{detailItem.id}}" data-gallery-id="{{detailItem.galleryItem.id}}" bindtap="goGalleryDetail">查看返图</button>
+          <button class="button-primary compact-button" data-id="{{detailItem.id}}" bindtap="goBooking">预约同款</button>
+          <button class="button-plain compact-button danger-button" data-id="{{detailItem.id}}" loading="{{deletingId === detailItem.id}}" bindtap="confirmDelete">删除</button>
+        </view>
+      </view>
+      <view wx:elif="{{detailState === 'ready' && detailItem && detailItem.availability === 'unavailable'}}" class="card detail-card unavailable-detail-card">
+        <button class="button-plain back-button" bindtap="backToList">‹ 返回我的灵感</button>
+        <view class="state-symbol">⌁</view>
+        <view class="detail-title">返图已下线</view>
+        <view class="state-desc">这条灵感记录仍保留，但原返图暂时不可用。</view>
+        <view class="detail-section-title">我的备注</view>
+        <textarea wx:if="{{editingId === detailItem.id}}" class="note-input" value="{{editNote}}" maxlength="2000" auto-height="true" bindinput="onEditNoteInput" placeholder="记录想调整的颜色、长度或细节" />
+        <view wx:else class="note-view {{detailItem.note ? '' : 'note-placeholder'}}">{{detailItem.note || '还没有备注'}}</view>
+        <view wx:if="{{editingId === detailItem.id}}" class="note-actions">
+          <button class="button-secondary compact-button" data-id="{{detailItem.id}}" bindtap="cancelEdit">取消</button>
+          <button class="button-primary compact-button" data-id="{{detailItem.id}}" loading="{{savingId === detailItem.id}}" bindtap="saveNote">保存备注</button>
+        </view>
+        <button wx:else class="button-secondary detail-action" data-id="{{detailItem.id}}" bindtap="beginEdit">编辑备注</button>
+        <button class="button-plain compact-button danger-button detail-delete-button" data-id="{{detailItem.id}}" loading="{{deletingId === detailItem.id}}" bindtap="confirmDelete">删除这条灵感</button>
+      </view>
+    </block>
+  </view>
+</view>

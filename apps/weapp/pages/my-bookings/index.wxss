@@ -1,85 +1,186 @@
 @import '../../app.wxss';
 
-.search-card {
-  margin-bottom: 24rpx;
+.my-bookings-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx;
+  background: #fffaf8;
 }
 
-.title {
-  font-size: 34rpx;
-  font-weight: 700;
+.my-bookings-page button::after {
+  border: 0;
 }
 
-.desc {
-  margin-top: 12rpx;
-  color: #7d5b4c;
-  font-size: 26rpx;
-  line-height: 1.6;
+.my-bookings-page .card {
+  box-sizing: border-box;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.05);
 }
 
-.field-label {
-  margin-top: 18rpx;
-  font-size: 26rpx;
-  font-weight: 600;
+.identity-card {
+  padding: 28rpx 32rpx 24rpx;
 }
 
-.field-input {
-  margin-top: 10rpx;
-  background: #fff6f2;
-  border-radius: 18rpx;
-  padding: 20rpx;
+.identity-label,
+.dev-title {
+  color: #6b5555;
   font-size: 28rpx;
+  line-height: 34rpx;
 }
 
-.search-button {
+.identity-value {
+  margin-top: 12rpx;
+  color: #3d2c2c;
+  font-size: 26rpx;
+  line-height: 32rpx;
+  word-break: break-all;
+}
+
+.helper-text,
+.identity-helper {
+  color: #a08578;
+  font-size: 22rpx;
+  line-height: 28rpx;
+}
+
+.identity-helper {
+  margin-top: 8rpx;
+}
+
+.dev-card {
   margin-top: 24rpx;
+  padding: 28rpx 32rpx 32rpx;
+  border: 2rpx solid #fff0eb;
+  background: #fff8f5 !important;
+  box-shadow: none !important;
+}
+
+.dev-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 76rpx;
+  margin-top: 20rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #f0e6e6;
+  border-radius: 20rpx;
+  background: #ffffff;
+  color: #3d2c2c;
+  font-size: 26rpx;
+  line-height: 76rpx;
+}
+
+.dev-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.dev-button {
+  min-width: 200rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 20rpx;
+  background: #fff0eb;
+  color: #e8856c;
+  font-size: 22rpx;
+  line-height: 62rpx;
+}
+
+.dev-button-primary {
+  background: #e8856c;
+  color: #ffffff;
+}
+
+.dev-button-clear {
+  margin-top: 16rpx;
 }
 
 .state-card {
-  color: #8a6a5c;
+  min-height: 420rpx;
+  margin-top: 32rpx;
+  padding: 48rpx 40rpx;
+  text-align: center;
 }
 
-.booking-card {
-  margin-bottom: 20rpx;
-}
-
-.booking-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.booking-date {
-  flex: 1;
-  font-size: 30rpx;
+.state-title,
+.section-title,
+.booking-title {
+  color: #3d2c2c;
   font-weight: 600;
 }
 
-.status-chip {
-  padding: 10rpx 18rpx;
-  border-radius: 999rpx;
-  font-size: 22rpx;
+.state-title {
+  font-size: 32rpx;
+  line-height: 44rpx;
 }
 
-.status-chip.pending {
-  background: #fff3d9;
-  color: #a87500;
+.state-desc {
+  margin-top: 16rpx;
+  color: #8b7070;
+  font-size: 26rpx;
+  line-height: 40rpx;
 }
 
-.status-chip.approved {
-  background: #e5f8eb;
-  color: #1f8a49;
+.state-action {
+  width: 100%;
+  height: 84rpx;
+  margin-top: 32rpx;
+  border-radius: 42rpx;
+  background: #fff6f2;
+  color: #e8856c;
+  font-size: 28rpx;
+  line-height: 84rpx;
 }
 
-.status-chip.rejected {
-  background: #fde8e8;
-  color: #b24444;
+.bookings-section {
+  margin-top: 32rpx;
+}
+
+.section-title {
+  font-size: 34rpx;
+  line-height: 42rpx;
+}
+
+.section-desc {
+  margin-top: 2rpx;
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 30rpx;
+}
+
+.booking-card {
+  margin-top: 32rpx;
+  padding: 40rpx;
+}
+
+.booking-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 68rpx;
+}
+
+.booking-title {
+  min-width: 0;
+  font-size: 30rpx;
+  line-height: 36rpx;
 }
 
 .status-pill {
-  padding: 10rpx 18rpx;
-  border-radius: 999rpx;
-  font-size: 22rpx;
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 128rpx;
+  height: 52rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20rpx;
+  border-radius: 26rpx;
+  font-size: 24rpx;
+  line-height: 30rpx;
 }
 
 .status-pill.pending {
@@ -88,7 +189,7 @@
 }
 
 .status-pill.approved {
-  background: #e5f8eb;
+  background: #e5f8ea;
   color: #1f8a49;
 }
 
@@ -97,9 +198,6 @@
   color: #b24444;
 }
 
-.status-chip.cancelled,
-.status-chip.completed,
-.status-chip.no_show,
 .status-pill.cancelled,
 .status-pill.completed,
 .status-pill.no_show {
@@ -107,39 +205,101 @@
   color: #7d5b4c;
 }
 
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  color: #3d2c2c;
+  font-size: 28rpx;
+  line-height: 34rpx;
+}
+
+.info-row + .info-row {
+  margin-top: 38rpx;
+}
+
+.info-label {
+  flex: 0 0 148rpx;
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 30rpx;
+}
+
+.info-value {
+  min-width: 0;
+  flex: 1;
+  color: #3d2c2c;
+  font-size: 28rpx;
+  line-height: 34rpx;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.info-value-muted {
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 30rpx;
+}
+
+.appointment-reference-block {
+  margin-top: 26rpx;
+}
+
+.booking-divider {
+  height: 2rpx;
+  background: #f5eeee;
+}
+
+.appointment-reference-scroll {
+  width: 100%;
+  margin-top: 28rpx;
+  white-space: nowrap;
+}
+
+.appointment-reference-row {
+  display: inline-flex;
+  gap: 24rpx;
+  padding-right: 20rpx;
+}
+
+.appointment-reference-image {
+  width: 148rpx;
+  height: 148rpx;
+  border-radius: 24rpx;
+  background: #f5eeee;
+}
+
 .arrival-box {
-  margin-top: 18rpx;
-  padding: 20rpx;
-  border-radius: 20rpx;
-  background: #fff8f3;
+  margin-top: 32rpx;
+  padding: 28rpx 32rpx;
+  border: 2rpx solid #fff0eb;
+  border-radius: 28rpx;
+  background: #fff8f5;
 }
 
 .arrival-title {
+  color: #3d2c2c;
   font-size: 26rpx;
-  font-weight: 700;
-  color: #3d2d28;
+  line-height: 32rpx;
 }
 
 .arrival-line {
-  margin-top: 10rpx;
-  color: #6f574b;
+  margin-top: 12rpx;
+  color: #6b5555;
   font-size: 24rpx;
-  line-height: 1.5;
+  line-height: 30rpx;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cancel-button {
-  margin-top: 18rpx;
-}
-
-.booking-note {
-  margin-top: 12rpx;
-  color: #6f574b;
-  font-size: 25rpx;
-  line-height: 1.5;
-}
-
-.button-plain {
-  margin-top: 12rpx;
-  background: transparent;
-  color: #b85d74;
+  width: 248rpx;
+  height: 92rpx;
+  margin: 36rpx 0 0;
+  border-radius: 40rpx;
+  background: #fff6f2;
+  color: #e8856c;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 92rpx;
 }

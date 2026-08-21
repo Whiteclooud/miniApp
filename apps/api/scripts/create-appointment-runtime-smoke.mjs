@@ -48,6 +48,12 @@ async function main() {
   const bookingRuleId = `rule-${runId}`;
   const approvedConflictId = `approved-${runId}`;
   const cleanupCustomerPrefix = `cust-${runId}`;
+  const referenceCustomerOpenId = `${cleanupCustomerPrefix}-reference-images`;
+  const referenceImageUrls = [
+    `${BASE_URL}/api/v1/uploads/images/reference-${runId}.jpg`,
+    `https://example.com/reference-${runId}.webp`
+  ];
+  let referenceAppointmentId = '';
   const cases = [];
 
   async function runCase(name, fn) {
@@ -109,6 +115,137 @@ async function main() {
       assert(result.status === 400, `expected 400, got ${result.status}`);
       assert(result.json?.code === 'DATE_OUT_OF_RANGE', 'expected DATE_OUT_OF_RANGE');
       return result.json;
+    });
+
+    await runCase('create rejects non-array referenceImageUrls', async () => {
+      const result = await request('/api/v1/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': `${cleanupCustomerPrefix}-invalid-reference-images`
+        },
+        body: JSON.stringify({
+          appointmentDate: openDate,
+          timeSlot: sharedTimeSlot,
+          referenceImageUrls: referenceImageUrls[0]
+        })
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'INVALID_REFERENCE_IMAGE_URLS', 'expected INVALID_REFERENCE_IMAGE_URLS');
+      return result.json;
+    });
+
+    await runCase('create enforces six reference image limit', async () => {
+      const result = await request('/api/v1/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': `${cleanupCustomerPrefix}-too-many-reference-images`
+        },
+        body: JSON.stringify({
+          appointmentDate: openDate,
+          timeSlot: sharedTimeSlot,
+          referenceImageUrls: Array.from(
+            { length: 7 },
+            (_, index) => `https://example.com/reference-${runId}-${index}.jpg`
+          )
+        })
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(
+        result.json?.code === 'REFERENCE_IMAGE_COUNT_EXCEEDED',
+        'expected REFERENCE_IMAGE_COUNT_EXCEEDED'
+      );
+      return result.json;
+    });
+
+    await runCase('create with reference images -> persists JSON', async () => {
+      const result = await request('/api/v1/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': referenceCustomerOpenId
+        },
+        body: JSON.stringify({
+          appointmentDate: openDate,
+          timeSlot: sharedTimeSlot,
+          customerName: 'Reference Images',
+          referenceImageUrls
+        })
+      });
+
+      assert(result.status === 201, `expected 201, got ${result.status}`);
+      assert(
+        JSON.stringify(result.json?.item?.referenceImageUrls) === JSON.stringify(referenceImageUrls),
+        'expected referenceImageUrls in create response'
+      );
+      referenceAppointmentId = `${result.json?.item?.id || ''}`;
+      assert(referenceAppointmentId, 'expected reference appointment id');
+
+      const stored = await prisma.appointment.findUnique({
+        where: { id: referenceAppointmentId },
+        select: { referenceImageUrlsJson: true }
+      });
+      assert(
+        JSON.stringify(JSON.parse(stored?.referenceImageUrlsJson || '[]')) === JSON.stringify(referenceImageUrls),
+        'expected persisted reference image JSON'
+      );
+
+      return result.json.item;
+    });
+
+    await runCase('my appointments returns reference images', async () => {
+      const result = await request('/api/v1/my/appointments', {
+        headers: {
+          'X-Customer-OpenId': referenceCustomerOpenId
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      const item = (result.json?.items || []).find((entry) => entry.id === referenceAppointmentId);
+      assert(item, 'expected reference appointment in customer list');
+      assert(
+        JSON.stringify(item.referenceImageUrls) === JSON.stringify(referenceImageUrls),
+        'expected referenceImageUrls in customer list'
+      );
+      return item;
+    });
+
+    await runCase('staff appointment list returns reference images', async () => {
+      const result = await request(
+        `/api/v1/staff/appointments?keyword=${encodeURIComponent(referenceCustomerOpenId)}`,
+        {
+          headers: {
+            'X-Staff-OpenId': 'staff-openid-demo'
+          }
+        }
+      );
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      const item = (result.json?.items || []).find((entry) => entry.id === referenceAppointmentId);
+      assert(item, 'expected reference appointment in staff list');
+      assert(
+        JSON.stringify(item.referenceImageUrls) === JSON.stringify(referenceImageUrls),
+        'expected referenceImageUrls in staff list'
+      );
+      return item;
+    });
+
+    await runCase('staff appointment detail returns reference images', async () => {
+      const result = await request(`/api/v1/staff/appointments/${referenceAppointmentId}`, {
+        headers: {
+          'X-Staff-OpenId': 'staff-openid-demo'
+        }
+      });
+
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(
+        JSON.stringify(result.json?.item?.referenceImageUrls) === JSON.stringify(referenceImageUrls),
+        'expected referenceImageUrls in staff detail'
+      );
+      return result.json.item;
     });
 
     await runCase('create happy path -> pending', async () => {

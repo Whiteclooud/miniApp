@@ -108,9 +108,9 @@
 ## V1 实施契约（默认按此口径开发）
 
 ### 1. 请求头约定
-- Header 名称：`X-Staff-OpenId`
-- 作用范围：所有 `/api/v1/staff/*` 接口
-- 缺失或不在白名单内时：统一判定为未授权
+- 体验版 / 正式版：`Authorization: Bearer <token>`，服务端会复核 session、关联用户 `ACTIVE` 状态、当前角色和 `STAFF_OPEN_IDS` 白名单。
+- develop 兼容：`X-Staff-OpenId`，仅在请求未提供 Bearer token 时生效。
+- 缺失、过期、被撤销、用户被禁用、角色已变更或不在白名单内时：统一返回 `401 + STAFF_UNAUTHORIZED`。
 
 ### 2. 白名单配置建议
 - 环境变量：`STAFF_OPEN_IDS`
