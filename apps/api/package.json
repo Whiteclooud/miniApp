@@ -20,7 +20,8 @@
     "smoke:create-appointment": "node --env-file=.env scripts/create-appointment-runtime-smoke.mjs",
     "smoke:parallel": "node --env-file=.env scripts/smoke-parallel-run.cjs",
     "smoke:staff-race": "node --env-file=.env scripts/staff-appointment-race-smoke.mjs",
-    "test": "npm run smoke:auth && npm run smoke:availability && npm run smoke:booking-rules && npm run smoke:gallery && npm run smoke:my-inspirations && npm run smoke:create-appointment && npm run smoke:parallel && npm run smoke:staff-race"
+    "smoke:rbac": "node --env-file=.env scripts/rbac-runtime-smoke.mjs",
+    "test": "npm run smoke:auth && npm run smoke:availability && npm run smoke:booking-rules && npm run smoke:gallery && npm run smoke:my-inspirations && npm run smoke:create-appointment && npm run smoke:parallel && npm run smoke:staff-race && npm run smoke:rbac"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.2",

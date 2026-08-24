@@ -1,9 +1,22 @@
 <view class="container staff-page staff-appointments-page">
-  <view class="staff-navigation">
+  <view class="staff-navigation {{canManageRules ? '' : 'staff-navigation-two'}}">
     <view class="staff-navigation-tab staff-navigation-tab-active">预约总览</view>
-    <view class="staff-navigation-tab" bindtap="goRules">预约规则</view>
+    <view wx:if="{{canManageRules}}" class="staff-navigation-tab" bindtap="goRules">预约规则</view>
     <view class="staff-navigation-tab" bindtap="goGallery">返图管理</view>
   </view>
+
+  <navigator
+    wx:if="{{canManageStaff}}"
+    class="management-entry"
+    url="/pages/staff/members/index"
+    hover-class="none"
+  >
+    <view class="management-entry-copy">
+      <view class="management-entry-title">成员管理</view>
+      <view class="management-entry-desc">新增或移除店员，管理待使用邀请</view>
+    </view>
+    <view class="management-entry-arrow">›</view>
+  </navigator>
 
   <view wx:if="{{!staffIdentity.canUse}}" class="card identity-card">
     <view class="identity-label">店员身份主键</view>

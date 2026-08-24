@@ -156,3 +156,42 @@
 
 ### 问题记录
 1. Case 6 的真实文件选择与上传仍需在开发者工具中手动点选一张本地图片。
+
+## 候选版本验收启动（2026-08-24）
+
+- 当前分支：`feat/launch-readiness`
+- 验收启动前 HEAD：`2609bba`
+- 候选版本提交：本节所在提交，以远程 `feat/launch-readiness` 分支为准。
+- 候选范围：微信登录、RBAC、成员管理、角色分流、配套文档及本轮验收配置修正。
+- 本地 API：`http://127.0.0.1:3100`
+- MySQL：本地 compose 实例健康，8 个 migration 均已应用。
+- 本地验收数据：4 条返图、14 天预约窗口、每日 3 个时间段。
+
+### 已通过的自动检查
+
+- `npm run build:api`
+- `npm run check:docs`
+- `npm run check:weapp-contract`
+- `npx prisma validate`（在 `apps/api` 目录执行）
+- `npm run prisma:migrate:deploy`
+- `npm run test:api`
+
+运行级 smoke 已覆盖微信会话、预约创建与取消、审核改判、并发时段占用、
+返图与灵感、店员权限、邀请兑换、并发兑换、成员停用即时撤权及最后一位店主保护。
+
+### 本轮修正
+
+- 关闭 `apps/weapp/project.private.config.json` 的 `compileHotReLoad`，避免开发者工具缓存旧页面图并使小程序契约检查失败。
+
+### 下一验收门槛
+
+1. 确认当前 `wxacbd182d9ba98581` 是否为本项目真实 AppID。
+2. 确认体验版 HTTPS API 域名，并替换 `trial / release` 的占位地址。
+3. 基于已冻结的远程候选版本执行后续页面验收，发现问题后单独提交修复。
+4. 在微信开发者工具执行顾客、普通店员、店主、系统管理员四角色页面 UAT。
+5. 在体验版使用真实微信账号复跑登录、角色分流、邀请兑换和停用即时撤权。
+
+### 当前阻塞
+
+- 微信开发者工具当前 CLI 服务监听 `48750`，但未成功返回小程序自动化 WebSocket 端口；本轮尚未执行页面自动化。
+- `trial / release` 仍使用 `https://replace-with-your-api-domain.example.com`，不能生成可用体验版。

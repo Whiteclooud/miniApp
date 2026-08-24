@@ -36,7 +36,7 @@ git stash apply stash@{0}
 - 统一环境配置：小程序 API profile 拆成 `develop / trial / release` 三档；`develop` 可用本地或局域网，`trial / release` 固定 HTTPS 域名，并开启微信登录。
 - 完成生产登录闭环：正式使用 `wx.login -> code2Session -> AuthSession`；所有顾客/店员请求优先使用 `Authorization: Bearer <token>`。
 - 保留但隔离开发 OpenID header：`X-Customer-OpenId` / `X-Staff-OpenId` 只允许 develop 环境使用；体验版和正式版默认禁用。
-- 修正店员权限：Bearer session 命中 staff 时，仍需用当前 `STAFF_OPEN_IDS` 白名单复核，防止店员被移除后旧 session 继续可用。
+- 修正店员权限：Bearer session 每次请求都读取当前数据库成员关系与 permission；成员被停用后旧 session 立即失去店员权限，不能依赖客户端角色缓存或旧 OpenID 白名单。
 - 增加 `POST /api/v1/auth/logout`：删除当前 token 对应 session；前端清空本地 session。
 - 更新文档漂移：同步 `apps/api/README.md`、`docs/ENV.md`、`docs/MYSQL_SETUP.md`，删除旧 `apps/server` / SQLite / 3000 端口作为当前主线的表述。
 - 修复小程序发布配置：体验版前关闭调试型配置残留，确认真实 AppID、合法 request/uploadFile 域名、HTTPS 证书、上传 source map 策略。
@@ -54,14 +54,14 @@ git stash apply stash@{0}
 - 按 `docs/UAT_GUIDE.md` 执行 8 条主链路：返图首页、全部列表、详情多图、月历预约、我的预约、店员返图管理、审核改判、顾客回查。
 - 补真实体验数据：至少 3 条返图、2 组不同日期/时段规则、1 条 pending、1 条 approved、1 条 rejected，确保页面不是空态演示。
 - 优化异常反馈：登录失败、无店员权限、上传失败、时段冲突、网络失败都给用户可理解文案。
-- 店员入口收口：不进入常规 tab；普通顾客误入 staff 页面时只显示无权限提示和返回首页。
+- 店员入口收口：不进入常规 tab；普通顾客误入 staff 页面时只显示无权限提示和返回首页。店主和系统管理员额外显示成员管理入口。
 - 保持范围外：微信支付、订阅消息、会员、优惠券、多员工排班本轮不做。
 
 ## P3: 部署与发布
 
 - 新增生产部署手册：包含 MySQL 8、API 容器、上传目录/对象存储、环境变量、迁移、回滚、备份。
 - 建立最小 CI：执行 `npm run build:api`、`npm run check:docs`、`npm run check:weapp-contract`、Prisma schema 校验；有 MySQL service 时跑 `npm run test:api`。
-- 体验版发布门槛：HTTPS API 可访问、微信合法域名配置完成、`WECHAT_APP_ID / WECHAT_APP_SECRET` 可用、店员 OpenID 已配置、UAT 全通过。
+- 体验版发布门槛：HTTPS API 可访问、微信合法域名配置完成、`WECHAT_APP_ID / WECHAT_APP_SECRET`、`SYSTEM_ADMIN_OPEN_IDS`、`OWNER_OPEN_IDS` 已配置，成员邀请和撤权 UAT 全通过。
 - 正式版发布门槛：体验版运行稳定、备份与恢复演练通过、图片存储不依赖临时容器目录、隐私与用户数据说明补齐。
 
 ## Public API / Interface Changes
@@ -69,6 +69,7 @@ git stash apply stash@{0}
 - 新增 `POST /api/v1/auth/logout`，Header 使用 `Authorization: Bearer <token>`，成功返回 `{ "ok": true }`。
 - 固化已有 `POST /api/v1/auth/wechat-login`：入参 `{ "code": "..." }`，返回 `{ token, expiresAt, user: { id, openId, role } }`。
 - 固化已有 `GET /api/v1/auth/me`：Bearer token 返回当前用户。
+- 新增店员 RBAC：`GET/DELETE /api/v1/staff/members`、`GET/POST/DELETE /api/v1/staff/invitations`、`POST /api/v1/staff/invitations/redeem`；角色字段使用 `primaryRole / roles / permissions / systemRole`。
 - 现有顾客/店员接口改为 Bearer 优先；OpenID header 仅作为 `develop` 兼容路径。
 - `Appointment` 数据模型新增 `approvedSlotKey?: string`，仅用于数据库唯一约束，不暴露给小程序页面。
 

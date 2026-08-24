@@ -1,5 +1,5 @@
 const { isDevelopEnv } = require('./customer');
-const { getCurrentUser, isWechatAuthEnabled } = require('./auth');
+const { getCurrentUser, hasUserRole, isWechatAuthEnabled } = require('./auth');
 
 const STORAGE_KEY = 'miniapp.staffOpenId';
 
@@ -52,14 +52,17 @@ function shouldUseBearerSession() {
 
 function ensureStaffIdentity() {
   const currentUser = getCurrentUser();
-  const currentRole = `${currentUser && currentUser.role || ''}`.trim().toLowerCase();
 
-  if (currentUser && currentRole === 'staff' && `${currentUser.openId || ''}`.trim()) {
-    return buildIdentity(currentUser.openId, {
-      source: 'session',
-      isSession: true,
-      label: '微信店员会话'
-    });
+  if (currentUser && hasUserRole(currentUser, 'staff')) {
+    if (`${currentUser.openId || ''}`.trim()) {
+      return buildIdentity(currentUser.openId, {
+        source: 'session',
+        isSession: true,
+        label: '微信店员会话'
+      });
+    }
+
+    return buildSessionPendingIdentity();
   }
 
   // A valid non-staff session must not fall back to a stale local OpenID. The

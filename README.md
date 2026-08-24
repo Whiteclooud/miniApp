@@ -11,6 +11,7 @@
 - 顾客按微信 OpenID 查看自己的预约状态
 - 店员配置预约规则
 - 店员通过月历 / 明细工作台查看并审核预约申请（通过 / 拒绝）
+- 店主可邀请、查看和停用普通店员；系统管理员可维护店主与系统级配置
 - 后端以 `apps/api` 作为唯一运行基线
 
 ## 技术路线
@@ -94,6 +95,7 @@ apps/weapp
 ### 店员端
 - `pages/staff/rules/index`
 - `pages/staff/appointments/index`
+- `pages/staff/members/index`
 
 ## 验收建议
 

@@ -22,6 +22,7 @@ MiniApp 当前唯一后端基线，技术栈为 **NestJS + Prisma + MySQL**。
 - 店员预约工作台：`GET /api/v1/staff/appointments`、`GET /api/v1/staff/appointments/:id`
 - 店员审核 / 改期：`POST/PATCH /api/v1/staff/appointments/:id/review`、`PATCH /api/v1/staff/appointments/:id/reschedule`
 - 店员操作日志：`GET /api/v1/staff/appointments/:id/audit-logs`
+- 成员与邀请：`GET/DELETE /api/v1/staff/members`、`GET/POST/DELETE /api/v1/staff/invitations`、`POST /api/v1/staff/invitations/redeem`
 
 ## 本地启动
 
@@ -59,7 +60,8 @@ ALLOW_DEMO_STAFF_OPENID=1
 NODE_ENV=production
 WECHAT_APP_ID="小程序 AppID"
 WECHAT_APP_SECRET="小程序 AppSecret"
-STAFF_OPEN_IDS="真实店员 openid"
+SYSTEM_ADMIN_OPEN_IDS="系统管理员 OpenID"
+OWNER_OPEN_IDS="首位店主 OpenID"
 PUBLIC_BASE_URL="https://你的 API 域名"
 ALLOW_OPENID_HEADER_AUTH=0
 ALLOW_DEMO_STAFF_OPENID=0
@@ -105,7 +107,8 @@ npm run test:api
 ## 数据模型重点
 
 - `AuthSession`：只保存 session token hash，不保存明文 token。
-- Bearer 会话按 `UserRole` 隔离顾客与店员接口；店员会话访问顾客资源统一返回 `CUSTOMER_UNAUTHORIZED`，反向访问店员资源统一返回 `STAFF_UNAUTHORIZED`。
+- Bearer 会话按当前用户的 `roles/permissions` 动态授权；所有 ACTIVE 用户都可使用顾客资源，`staff`、`owner`、`system_admin` 在此基础上叠加店员权限。
+- `staff_members` 保存店员/店主成员关系，`staff_invitations` 保存一次性邀请码哈希；成员移除后旧 session 立即失去店员权限。
 - `Appointment.approvedSlotKey`：仅在 `approved` 预约上写入 `${date}#${timeSlot}`，通过数据库唯一约束兜底单员工同一时段最多通过一单。
 - `Appointment.referenceImageUrlsJson`：保存最多 6 个预约参考图 URL；API 统一映射为 `referenceImageUrls: string[]`。
 - `GalleryItem`：支持封面、多图、标签、说明、发布时间与状态。
@@ -116,7 +119,7 @@ npm run test:api
 
 当前体验版默认使用 API 服务本地 `uploads/gallery` 目录。店员返图通过 `/api/v1/staff/uploads/images/:filename` 访问，顾客预约参考图通过 `/api/v1/uploads/images/:filename` 访问。
 
-Bearer session 每次访问都会复核用户状态与当前角色；账号禁用或角色变更后，旧 token 不再获得任何顾客 / 店员业务权限。已提供 Bearer token 时不会回退到 `X-Customer-OpenId` / `X-Staff-OpenId`；这两个 header 仅在 develop 且未提供 Bearer 时作为兼容兜底。
+Bearer session 每次访问都会复核用户状态与当前角色。账号整体停用后，旧 token 不再获得顾客或店员业务权限；仅停用 `staff_members` 成员关系时，旧 token 会立即失去店员权限，但仍保留顾客能力。已提供 Bearer token 时不会回退到 `X-Customer-OpenId` / `X-Staff-OpenId`；这两个 header 仅在 develop 且未提供 Bearer 时作为兼容兜底。
 
 顾客上传文件带有当前 OpenID 的单向散列归属前缀，`DELETE /api/v1/uploads/images/:filename` 只允许本人删除；店员返图库图片不会被该接口删除。
 

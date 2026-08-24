@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'miniapp.customerOpenId';
 const DISABLED_STORAGE_KEY = 'miniapp.customerOpenId.disabled';
 const DEFAULT_DEVELOP_CUSTOMER_OPENID = 'customer-openid-demo';
-const { getCurrentUser, isWechatAuthEnabled } = require('./auth');
+const { getCurrentUser, hasUserRole, isWechatAuthEnabled } = require('./auth');
 
 function getEnvProfile() {
   try {
@@ -90,14 +90,17 @@ function getStoredCustomerIdentity() {
 function ensureCustomerIdentity(options = {}) {
   const { persistDevelopFallback = false } = options;
   const currentUser = getCurrentUser();
-  const currentRole = `${currentUser && currentUser.role || ''}`.trim().toLowerCase();
 
-  if (currentUser && currentRole === 'customer' && `${currentUser.openId || ''}`.trim()) {
-    return buildIdentity(currentUser.openId, {
-      source: 'session',
-      isSession: true,
-      label: '微信顾客会话'
-    });
+  if (currentUser && hasUserRole(currentUser, 'customer')) {
+    if (`${currentUser.openId || ''}`.trim()) {
+      return buildIdentity(currentUser.openId, {
+        source: 'session',
+        isSession: true,
+        label: '微信顾客会话'
+      });
+    }
+
+    return buildSessionPendingIdentity();
   }
 
   // Do not let a stale local OpenID masquerade as the identity of a valid

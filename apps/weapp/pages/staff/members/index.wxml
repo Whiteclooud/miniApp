@@ -1,0 +1,195 @@
+<view class="members-page">
+  <view wx:if="{{mode === 'redeem'}}" class="redeem-shell">
+    <view wx:if="{{redeemState === 'success'}}" class="card result-card">
+      <view class="result-symbol success-symbol">✓</view>
+      <view class="state-title">已加入门店</view>
+      <view class="state-desc">当前账号已获得{{redeemedRoleText || '成员'}}权限。</view>
+      <button class="button-primary full-button" bindtap="enterStaffWorkbench">进入店员工作台</button>
+    </view>
+
+    <view wx:else class="card redeem-card">
+      <view class="eyebrow">门店成员邀请</view>
+      <view class="page-title">加入店员端</view>
+      <view class="page-subtitle">使用店主或系统管理员发出的有效邀请完成绑定。</view>
+      <view class="field-label">邀请码</view>
+      <input
+        class="code-input"
+        value="{{inviteCode}}"
+        maxlength="128"
+        bindinput="onInviteCodeInput"
+        placeholder="请输入邀请码"
+        disabled="{{redeemState === 'submitting'}}"
+      />
+      <view wx:if="{{redeemMessage}}" class="inline-message error-message">{{redeemMessage}}</view>
+      <button
+        class="button-primary full-button"
+        loading="{{redeemState === 'submitting'}}"
+        disabled="{{redeemState === 'submitting'}}"
+        bindtap="redeemInvitation"
+      >确认加入</button>
+    </view>
+  </view>
+
+  <view wx:else class="staff-page staff-members-page">
+    <view class="staff-navigation">
+      <view class="staff-navigation-tab" bindtap="goAppointments">预约总览</view>
+      <view wx:if="{{canManageRules}}" class="staff-navigation-tab" bindtap="goRules">预约规则</view>
+      <view class="staff-navigation-tab" bindtap="goGallery">返图管理</view>
+      <view class="staff-navigation-tab staff-navigation-tab-active">成员管理</view>
+    </view>
+
+    <view wx:if="{{pageState === 'loading'}}" class="card state-card">
+      <view class="state-title">成员资料加载中</view>
+      <view class="state-desc">正在同步门店成员和邀请。</view>
+    </view>
+
+    <view wx:elif="{{pageState === 'unauthorized'}}" class="card state-card">
+      <view class="result-symbol lock-symbol">!</view>
+      <view class="state-title">无成员管理权限</view>
+      <view class="state-desc">{{stateMessage || '仅店主和系统管理员可以管理成员。'}}</view>
+      <button class="button-secondary state-button" bindtap="goAppointments">返回预约总览</button>
+    </view>
+
+    <view wx:elif="{{pageState === 'error'}}" class="card state-card">
+      <view class="state-title">成员资料加载失败</view>
+      <view class="state-desc">{{stateMessage}}</view>
+      <button class="button-secondary state-button" bindtap="loadData">重新加载</button>
+    </view>
+
+    <block wx:else>
+      <view class="page-heading">
+        <view>
+          <view class="page-title">成员管理</view>
+          <view class="page-subtitle">当前身份：{{currentRoleLabel}}</view>
+        </view>
+        <button class="button-plain refresh-button" bindtap="loadData">刷新</button>
+      </view>
+
+      <view class="summary-grid">
+        <view class="card summary-item">
+          <view class="summary-value">{{activeMemberCount}}</view>
+          <view class="summary-label">在职成员</view>
+        </view>
+        <view class="card summary-item">
+          <view class="summary-value">{{pendingInvitationCount}}</view>
+          <view class="summary-label">待用邀请</view>
+        </view>
+      </view>
+
+      <view class="section-switch">
+        <view class="section-tab {{activeSection === 'members' ? 'section-tab-active' : ''}}" data-section="members" bindtap="switchSection">成员</view>
+        <view class="section-tab {{activeSection === 'invitations' ? 'section-tab-active' : ''}}" data-section="invitations" bindtap="switchSection">邀请</view>
+      </view>
+
+      <view wx:if="{{stateMessage}}" class="inline-message error-message list-message">{{stateMessage}}</view>
+
+      <block wx:if="{{activeSection === 'members'}}">
+        <view wx:if="{{members.length}}" class="member-list">
+          <view wx:for="{{members}}" wx:key="id" class="card member-card {{item.status === 'disabled' ? 'member-card-disabled' : ''}}">
+            <view class="member-header">
+              <view class="member-copy">
+                <view class="member-name">{{item.displayName}}<text wx:if="{{item.isSelf}}" class="self-label">本人</text></view>
+                <view class="member-openid">{{item.maskedOpenId}}</view>
+              </view>
+              <view class="role-badge role-{{item.role}}">{{item.roleText}}</view>
+            </view>
+            <view class="member-meta-row">
+              <text class="status-text status-{{item.status}}">{{item.statusText}}</text>
+              <text>加入于 {{item.joinedAtText}}</text>
+            </view>
+            <button
+              wx:if="{{item.canRemove}}"
+              class="button-plain danger-button member-action"
+              data-id="{{item.id}}"
+              loading="{{deletingMemberId === item.id}}"
+              disabled="{{!!deletingMemberId}}"
+              bindtap="confirmRemoveMember"
+            >移除权限</button>
+          </view>
+        </view>
+        <view wx:else class="card empty-card">
+          <view class="state-title">暂无成员</view>
+          <view class="state-desc">创建邀请后，新成员即可完成绑定。</view>
+          <button class="button-primary state-button" bindtap="showInvitationSection">创建邀请</button>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="card create-card">
+          <view class="section-title">创建邀请</view>
+          <view class="picker-grid">
+            <view>
+              <view class="field-label">成员角色</view>
+              <picker
+                mode="selector"
+                range="{{invitationRoleOptions}}"
+                range-key="label"
+                value="{{invitationRoleIndex}}"
+                bindchange="onInvitationRoleChange"
+              >
+                <view class="picker-trigger">{{invitationRoleOptions[invitationRoleIndex].label}}</view>
+              </picker>
+            </view>
+            <view>
+              <view class="field-label">有效期</view>
+              <picker
+                mode="selector"
+                range="{{invitationDurationOptions}}"
+                range-key="label"
+                value="{{invitationDurationIndex}}"
+                bindchange="onInvitationDurationChange"
+              >
+                <view class="picker-trigger">{{invitationDurationOptions[invitationDurationIndex].label}}</view>
+              </picker>
+            </view>
+          </view>
+          <view wx:if="{{createMessage}}" class="inline-message error-message">{{createMessage}}</view>
+          <button
+            class="button-primary full-button"
+            loading="{{createState === 'submitting'}}"
+            disabled="{{createState === 'submitting'}}"
+            bindtap="createInvitation"
+          >生成邀请码</button>
+        </view>
+
+        <view wx:if="{{createdInvitation && createdInvitation.code}}" class="card created-card">
+          <view class="created-label">{{createdInvitation.roleText}}邀请码</view>
+          <view class="created-code">{{createdInvitation.code}}</view>
+          <view class="created-expiry">有效至 {{createdInvitation.expiresAtText}}</view>
+          <view class="created-warning">邀请码仅在本页显示一次。</view>
+          <view class="created-actions">
+            <button class="button-secondary compact-button" bindtap="copyInvitationCode">复制邀请码</button>
+            <button class="button-primary compact-button" open-type="share">分享邀请</button>
+          </view>
+        </view>
+
+        <view wx:if="{{invitations.length}}" class="invitation-list">
+          <view wx:for="{{invitations}}" wx:key="id" class="card invitation-card">
+            <view class="invitation-header">
+              <view>
+                <view class="invitation-role">{{item.roleText}}邀请</view>
+                <view class="invitation-meta">创建于 {{item.createdAtText}}</view>
+              </view>
+              <view class="status-badge status-{{item.status}}">{{item.statusText}}</view>
+            </view>
+            <view class="invitation-detail">有效至 {{item.expiresAtText}}</view>
+            <view class="invitation-detail">创建人：{{item.createdByText}}</view>
+            <view wx:if="{{item.status === 'redeemed'}}" class="invitation-detail">使用人：{{item.redeemedByText}}</view>
+            <button
+              wx:if="{{item.canRevoke}}"
+              class="button-plain danger-button invitation-action"
+              data-id="{{item.id}}"
+              loading="{{revokingInvitationId === item.id}}"
+              disabled="{{!!revokingInvitationId}}"
+              bindtap="confirmRevokeInvitation"
+            >撤销邀请</button>
+          </view>
+        </view>
+        <view wx:else class="card empty-card">
+          <view class="state-title">暂无邀请记录</view>
+          <view class="state-desc">新创建的成员邀请会显示在这里。</view>
+        </view>
+      </block>
+    </block>
+  </view>
+</view>

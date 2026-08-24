@@ -8,7 +8,8 @@
     "pages/my-inspirations/index",
     "pages/staff/rules/index",
     "pages/staff/gallery/index",
-    "pages/staff/appointments/index"
+    "pages/staff/appointments/index",
+    "pages/staff/members/index"
   ],
   "window": {
     "navigationBarTitleText": "美甲预约",

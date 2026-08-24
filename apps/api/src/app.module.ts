@@ -13,6 +13,7 @@ import { StaffAppointmentsModule } from './staff-appointments/staff-appointments
 import { StaffGalleryModule } from './staff-gallery/staff-gallery.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { AuthModule } from './auth/auth.module';
+import { StaffManagementModule } from './staff-management/staff-management.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { AuthModule } from './auth/auth.module';
     StaffAppointmentDetailModule,
     StaffAppointmentReviewModule,
     UploadsModule,
-    StaffGalleryModule
+    StaffGalleryModule,
+    StaffManagementModule
   ]
 })
 export class AppModule {}

@@ -12,6 +12,7 @@ const {
 } = require('../../../utils/staff');
 const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
+const { getCurrentUser, hasPermission } = require('../../../utils/auth');
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const DETAIL_FILTER_DEFINITIONS = [
@@ -501,6 +502,8 @@ Page({
       sourceText: ''
     },
     staffOpenIdInput: '',
+    canManageStaff: false,
+    canManageRules: false,
     weekLabels: WEEK_LABELS,
     statusPickerOptions: STATUS_PICKER_OPTIONS,
     statusPickerIndex: 0,
@@ -529,9 +532,12 @@ Page({
 
   refreshStaffIdentity() {
     const staffIdentity = getStaffIdentityMeta();
+    const currentUser = getCurrentUser();
     this.setData({
       staffIdentity,
-      staffOpenIdInput: staffIdentity.openId || this.data.staffOpenIdInput || ''
+      staffOpenIdInput: staffIdentity.openId || this.data.staffOpenIdInput || '',
+      canManageStaff: hasPermission(currentUser, 'staff:manage'),
+      canManageRules: hasPermission(currentUser, 'staff:booking-rules:read')
     });
   },
 

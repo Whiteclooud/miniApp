@@ -1,0 +1,488 @@
+@import '../../../app.wxss';
+
+.members-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #fffaf8;
+  color: #3d2c2c;
+}
+
+.members-page button::after {
+  border: 0;
+}
+
+.staff-page,
+.redeem-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx;
+}
+
+.staff-navigation {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-bottom: 36rpx;
+}
+
+.staff-navigation-tab {
+  display: flex;
+  min-width: 0;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22rpx;
+  background: #fff0eb;
+  color: #d77864;
+  font-size: 23rpx;
+  line-height: 30rpx;
+  text-align: center;
+}
+
+.staff-navigation-tab-active {
+  background: #e8856c;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.card {
+  box-sizing: border-box;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.05);
+}
+
+.state-card,
+.result-card,
+.redeem-card,
+.create-card,
+.created-card,
+.empty-card {
+  padding: 40rpx;
+}
+
+.state-card,
+.empty-card,
+.result-card {
+  text-align: center;
+}
+
+.state-title {
+  color: #3d2c2c;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 44rpx;
+}
+
+.state-desc {
+  margin-top: 12rpx;
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 36rpx;
+}
+
+.state-button {
+  margin-top: 28rpx;
+}
+
+.result-symbol {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24rpx;
+  border-radius: 50%;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.success-symbol {
+  background: #e7f5eb;
+  color: #347c4c;
+}
+
+.lock-symbol {
+  background: #fff0eb;
+  color: #d77864;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.page-title {
+  color: #3d2c2c;
+  font-size: 38rpx;
+  font-weight: 700;
+  line-height: 50rpx;
+}
+
+.page-subtitle {
+  margin-top: 6rpx;
+  color: #8b7070;
+  font-size: 24rpx;
+  line-height: 34rpx;
+}
+
+.refresh-button {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  color: #d77864;
+  font-size: 24rpx;
+  line-height: 38rpx;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.summary-item {
+  padding: 28rpx;
+  text-align: center;
+}
+
+.summary-value {
+  color: #e8856c;
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 56rpx;
+}
+
+.summary-label {
+  margin-top: 6rpx;
+  color: #8b7070;
+  font-size: 23rpx;
+  line-height: 32rpx;
+}
+
+.section-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: 76rpx;
+  margin: 28rpx 0 24rpx;
+  padding: 6rpx;
+  border-radius: 22rpx;
+  background: #fff0eb;
+  box-sizing: border-box;
+}
+
+.section-tab {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18rpx;
+  color: #a36e62;
+  font-size: 25rpx;
+  line-height: 34rpx;
+}
+
+.section-tab-active {
+  background: #ffffff;
+  color: #d77864;
+  font-weight: 600;
+  box-shadow: 0 4rpx 16rpx rgba(140, 78, 58, 0.08);
+}
+
+.member-card,
+.invitation-card {
+  margin-bottom: 20rpx;
+  padding: 32rpx;
+}
+
+.member-card-disabled {
+  opacity: 0.68;
+}
+
+.member-header,
+.member-meta-row,
+.invitation-header,
+.created-actions {
+  display: flex;
+}
+
+.member-header,
+.invitation-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.member-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-name,
+.invitation-role {
+  color: #3d2c2c;
+  font-size: 29rpx;
+  font-weight: 700;
+  line-height: 40rpx;
+  overflow-wrap: anywhere;
+}
+
+.self-label {
+  margin-left: 10rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 14rpx;
+  background: #f0f2f2;
+  color: #718080;
+  font-size: 19rpx;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.member-openid,
+.invitation-meta,
+.invitation-detail,
+.created-expiry {
+  color: #99817a;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  overflow-wrap: anywhere;
+}
+
+.member-openid {
+  margin-top: 6rpx;
+}
+
+.role-badge,
+.status-badge {
+  flex: 0 0 auto;
+  padding: 8rpx 14rpx;
+  border-radius: 18rpx;
+  font-size: 21rpx;
+  line-height: 28rpx;
+}
+
+.role-staff {
+  background: #eaf4f5;
+  color: #43747a;
+}
+
+.role-owner {
+  background: #fff0eb;
+  color: #c66555;
+}
+
+.member-meta-row {
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 20rpx;
+  color: #99817a;
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.status-text {
+  font-weight: 600;
+}
+
+.status-active,
+.status-pending {
+  color: #3f7d58;
+}
+
+.status-disabled,
+.status-revoked,
+.status-expired {
+  color: #9a7770;
+}
+
+.status-redeemed {
+  color: #43747a;
+}
+
+.status-badge.status-pending {
+  background: #fff5d9;
+  color: #9a7100;
+}
+
+.status-badge.status-redeemed {
+  background: #e7f5eb;
+  color: #347c4c;
+}
+
+.status-badge.status-revoked,
+.status-badge.status-expired {
+  background: #f2eeee;
+  color: #8b7070;
+}
+
+.member-action,
+.invitation-action {
+  margin: 20rpx 0 0 auto;
+  padding: 0;
+  font-size: 23rpx;
+  line-height: 38rpx;
+}
+
+.danger-button {
+  color: #c85151;
+}
+
+.create-card,
+.created-card {
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  color: #3d2c2c;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 42rpx;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.field-label {
+  color: #6b5555;
+  font-size: 23rpx;
+  line-height: 32rpx;
+}
+
+.picker-trigger,
+.code-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 80rpx;
+  margin-top: 10rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #f1e5df;
+  border-radius: 20rpx;
+  background: #fffaf8;
+  color: #3d2c2c;
+  font-size: 25rpx;
+  line-height: 78rpx;
+}
+
+.full-button {
+  width: 100%;
+  margin-top: 24rpx;
+}
+
+.button-primary,
+.button-secondary {
+  border-radius: 32rpx;
+}
+
+.button-primary {
+  background: #e8856c;
+  color: #ffffff;
+}
+
+.button-secondary {
+  background: #fff0eb;
+  color: #d77864;
+}
+
+.inline-message {
+  margin-top: 18rpx;
+  font-size: 23rpx;
+  line-height: 34rpx;
+  overflow-wrap: anywhere;
+}
+
+.error-message {
+  color: #bc4d4d;
+}
+
+.list-message {
+  margin-bottom: 18rpx;
+}
+
+.created-card {
+  border: 2rpx solid #f5cabe;
+  background: #fff9f6;
+  box-shadow: none;
+}
+
+.created-label {
+  color: #8b7070;
+  font-size: 23rpx;
+  line-height: 32rpx;
+}
+
+.created-code {
+  margin-top: 10rpx;
+  color: #3d2c2c;
+  font-size: 35rpx;
+  font-weight: 700;
+  line-height: 46rpx;
+  word-break: break-all;
+}
+
+.created-expiry {
+  margin-top: 10rpx;
+}
+
+.created-warning {
+  margin-top: 12rpx;
+  color: #bc4d4d;
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.created-actions {
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.compact-button {
+  min-width: 0;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  font-size: 23rpx;
+  line-height: 64rpx;
+}
+
+.invitation-meta {
+  margin-top: 4rpx;
+}
+
+.invitation-detail {
+  margin-top: 10rpx;
+}
+
+.redeem-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.redeem-card,
+.result-card {
+  width: 100%;
+  max-width: 686rpx;
+}
+
+.eyebrow {
+  color: #d77864;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 32rpx;
+}
+
+.redeem-card .page-title {
+  margin-top: 8rpx;
+}
+
+.redeem-card .field-label {
+  margin-top: 34rpx;
+}

@@ -1,5 +1,5 @@
 import { Controller, Get, Headers, Param } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 import { StaffAppointmentDetailService } from './staff-appointment-detail.service';
 
 @Controller('api/v1/staff/appointments')
@@ -15,9 +15,9 @@ export class StaffAppointmentDetailController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Param('id') appointmentId?: string
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_APPOINTMENTS_READ, staffOpenId);
     const items = await this.staffAppointmentDetailService.listStaffAppointmentAuditLogs(
-      resolvedStaffOpenId,
+      identity.openId,
       appointmentId
     );
 
@@ -30,9 +30,9 @@ export class StaffAppointmentDetailController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Param('id') appointmentId?: string
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_APPOINTMENTS_READ, staffOpenId);
     const item = await this.staffAppointmentDetailService.getStaffAppointmentDetail(
-      resolvedStaffOpenId,
+      identity.openId,
       appointmentId
     );
 

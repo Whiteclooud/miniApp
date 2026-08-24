@@ -1,5 +1,5 @@
 import { Body, Controller, Headers, Param, Patch, Post } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 import {
   RescheduleStaffAppointmentDto,
   ReviewStaffAppointmentDto
@@ -20,13 +20,12 @@ export class StaffAppointmentReviewController {
     @Param('id') appointmentId?: string,
     @Body() payload: ReviewStaffAppointmentDto = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.requireWrite(authorization, staffOpenId);
     const item = await this.staffAppointmentReviewService.reviewStaffAppointment(
-      resolvedStaffOpenId,
+      identity.openId,
       appointmentId,
       payload
     );
-
     return { item };
   }
 
@@ -37,13 +36,12 @@ export class StaffAppointmentReviewController {
     @Param('id') appointmentId?: string,
     @Body() payload: ReviewStaffAppointmentDto = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.requireWrite(authorization, staffOpenId);
     const item = await this.staffAppointmentReviewService.reviewStaffAppointment(
-      resolvedStaffOpenId,
+      identity.openId,
       appointmentId,
       payload
     );
-
     return { item };
   }
 
@@ -54,13 +52,20 @@ export class StaffAppointmentReviewController {
     @Param('id') appointmentId?: string,
     @Body() payload: RescheduleStaffAppointmentDto = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.requireWrite(authorization, staffOpenId);
     const item = await this.staffAppointmentReviewService.rescheduleStaffAppointment(
-      resolvedStaffOpenId,
+      identity.openId,
       appointmentId,
       payload
     );
-
     return { item };
+  }
+
+  private requireWrite(authorization?: string, staffOpenId?: string) {
+    return this.authService.requirePermission(
+      authorization,
+      PERMISSIONS.STAFF_APPOINTMENTS_WRITE,
+      staffOpenId
+    );
   }
 }

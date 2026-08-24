@@ -1,5 +1,5 @@
 import { Controller, Get, Headers, Query } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 import { ListStaffAppointmentsQuery } from './dto/list-staff-appointments.query';
 import { StaffAppointmentsService } from './staff-appointments.service';
 
@@ -16,9 +16,9 @@ export class StaffAppointmentsController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Query() query: ListStaffAppointmentsQuery = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_APPOINTMENTS_READ, staffOpenId);
     const items = await this.staffAppointmentsService.listStaffAppointments(
-      resolvedStaffOpenId,
+      identity.openId,
       query
     );
     return { items };

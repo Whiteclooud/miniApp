@@ -5,8 +5,7 @@ import {
   Headers,
   Put
 } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
-import { assertStaffAuthorized } from '../staff-auth/staff-auth';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 import { BookingRulesService, UpdateBookingRulesInput } from './booking-rules.service';
 
 @Controller('api/v1/staff/booking-rules')
@@ -21,7 +20,7 @@ export class BookingRulesController {
     @Headers('authorization') authorization?: string,
     @Headers('x-staff-openid') staffOpenId?: string
   ) {
-    assertStaffAuthorized(await this.authService.resolveStaffOpenId(authorization, staffOpenId));
+    await this.authService.requirePermission(authorization, PERMISSIONS.BOOKING_RULES_READ, staffOpenId);
     const item = await this.bookingRulesService.getBookingRules();
     return { item };
   }
@@ -32,7 +31,7 @@ export class BookingRulesController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Body() payload: UpdateBookingRulesInput = {}
   ) {
-    assertStaffAuthorized(await this.authService.resolveStaffOpenId(authorization, staffOpenId));
+    await this.authService.requirePermission(authorization, PERMISSIONS.BOOKING_RULES_WRITE, staffOpenId);
     const item = await this.bookingRulesService.updateBookingRules(payload);
     return { item };
   }

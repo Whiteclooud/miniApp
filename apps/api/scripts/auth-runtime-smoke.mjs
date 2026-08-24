@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import { readdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  StaffMemberStatus,
+  StaffRole,
+  UserRole,
+  UserStatus
+} from '@prisma/client';
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:3100';
@@ -113,6 +119,9 @@ async function main() {
     where: { openId: STAFF_OPEN_ID },
     select: { id: true, role: true, status: true }
   });
+  const staffMembershipBefore = staffUserBefore
+    ? await prisma.staffMember.findUnique({ where: { userId: staffUserBefore.id } })
+    : null;
   let customerUploadedFilename = '';
   let otherCustomerUploadedFilename = '';
   let staffUploadedFilename = '';
@@ -125,7 +134,12 @@ async function main() {
   try {
     await createSession(customerOpenId, UserRole.CUSTOMER, customerToken);
     await createSession(otherCustomerOpenId, UserRole.CUSTOMER, blockedCustomerToken);
-    await createSession(STAFF_OPEN_ID, UserRole.STAFF, staffToken);
+    const { user: staffUser } = await createSession(STAFF_OPEN_ID, UserRole.STAFF, staffToken);
+    await prisma.staffMember.upsert({
+      where: { userId: staffUser.id },
+      create: { userId: staffUser.id, role: StaffRole.OWNER, status: StaffMemberStatus.ACTIVE },
+      update: { role: StaffRole.OWNER, status: StaffMemberStatus.ACTIVE, disabledAt: null, disabledByUserId: null }
+    });
 
     await runCase('GET /api/v1/auth/me with bearer -> current customer', async () => {
       const result = await request('/api/v1/auth/me', {
@@ -166,27 +180,27 @@ async function main() {
       return result.json;
     });
 
-    await runCase('staff bearer cannot access customer appointment endpoint', async () => {
+    await runCase('staff bearer retains customer appointment capability', async () => {
       const result = await request('/api/v1/my/appointments', {
         headers: {
           Authorization: `Bearer ${staffToken}`
         }
       });
 
-      assert(result.status === 401, `expected 401, got ${result.status}`);
-      assert(result.json?.code === 'CUSTOMER_UNAUTHORIZED', 'expected CUSTOMER_UNAUTHORIZED');
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.items), 'expected appointment items');
       return result.json;
     });
 
-    await runCase('staff bearer cannot access customer inspiration endpoint', async () => {
+    await runCase('staff bearer retains customer inspiration capability', async () => {
       const result = await request('/api/v1/my/inspirations', {
         headers: {
           Authorization: `Bearer ${staffToken}`
         }
       });
 
-      assert(result.status === 401, `expected 401, got ${result.status}`);
-      assert(result.json?.code === 'CUSTOMER_UNAUTHORIZED', 'expected CUSTOMER_UNAUTHORIZED');
+      assert(result.status === 200, `expected 200, got ${result.status}`);
+      assert(Array.isArray(result.json?.items), 'expected inspiration items');
       return result.json;
     });
 
@@ -545,10 +559,14 @@ async function main() {
       return result.json;
     });
 
-    await runCase('role-changed staff session cannot retain staff access', async () => {
+    await runCase('disabled membership immediately revokes staff access', async () => {
       await prisma.user.update({
         where: { openId: STAFF_OPEN_ID },
         data: { status: UserStatus.ACTIVE, role: UserRole.CUSTOMER }
+      });
+      await prisma.staffMember.update({
+        where: { userId: (await prisma.user.findUniqueOrThrow({ where: { openId: STAFF_OPEN_ID } })).id },
+        data: { status: StaffMemberStatus.DISABLED, disabledAt: new Date() }
       });
 
       const result = await request('/api/v1/staff/booking-rules', {
@@ -591,6 +609,30 @@ async function main() {
           status: staffUserBefore.status
         }
       });
+      if (staffMembershipBefore) {
+        await prisma.staffMember.upsert({
+          where: { userId: staffUserBefore.id },
+          create: {
+            id: staffMembershipBefore.id,
+            userId: staffUserBefore.id,
+            role: staffMembershipBefore.role,
+            status: staffMembershipBefore.status,
+            createdByUserId: staffMembershipBefore.createdByUserId,
+            disabledByUserId: staffMembershipBefore.disabledByUserId,
+            disabledAt: staffMembershipBefore.disabledAt,
+            createdAt: staffMembershipBefore.createdAt
+          },
+          update: {
+            role: staffMembershipBefore.role,
+            status: staffMembershipBefore.status,
+            createdByUserId: staffMembershipBefore.createdByUserId,
+            disabledByUserId: staffMembershipBefore.disabledByUserId,
+            disabledAt: staffMembershipBefore.disabledAt
+          }
+        });
+      } else {
+        await prisma.staffMember.deleteMany({ where: { userId: staffUserBefore.id } });
+      }
     } else {
       await prisma.user.deleteMany({
         where: { openId: STAFF_OPEN_ID }

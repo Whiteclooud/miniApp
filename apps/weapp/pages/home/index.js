@@ -8,8 +8,28 @@ Page({
     hasError: false
   },
 
-  onLoad() {
-    this.loadData();
+  onLoad(options = {}) {
+    this.initializeLaunch(options);
+  },
+
+  async initializeLaunch(options = {}) {
+    const app = getApp();
+    try {
+      const launch = app.ensureLaunchReady
+        ? await app.ensureLaunchReady(options)
+        : { target: '/pages/home/index' };
+      const targetPath = `${launch.target || ''}`.split('?')[0];
+      if (targetPath && targetPath !== '/pages/home/index') {
+        wx.reLaunch({ url: launch.target });
+        return;
+      }
+      await this.loadData();
+    } catch (_error) {
+      this.setData({
+        loading: false,
+        hasError: true
+      });
+    }
   },
 
   async onPullDownRefresh() {
@@ -75,7 +95,7 @@ Page({
 
   goStaffRules() {
     wx.navigateTo({
-      url: '/pages/staff/rules/index'
+      url: '/pages/staff/appointments/index'
     });
   }
 });

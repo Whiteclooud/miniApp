@@ -109,6 +109,7 @@
 - 店员预约列表 `/api/v1/staff/appointments`
 - 店员预约详情 `/api/v1/staff/appointments/:id`
 - 店员审核预约 `POST/PATCH /api/v1/staff/appointments/:id/review`
+- 店员成员管理 `/api/v1/staff/members` 与 `/api/v1/staff/invitations`
 
 ## 接口冻结说明（2026-03-16 复核，2026-03-29 增补）
 
@@ -211,7 +212,7 @@
 - 顾客预约主链路包括参考图上传、创建预约、查询和取消；接口详见 `docs/API.md`。
 - 顾客身份优先从 Bearer session 读取，develop 环境可从 `X-Customer-OpenId` 兜底，并持久化为 `customerOpenId`。
 - `customerOpenId` 不放入 body，也不再使用手机号作为“我的预约”主查询键。
-- 店员侧统一使用 `/api/v1/staff/*` 前缀，并统一做 `X-Staff-OpenId` 白名单校验。
+- 店员侧统一使用 `/api/v1/staff/*` 前缀；体验版 / 正式版由 Bearer session 的当前数据库成员关系与 permission 校验，develop 才允许 `X-Staff-OpenId` 兼容兜底。
 - 店员侧继续返回 `customerName` / `phone` 字段，便于识别顾客。
 - 对历史 SQLite 数据做最小迁移：补齐 `customer_open_id` 等字段，并兼容旧 `appointment_date -> date` 字段迁移，避免因旧表结构导致启动失败。
 - 历史记录若缺失 `customerOpenId`，可保留店员侧可见，但不再回退到手机号主查。

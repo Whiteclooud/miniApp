@@ -10,8 +10,7 @@ import {
   PayloadTooLargeException,
   UnauthorizedException
 } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
-import { assertStaffAuthorized } from '../staff-auth/staff-auth';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 
 const DEFAULT_MAX_FILES = 6;
 const DEFAULT_MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -79,12 +78,12 @@ export class StaffUploadAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<AuthenticatedUploadRequest>();
-    const staffOpenId = await this.authService.resolveStaffOpenId(
+    const identity = await this.authService.requirePermission(
       readHeader(request, 'authorization'),
+      PERMISSIONS.STAFF_GALLERY_WRITE,
       readHeader(request, 'x-staff-openid')
     );
-
-    request.staffOpenId = assertStaffAuthorized(staffOpenId);
+    request.staffOpenId = identity.openId;
     return true;
   }
 }

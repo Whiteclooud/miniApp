@@ -15,10 +15,13 @@
 5. 店员返图上传 / 标签 / 文字说明管理
 6. 店员审核结果可修改后的行为一致性
 7. 体验版登录链路使用 `wx.login + Bearer token`，不依赖 mock OpenID header
+8. 顾客 / 店员 / 店主 / 系统管理员自动分流与权限边界
+9. 店主邀请和停用普通店员的完整生命周期
+10. 系统管理员管理店主时的安全约束
 
 ---
 
-## 当前适用场景（2026-03-29）
+## 当前适用场景（2026-08-21）
 
 当前项目已经完成：
 - `apps/api` 作为唯一后端基线的收口
@@ -28,7 +31,7 @@
 
 因此你现在如果要做验收，应理解成：
 
-> **围绕“返图内容扩展 + 顾客月历 + 店员运营能力”做一轮新的页面级体验 UAT**
+> **围绕“返图内容扩展 + 顾客月历 + 店员运营能力 + 上线身份体系”做一轮新的页面级体验 UAT**
 
 ---
 
@@ -68,38 +71,41 @@ npm run test:api
 
 ### 4. 准备测试身份
 
-#### 店员 OpenID
+正式环境使用真实微信身份，不再通过客户端传入 OpenID 来决定角色。首次发布前在服务端配置：
 
-本地 UAT 建议使用：
-
-```text
-staff-openid-demo
+```env
+SYSTEM_ADMIN_OPEN_IDS=<系统管理员本人 OpenID>
+OWNER_OPEN_IDS=<首位店主 OpenID>
+ALLOW_OPENID_HEADER_AUTH=0
+ALLOW_DEMO_STAFF_OPENID=0
 ```
 
-#### 顾客 OpenID
+`SYSTEM_ADMIN_OPEN_IDS` 和 `OWNER_OPEN_IDS` 只在微信登录时把可信账号引导写入数据库；后续每次请求都查询数据库成员关系和权限。历史配置 `STAFF_OPEN_IDS` 仅用于迁移兼容，不是运行时白名单。
 
-开发环境建议使用稳定 mock 值，例如：
+本地 develop 可以使用稳定 mock 值，例如：
 
 ```text
 customer-openid-demo
+staff-openid-demo
 ```
 
-重点不是具体值，而是确认：
-- 顾客请求头使用 `X-Customer-OpenId`
-- 店员请求头使用 `X-Staff-OpenId`
-- 顾客回查、店员返图管理、审核修改链路在同一组身份下可连续复现
+但要注意：
+
+- 顾客业务接口可用 `X-Customer-OpenId` 兜底，普通店员业务接口可用 `X-Staff-OpenId` 兜底。
+- 成员/邀请管理接口必须使用数据库中的 owner 或 system_admin Bearer session，不接受 `X-Staff-OpenId` 伪装管理者。
+- 需要验证完整 RBAC 时，建议运行 `npm --prefix apps/api run smoke:rbac`，或使用已通过微信登录并完成店主引导的测试账号。
 
 ### 5. 体验版登录检查
 
-体验版 / 正式版不再使用 mock header 作为身份主链路，需额外确认：
+体验版 / 正式版需额外确认：
 
-- 小程序 profile 为 `trial` 或 `release`
-- API 域名为 HTTPS
-- `enableWechatAuth=true`
-- `allowHeaderAuthFallback=false`
-- Network 面板中顾客 / 店员接口带有 `Authorization: Bearer <token>`
-- 不再出现 `X-Customer-OpenId` / `X-Staff-OpenId` 作为主身份头
-- 店员 OpenID 已配置在服务端 `STAFF_OPEN_IDS`
+- 小程序 profile 为 `trial` 或 `release`。
+- API 域名为 HTTPS，且已配置微信公众平台合法 request/uploadFile 域名。
+- 服务端已配置真实 `WECHAT_APP_ID`、`WECHAT_APP_SECRET`、`SYSTEM_ADMIN_OPEN_IDS` 和 `OWNER_OPEN_IDS`。
+- `ALLOW_OPENID_HEADER_AUTH=0`、`ALLOW_DEMO_STAFF_OPENID=0`。
+- Network 面板中顾客 / 店员接口带有 `Authorization: Bearer <token>`。
+- 不出现 `X-Customer-OpenId` / `X-Staff-OpenId` 作为主身份头。
+- 登录响应的 `primaryRole / roles / permissions` 与数据库成员关系一致。
 
 ---
 
@@ -114,15 +120,18 @@ customer-openid-demo
 5. 店员返图上传 / 创建 / 编辑
 6. 店员修改审核结果
 7. 顾客再次查看修改后的审核结果
-8. 体验版登录 / 退出 / 无权限店员验证
+8. 体验版自动登录、角色分流与退出
+9. 店主邀请 / 停用普通店员
+10. 普通店员、店主、系统管理员权限边界
 
-如果时间有限，最低优先保证以下 4 项：
+如果时间有限，最低优先保证以下 6 项：
 
 1. 全部返图列表页
 2. 顾客月历选日期
 3. 店员返图内容管理
 4. 店员审核结果修改
 5. 体验版不依赖 mock OpenID header
+6. 店主邀请、兑换和即时撤权
 
 ---
 
@@ -230,7 +239,7 @@ customer-openid-demo
 
 ### 操作
 1. 进入 `pages/staff/gallery`
-2. 输入店员 OpenID：`staff-openid-demo`
+2. 确认当前账号已自动识别为普通店员、店主或系统管理员
 3. 上传 2~3 张图片
 4. 填写标题、文字说明、标签
 5. 选择封面图并发布或保存
@@ -287,23 +296,25 @@ customer-openid-demo
 
 ---
 
-## 四、可选补充验证
+## 四、登录与 RBAC 验证
 
-## Case 9：体验版登录与权限
+## Case 9：体验版自动登录、分流与退出
 
 ### 操作
-1. 使用体验版打开小程序
-2. 进入顾客预约页，触发微信登录
-3. 打开 Network 面板检查请求头
-4. 使用非店员账号进入店员页
-5. 使用店员账号进入店员页
-6. 调用退出登录能力后重新进入页面
+1. 分别使用顾客、普通店员、店主和系统管理员微信账号冷启动体验版
+2. 打开 Network 面板，检查 `/api/v1/auth/wechat-login` 和 `/api/v1/auth/me`
+3. 核对响应中的 `primaryRole / roles / permissions`
+4. 使用顾客账号直接请求任意 staff 接口
+5. 退出登录后，用旧 token 请求 `/api/v1/auth/me`
 
 ### 预期结果
 - 顾客 / 店员接口使用 `Authorization: Bearer <token>`
 - 体验版不依赖 mock OpenID header
-- 非店员账号访问 staff 接口返回 `STAFF_UNAUTHORIZED`
-- 店员账号可访问 staff 页面
+- 顾客进入顾客首页；普通店员、店主和系统管理员进入店员预约工作台
+- 普通店员、店主和系统管理员的 `roles` 都包含 `customer`，仍可使用顾客功能
+- 顾客账号访问 staff 接口返回 `401 + STAFF_UNAUTHORIZED`
+- 普通店员可处理预约和返图，但不显示成员管理、预约规则入口
+- 店主显示成员管理、预约规则入口；系统管理员还可管理店主
 - 退出登录后旧 token 失效，再访问 `/api/v1/auth/me` 返回 `SESSION_UNAUTHORIZED`
 
 ### 若失败，记录什么
@@ -312,11 +323,58 @@ customer-openid-demo
 - 服务端返回错误码
 - 截图
 
-## Case 10：接口口径一致性（防回退）
+## Case 10：店主邀请、兑换与停用普通店员
+
+### 操作
+1. 使用店主账号进入 `pages/staff/members/index`
+2. 创建一条 `staff` 邀请，选择任意合法有效期
+3. 复制或通过微信分享邀请，让顾客账号打开兑换页并兑换
+4. 不重新登录，直接进入店员预约工作台
+5. 使用同一个邀请码再次兑换
+6. 店主停用刚加入的普通店员
+7. 被停用账号继续用原 token 分别访问店员接口和顾客接口
+
+### 预期结果
+- 创建响应只在当次返回邀请码原文；刷新邀请列表后不再出现原文
+- 顾客兑换后页面立即使用响应 `user` 更新本地身份，可直接进入工作台
+- 重复兑换返回 `409 + INVITATION_ALREADY_REDEEMED`
+- 停用成员是软停用，成员列表中状态变为 `disabled`
+- 被停用账号的原 token 访问店员接口立即返回 `401 + STAFF_UNAUTHORIZED`
+- 同一个 token 仍可访问顾客接口，`/api/v1/auth/me` 返回 `primaryRole=customer`
+
+### 若失败，记录什么
+- 邀请 ID、角色、状态和有效期，不要记录完整邀请码
+- 停用前后的 `/api/v1/auth/me` 响应
+- 服务端错误码和截图
+
+## Case 11：权限边界和系统管理员保护
+
+### 操作
+1. 普通店员尝试访问成员管理和预约规则接口
+2. 店主创建 `owner` 邀请，并尝试停用另一个店主
+3. 店主尝试停用自己
+4. 系统管理员创建并撤销 `owner` 邀请
+5. 在存在至少两位有效店主时，由系统管理员停用其中一位
+6. 再尝试停用最后一位有效店主
+
+### 预期结果
+- 普通店员访问成员管理或预约规则返回 `403 + PERMISSION_DENIED`，预约和返图能力不受影响
+- 店主创建/撤销店主邀请、停用店主均返回 `403 + PERMISSION_DENIED`
+- 停用自己返回 `409 + CANNOT_DISABLE_SELF`
+- 系统管理员可创建/撤销店主邀请，也可停用非最后一位店主
+- 停用最后一位有效店主返回 `409 + LAST_ACTIVE_OWNER`
+- 任何邀请都不能授予 `system_admin`；该角色只能由服务端 `SYSTEM_ADMIN_OPEN_IDS` 可信引导
+
+### 若失败，记录什么
+- 当前账号 `primaryRole / permissions`
+- 目标成员或邀请的角色、状态
+- 服务端错误码和截图
+
+## Case 12：接口口径一致性（防回退）
 
 ### 操作
 1. 打开微信开发者工具 Network 面板
-2. 跑一轮：首页 -> 列表 -> 详情 -> 预约 -> 我的预约 -> 店员返图管理 -> 店员审核修改
+2. 跑一轮：首页 -> 列表 -> 详情 -> 预约 -> 我的预约 -> 店员返图管理 -> 店员审核修改 -> 成员邀请/兑换
 
 ### 预期结果
 - 请求主线集中在当前冻结契约：
@@ -327,6 +385,8 @@ customer-openid-demo
   - `/api/v1/staff/uploads/images`
   - `/api/v1/staff/gallery`
   - `/api/v1/staff/appointments/*`
+  - `/api/v1/staff/members`
+  - `/api/v1/staff/invitations`
 - 不应再看到旧接口或前端自造字段
 
 ---
@@ -341,6 +401,9 @@ customer-openid-demo
 - 店员可上传并维护返图内容
 - 店员可修改已审核结果，顾客侧能看到最新状态
 - 体验版身份链路使用微信登录 Bearer token，不依赖 mock OpenID header
+- 四类角色能自动分流，且入口显示与服务端 permissions 一致
+- 店主可以邀请/停用普通店员，停用后旧 token 立即失去店员权限
+- 普通店员不能管理成员或预约规则；店主不能管理店主；系统管理员保护最后一位店主
 - 上述新增体验不回退当前顾客预约 / 我的预约主链路
 
 ---
@@ -356,8 +419,8 @@ customer-openid-demo
 - 时间：
 - 是否执行 `npm run test:api`：
 - 后端地址：
-- 店员 OpenID：
-- 顾客 OpenID（或 mock 值）：
+- 测试角色：customer / staff / owner / system_admin
+- 是否使用真实微信登录：
 - GitHub / 本地代码版本：
 
 ## 结果
@@ -369,8 +432,10 @@ customer-openid-demo
 - Case 6 店员返图上传与内容管理：通过 / 不通过
 - Case 7 店员审核结果修改：通过 / 不通过
 - Case 8 顾客查看修改后的审核结果：通过 / 不通过
-- Case 9 体验版登录与权限：通过 / 不通过
-- Case 10 接口口径一致性（可选）：通过 / 不通过
+- Case 9 体验版自动登录、分流与退出：通过 / 不通过
+- Case 10 店主邀请、兑换与停用普通店员：通过 / 不通过
+- Case 11 权限边界和系统管理员保护：通过 / 不通过
+- Case 12 接口口径一致性（可选）：通过 / 不通过
 
 ## 问题记录
 1.

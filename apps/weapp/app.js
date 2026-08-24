@@ -13,9 +13,11 @@ const {
 const {
   ensureAuthSession,
   getStoredAuthSession,
+  updateCurrentUser,
   logoutAuthSession,
   clearAuthSession
 } = require('./utils/auth');
+const { resolveLaunchTarget } = require('./utils/launch');
 
 App({
   globalData: {
@@ -33,6 +35,7 @@ App({
       canSwitch: false,
       source: 'default'
     },
+    launchOptions: null,
     customerIdentity: {
       openId: '',
       source: 'missing',
@@ -42,15 +45,56 @@ App({
       label: '未设置顾客 OpenID'
     },
     authSession: null,
+    launchState: 'idle',
+    launchError: null,
+    launchTarget: '',
     enableWechatAuth: false,
     allowHeaderAuthFallback: true,
     isDevelopEnv: true
   },
 
-  onLaunch() {
+  onLaunch(options) {
     this.refreshApiProfile();
     this.refreshCustomerIdentity();
     this.refreshAuthSession();
+    this.globalData.launchOptions = options || null;
+    this.ensureLaunchReady().catch(() => {});
+  },
+
+  ensureLaunchReady(pageOptions = {}) {
+    if (this.launchPromise) {
+      return this.launchPromise;
+    }
+
+    const launchOptions = this.globalData.launchOptions || {};
+    this.globalData.launchState = 'loading';
+    this.globalData.launchError = null;
+    this.launchPromise = (async () => {
+      const profile = this.getApiProfile();
+      let session = null;
+      if (!profile.enableWechatAuth) {
+        this.clearAuthSession();
+      } else {
+        session = await this.ensureAuthSession({ validate: true });
+      }
+
+      const target = resolveLaunchTarget({
+        user: session && session.user,
+        isDevelop: !profile.enableWechatAuth,
+        launchOptions,
+        pageOptions
+      });
+      this.globalData.launchState = 'ready';
+      this.globalData.launchTarget = target;
+      return { session, target };
+    })().catch((error) => {
+      this.globalData.launchState = 'error';
+      this.globalData.launchError = error;
+      this.launchPromise = null;
+      throw error;
+    });
+
+    return this.launchPromise;
   },
 
   refreshCustomerIdentity() {
@@ -84,23 +128,33 @@ App({
     return authSession;
   },
 
-  ensureAuthSession() {
-    return ensureAuthSession()
+  ensureAuthSession(options) {
+    return ensureAuthSession(options)
       .then((authSession) => {
         this.globalData.authSession = authSession;
+        this.refreshCustomerIdentity();
         return authSession;
       });
+  },
+
+  updateCurrentUser(user) {
+    const authSession = updateCurrentUser(user);
+    this.globalData.authSession = authSession;
+    this.refreshCustomerIdentity();
+    return authSession;
   },
 
   clearAuthSession() {
     clearAuthSession();
     this.globalData.authSession = null;
+    this.refreshCustomerIdentity();
   },
 
   logoutAuthSession() {
     return logoutAuthSession()
       .then((result) => {
         this.globalData.authSession = null;
+        this.refreshCustomerIdentity();
         return result;
       });
   },

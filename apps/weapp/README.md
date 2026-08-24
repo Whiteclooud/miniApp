@@ -18,6 +18,10 @@
 - `pages/staff/rules`
 - `pages/staff/gallery`
 - `pages/staff/appointments`
+- `pages/staff/members`
+
+默认首屏为 `pages/home`。应用启动时会完成微信登录、校验缓存 session，
+并按 `customer / staff / owner / system_admin` 自动进入顾客首页或店员预约工作台。
 
 ## 当前能力
 
@@ -28,6 +32,7 @@
 - 顾客灵感接口请求封装：列表、详情、保存、备注修改、删除
 - 店员维护预约规则
 - 店员审核预约申请、协助改期并查看操作日志
+- 店主创建一次性店员邀请、查看和移除店员；系统管理员还可邀请或移除店主
 
 ## 打开方式
 
@@ -41,7 +46,7 @@ apps/weapp
 
 1. 在仓库根目录确认当前后端已启动：`npm run dev:api`
 2. 确认微信开发者工具已关闭本地域名校验
-3. develop 联调可准备一个在 `STAFF_OPEN_IDS` 白名单内的 OpenID；体验版 / 正式版使用微信 Bearer 店员会话
+3. develop 联调可继续使用 `staff-openid-demo`；体验版 / 正式版使用微信 Bearer 会话和数据库成员关系
 4. 验收步骤请参考 `docs/UAT_GUIDE.md`
 
 ## 说明

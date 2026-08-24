@@ -1,5 +1,5 @@
 {
-  "libVersion": "3.15.0",
+  "libVersion": "3.17.1",
   "projectname": "miniapp-nail-booking",
   "setting": {
     "urlCheck": false,
@@ -14,9 +14,9 @@
     "useStaticServer": false,
     "useLanDebug": false,
     "showES6CompileOption": false,
-    "compileHotReLoad": true,
+    "compileHotReLoad": false,
     "checkInvalidKey": true,
-    "ignoreDevUnusedFiles": true,
+    "ignoreDevUnusedFiles": false,
     "bigPackageSizeSupport": false
   }
 }

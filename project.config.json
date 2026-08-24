@@ -12,9 +12,11 @@
             "outputPath": ""
         },
         "useCompilerPlugins": false,
-        "minifyWXML": true
+        "minifyWXML": true,
+        "ignoreDevUnusedFiles": false
     },
     "compileType": "miniprogram",
+    "miniprogramRoot": "apps/weapp/",
     "simulatorPluginLibVersion": {},
     "packOptions": {
         "ignore": [],

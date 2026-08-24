@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, PERMISSIONS } from '../auth/auth.service';
 import { UpsertStaffGalleryDto } from './dto/upsert-staff-gallery.dto';
 import { StaffGalleryService } from './staff-gallery.service';
 
@@ -15,8 +15,8 @@ export class StaffGalleryController {
     @Headers('authorization') authorization?: string,
     @Headers('x-staff-openid') staffOpenId?: string
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const items = await this.staffGalleryService.listItems(resolvedStaffOpenId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_GALLERY_READ, staffOpenId);
+    const items = await this.staffGalleryService.listItems(identity.openId);
     return { items };
   }
 
@@ -26,8 +26,8 @@ export class StaffGalleryController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Param('id') itemId?: string
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const item = await this.staffGalleryService.getItem(resolvedStaffOpenId, itemId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_GALLERY_READ, staffOpenId);
+    const item = await this.staffGalleryService.getItem(identity.openId, itemId);
     return { item };
   }
 
@@ -37,8 +37,8 @@ export class StaffGalleryController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Body() payload: UpsertStaffGalleryDto = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const item = await this.staffGalleryService.createItem(resolvedStaffOpenId, payload);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_GALLERY_WRITE, staffOpenId);
+    const item = await this.staffGalleryService.createItem(identity.openId, payload);
     return { item };
   }
 
@@ -49,8 +49,8 @@ export class StaffGalleryController {
     @Param('id') itemId?: string,
     @Body() payload: UpsertStaffGalleryDto = {}
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const item = await this.staffGalleryService.updateItem(resolvedStaffOpenId, itemId, payload);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_GALLERY_WRITE, staffOpenId);
+    const item = await this.staffGalleryService.updateItem(identity.openId, itemId, payload);
     return { item };
   }
 
@@ -60,8 +60,8 @@ export class StaffGalleryController {
     @Headers('x-staff-openid') staffOpenId?: string,
     @Param('id') itemId?: string
   ) {
-    const resolvedStaffOpenId = await this.authService.resolveStaffOpenId(authorization, staffOpenId);
-    const item = await this.staffGalleryService.deleteItem(resolvedStaffOpenId, itemId);
+    const identity = await this.authService.requirePermission(authorization, PERMISSIONS.STAFF_GALLERY_WRITE, staffOpenId);
+    const item = await this.staffGalleryService.deleteItem(identity.openId, itemId);
     return { item };
   }
 }

@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runReferenceImageLogicSelfcheck } from './reference-image-logic-selfcheck.mjs';
+import { runAuthBootstrapSelfcheck } from './auth-bootstrap-selfcheck.mjs';
+import { runStaffMembersLogicSelfcheck } from './staff-members-logic-selfcheck.mjs';
 
 const workspaceDir = process.cwd();
 const issues = [];
@@ -317,6 +319,18 @@ const appJsPath = 'apps/weapp/app.js';
 const appJsText = readText(appJsPath);
 expectIncludes(appJsText, "apiBaseUrl: 'http://127.0.0.1:3100'", appJsPath);
 expectIncludes(appJsText, "key: 'api'", appJsPath);
+expectRegex(
+  readText('apps/weapp/app.json'),
+  /"pages\/staff\/members\/index"/,
+  'apps/weapp/app.json',
+  'must register the staff members page'
+);
+expectRegex(
+  appJsText,
+  /^(?![\s\S]*require\(['"]\.\/pages\/)[\s\S]*$/,
+  appJsPath,
+  'must not require page entry modules; app.json owns page registration'
+);
 expectExcludes(appJsText, '127.0.0.1:3000', appJsPath);
 expectExcludes(appJsText, 'apps/server', appJsPath);
 
@@ -556,6 +570,7 @@ expectIncludes(staffAppointmentsWxmlText, 'rejectActionText', staffAppointmentsW
 expectIncludes(staffAppointmentsWxmlText, '待审核', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, 'bindtap="onDetailFilterTap"', staffAppointmentsWxmlPath);
 expectIncludes(staffAppointmentsWxmlText, 'detail-filter-chip', staffAppointmentsWxmlPath);
+expectIncludes(staffAppointmentsWxmlText, 'url="/pages/staff/members/index"', staffAppointmentsWxmlPath);
 
 const staffRulesPagePath = 'apps/weapp/pages/staff/rules/index.js';
 const staffRulesPageText = readText(staffRulesPagePath);
@@ -619,6 +634,66 @@ expectIncludes(
   `${staffGalleryServicePath}#deleteStaffGallery`
 );
 
+const staffManagementServicePath = 'apps/weapp/services/staff-management.js';
+const staffManagementServiceText = readText(staffManagementServicePath);
+const listStaffMembersBody = getFunctionBody(staffManagementServiceText, 'listStaffMembers');
+const removeStaffMemberBody = getFunctionBody(staffManagementServiceText, 'removeStaffMember');
+const listStaffInvitationsBody = getFunctionBody(staffManagementServiceText, 'listStaffInvitations');
+const createStaffInvitationBody = getFunctionBody(staffManagementServiceText, 'createStaffInvitation');
+const revokeStaffInvitationBody = getFunctionBody(staffManagementServiceText, 'revokeStaffInvitation');
+const redeemStaffInvitationBody = getFunctionBody(staffManagementServiceText, 'redeemStaffInvitation');
+expectIncludes(listStaffMembersBody, "url: '/api/v1/staff/members'", `${staffManagementServicePath}#listStaffMembers`);
+expectIncludes(listStaffMembersBody, "auth: 'staff'", `${staffManagementServicePath}#listStaffMembers`);
+expectIncludes(
+  removeStaffMemberBody,
+  'url: `/api/v1/staff/members/${encodeURIComponent(memberId)}`',
+  `${staffManagementServicePath}#removeStaffMember`
+);
+expectIncludes(removeStaffMemberBody, "method: 'DELETE'", `${staffManagementServicePath}#removeStaffMember`);
+expectIncludes(
+  listStaffInvitationsBody,
+  "url: '/api/v1/staff/invitations'",
+  `${staffManagementServicePath}#listStaffInvitations`
+);
+expectIncludes(createStaffInvitationBody, "method: 'POST'", `${staffManagementServicePath}#createStaffInvitation`);
+expectIncludes(createStaffInvitationBody, "auth: 'staff'", `${staffManagementServicePath}#createStaffInvitation`);
+expectIncludes(
+  revokeStaffInvitationBody,
+  'url: `/api/v1/staff/invitations/${encodeURIComponent(invitationId)}`',
+  `${staffManagementServicePath}#revokeStaffInvitation`
+);
+expectIncludes(
+  revokeStaffInvitationBody,
+  "method: 'DELETE'",
+  `${staffManagementServicePath}#revokeStaffInvitation`
+);
+expectIncludes(
+  redeemStaffInvitationBody,
+  "url: '/api/v1/staff/invitations/redeem'",
+  `${staffManagementServicePath}#redeemStaffInvitation`
+);
+expectIncludes(redeemStaffInvitationBody, "method: 'POST'", `${staffManagementServicePath}#redeemStaffInvitation`);
+expectIncludes(redeemStaffInvitationBody, "auth: 'customer'", `${staffManagementServicePath}#redeemStaffInvitation`);
+
+const staffMembersPagePath = 'apps/weapp/pages/staff/members/index.js';
+const staffMembersPageText = readText(staffMembersPagePath);
+const staffMembersWxmlPath = 'apps/weapp/pages/staff/members/index.wxml';
+const staffMembersWxmlText = readText(staffMembersWxmlPath);
+expectIncludes(staffMembersPageText, "options.mode === 'redeem'", staffMembersPagePath);
+expectIncludes(staffMembersPageText, 'auth.updateCurrentUser(response.user)', staffMembersPagePath);
+expectIncludes(staffMembersPageText, "auth.hasPermission(user, 'staff:manage')", staffMembersPagePath);
+expectIncludes(staffMembersPageText, 'onShareAppMessage()', staffMembersPagePath);
+expectIncludes(
+  staffMembersPageText,
+  '/pages/staff/members/index?mode=redeem&code=${encodeURIComponent(code)}',
+  staffMembersPagePath
+);
+expectIncludes(staffMembersWxmlText, 'open-type="share"', staffMembersWxmlPath);
+expectIncludes(staffMembersWxmlText, 'pageState === \'unauthorized\'', staffMembersWxmlPath);
+expectIncludes(staffMembersWxmlText, 'pageState === \'error\'', staffMembersWxmlPath);
+expectIncludes(staffMembersWxmlText, 'members.length', staffMembersWxmlPath);
+expectIncludes(staffMembersWxmlText, 'invitations.length', staffMembersWxmlPath);
+
 const appJsonPath = 'apps/weapp/app.json';
 const appJson = JSON.parse(readText(appJsonPath) || '{}');
 const requiredPages = [
@@ -630,11 +705,36 @@ const requiredPages = [
   'pages/my-inspirations/index',
   'pages/staff/rules/index',
   'pages/staff/gallery/index',
-  'pages/staff/appointments/index'
+  'pages/staff/appointments/index',
+  'pages/staff/members/index'
 ];
 requiredPages.forEach((page) => {
   if (!Array.isArray(appJson.pages) || !appJson.pages.includes(page)) {
     issues.push(`${appJsonPath}: missing required page ${page}`);
+  }
+});
+
+[
+  'project.config.json',
+  'apps/weapp/project.config.json'
+].forEach((projectConfigPath) => {
+  const projectConfig = JSON.parse(readText(projectConfigPath) || '{}');
+  if (!projectConfig.setting || projectConfig.setting.ignoreDevUnusedFiles !== false) {
+    issues.push(`${projectConfigPath}: unused-file filtering must stay disabled`);
+  }
+  const forcedIncludes = projectConfig.packOptions && projectConfig.packOptions.include;
+  if (Array.isArray(forcedIncludes) && forcedIncludes.length) {
+    issues.push(`${projectConfigPath}: pages must be registered in app.json, not packOptions.include`);
+  }
+});
+
+[
+  'project.private.config.json',
+  'apps/weapp/project.private.config.json'
+].forEach((privateConfigPath) => {
+  const privateConfig = JSON.parse(readText(privateConfigPath) || '{}');
+  if (!privateConfig.setting || privateConfig.setting.compileHotReLoad !== false) {
+    issues.push(`${privateConfigPath}: hot reload must stay disabled to avoid stale page graphs`);
   }
 });
 
@@ -644,6 +744,18 @@ try {
   await runReferenceImageLogicSelfcheck();
 } catch (error) {
   issues.push(`reference image logic self-check failed: ${error.stack || error.message || error}`);
+}
+
+try {
+  await runAuthBootstrapSelfcheck();
+} catch (error) {
+  issues.push(`auth/bootstrap self-check failed: ${error.stack || error.message || error}`);
+}
+
+try {
+  await runStaffMembersLogicSelfcheck();
+} catch (error) {
+  issues.push(`staff members logic self-check failed: ${error.stack || error.message || error}`);
 }
 
 if (issues.length) {

@@ -12,6 +12,27 @@ enum UserRole {
   STAFF
 }
 
+enum UserSystemRole {
+  USER
+  SYSTEM_ADMIN
+}
+
+enum StaffRole {
+  STAFF
+  OWNER
+}
+
+enum StaffMemberStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum StaffInvitationStatus {
+  PENDING
+  REDEEMED
+  REVOKED
+}
+
 enum UserStatus {
   ACTIVE
   DISABLED
@@ -32,16 +53,52 @@ enum GalleryStatus {
 }
 
 model User {
-  id          String      @id @default(cuid())
-  openId      String      @unique @map("open_id") @db.VarChar(191)
-  role        UserRole
-  displayName String?     @map("display_name") @db.VarChar(191)
-  phone       String?     @db.VarChar(32)
-  status      UserStatus  @default(ACTIVE)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id              String         @id @default(cuid())
+  openId          String         @unique @map("open_id") @db.VarChar(191)
+  role            UserRole
+  systemRole      UserSystemRole @default(USER) @map("system_role")
+  displayName     String?        @map("display_name") @db.VarChar(191)
+  phone           String?        @db.VarChar(32)
+  status          UserStatus     @default(ACTIVE)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  staffMembership StaffMember?
 
   @@map("users")
+}
+
+model StaffMember {
+  id               String            @id @default(cuid())
+  userId           String            @unique @map("user_id") @db.VarChar(191)
+  role             StaffRole
+  status           StaffMemberStatus @default(ACTIVE)
+  createdByUserId  String?           @map("created_by_user_id") @db.VarChar(191)
+  disabledByUserId String?           @map("disabled_by_user_id") @db.VarChar(191)
+  disabledAt       DateTime?         @map("disabled_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_staff_members_user")
+
+  @@index([role, status], map: "idx_staff_members_role_status")
+  @@map("staff_members")
+}
+
+model StaffInvitation {
+  id               String                @id @default(cuid())
+  codeHash         String                @unique @map("code_hash") @db.VarChar(64)
+  role             StaffRole
+  status           StaffInvitationStatus @default(PENDING)
+  expiresAt        DateTime              @map("expires_at")
+  createdByUserId  String                @map("created_by_user_id") @db.VarChar(191)
+  redeemedByUserId String?               @map("redeemed_by_user_id") @db.VarChar(191)
+  redeemedAt       DateTime?             @map("redeemed_at")
+  revokedAt        DateTime?             @map("revoked_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  @@index([status, expiresAt], map: "idx_staff_invitations_status_expires_at")
+  @@index([createdByUserId, createdAt], map: "idx_staff_invitations_creator_created_at")
+  @@map("staff_invitations")
 }
 
 model AuthSession {

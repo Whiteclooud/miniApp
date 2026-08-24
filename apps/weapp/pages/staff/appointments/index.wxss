@@ -496,6 +496,10 @@
   margin-bottom: 36rpx;
 }
 
+.staff-navigation-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .staff-navigation-tab {
   display: flex;
   min-width: 0;
@@ -514,6 +518,46 @@
   background: #e8856c;
   color: #ffffff;
   font-weight: 500;
+}
+
+.management-entry {
+  display: flex;
+  min-height: 104rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 28rpx;
+  padding: 22rpx 28rpx;
+  border: 2rpx solid #f5ddd5;
+  border-radius: 28rpx;
+  background: #fff8f5;
+}
+
+.management-entry-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.management-entry-title {
+  color: #3d2c2c;
+  font-size: 27rpx;
+  font-weight: 600;
+  line-height: 36rpx;
+}
+
+.management-entry-desc {
+  margin-top: 4rpx;
+  color: #9b7e75;
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.management-entry-arrow {
+  flex: 0 0 auto;
+  color: #d77864;
+  font-size: 42rpx;
+  line-height: 48rpx;
 }
 
 .staff-page .card {

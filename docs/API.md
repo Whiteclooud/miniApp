@@ -4,16 +4,18 @@
 
 开发环境：`http://127.0.0.1:3100`
 
-## 当前基线调整（2026-07-05）
+## 当前基线调整（2026-08-21）
 
 - `apps/api` 是当前唯一后端基线，开发环境默认地址为 `http://127.0.0.1:3100`。
 - 体验版 / 正式版必须切到 HTTPS API 域名，并在微信公众平台配置合法 request/uploadFile 域名。
 - 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`。
+- 登录后由服务端返回 `primaryRole / roles / permissions`，小程序据此自动进入顾客首页或店员预约工作台。
+- 店员授权以数据库中的有效成员关系为准；`SYSTEM_ADMIN_OPEN_IDS`、`OWNER_OPEN_IDS` 只负责可信账号首次引导，不是日常请求白名单。
 - develop 环境允许 `X-Customer-OpenId` / `X-Staff-OpenId` 作为本地联调兜底；体验版 / 正式版不允许依赖 mock OpenID header。
 - `GET /api/v1/availability` 已承载规则窗口日期、月历日期状态与当前日期全部时段。
 - `GET /api/v1/staff/appointments` 未传 `status` 时返回完整预约数据集，供店员月历聚合使用。
 
-## 当前冻结契约（2026-03-16 复核，2026-03-29 增补）
+## 当前冻结契约（2026-03-16 复核，2026-08-21 增补）
 
 V1 当前只允许以下接口对外使用：
 
@@ -50,6 +52,12 @@ V1 当前只允许以下接口对外使用：
 - `PATCH /api/v1/my/appointments/:id/cancel`
 - `PATCH /api/v1/staff/appointments/:id/reschedule`
 - `GET /api/v1/staff/appointments/:id/audit-logs`
+- `GET /api/v1/staff/members`
+- `DELETE /api/v1/staff/members/:id`
+- `GET /api/v1/staff/invitations`
+- `POST /api/v1/staff/invitations`
+- `DELETE /api/v1/staff/invitations/:id`
+- `POST /api/v1/staff/invitations/redeem`
 
 以下旧接口不再属于当前契约，前后端都禁止继续依赖：
 
@@ -69,9 +77,9 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/staff/appointments` 额外支持 `keyword`、`date`、`dateFrom`、`dateTo` 查询参数，用于按顾客名/手机号/OpenID、日期和状态筛选。
 - 预约规则扩展字段：`weeklyOpenDays`、`sameDayCutoffTime`、`minAdvanceHours`、`dateSlotOverrides`。availability 会根据周营业日、当天截止、提前小时和特殊日期时段返回日期/时段禁用原因。
 
-## 本轮 UAT / 集成备注（2026-07-05）
+## 本轮 UAT / 集成备注（2026-08-21）
 
-- 体验版 UAT 需要额外确认 Bearer session、logout、非店员拦截和 staff 白名单复核。
+- 体验版 UAT 需要额外确认 Bearer session、logout、数据库成员权限、邀请兑换和即时撤权。
 - 本地 UAT 可继续使用 `staff-openid-demo`；`NODE_ENV=production` 时 demo 店员默认不生效。
 - 返图详情页使用 `GET /api/v1/gallery/:id` 单条读取，避免先拉取整份返图库；仅 `active` 内容对顾客可见。
 - 顾客预约页显性展示“可约 + 不可约”时段与原因，供前端做卡片化选择和禁用提示。
@@ -86,7 +94,7 @@ V1 当前只允许以下接口对外使用：
 - `GET /api/v1/availability` 除 `dateOptions` 外，新增 `calendarDays`，用于顾客端复用店员月历组件；每个日期需显性给出日期级状态与原因。
 - `POST/PATCH /api/v1/staff/appointments/:id/review` 从“一次性审核”调整为“可修改最终状态”；最新审核结果生效，且从拒绝改回通过时仍需重新做 slot 冲突校验。
 - 当前体验版 / 正式版身份口径为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`；`X-Customer-OpenId` / `X-Staff-OpenId` 仅作为 develop 环境兼容兜底，不作为体验版或正式版发布口径。
-- 店员 Bearer session 每次访问 staff 接口时仍会复核 `STAFF_OPEN_IDS` 白名单；从白名单移除后，旧 session 不再拥有店员权限。
+- 店员 Bearer session 每次访问 staff 接口时都会查询当前数据库成员关系和 permission；成员被移除后旧 session 立即失去店员权限。
 
 ## 1. 健康检查
 
@@ -127,7 +135,20 @@ V1 当前只允许以下接口对外使用：
   "user": {
     "id": "user-id",
     "openId": "openid",
-    "role": "customer"
+    "role": "staff",
+    "primaryRole": "owner",
+    "roles": ["customer", "staff", "owner"],
+    "permissions": [
+      "staff:appointments:read",
+      "staff:appointments:write",
+      "staff:gallery:read",
+      "staff:gallery:write",
+      "staff:booking-rules:read",
+      "staff:booking-rules:write",
+      "staff:manage"
+    ],
+    "systemRole": "user",
+    "staffRole": "owner"
   }
 }
 ```
@@ -146,7 +167,20 @@ V1 当前只允许以下接口对外使用：
   "user": {
     "id": "user-id",
     "openId": "openid",
-    "role": "customer"
+    "role": "staff",
+    "primaryRole": "owner",
+    "roles": ["customer", "staff", "owner"],
+    "permissions": [
+      "staff:appointments:read",
+      "staff:appointments:write",
+      "staff:gallery:read",
+      "staff:gallery:write",
+      "staff:booking-rules:read",
+      "staff:booking-rules:write",
+      "staff:manage"
+    ],
+    "systemRole": "user",
+    "staffRole": "owner"
   }
 }
 ```
@@ -168,12 +202,38 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
+- `role` 是兼容旧前端的粗粒度字段，只会是 `customer` 或 `staff`；角色分流必须使用 `primaryRole`，能力控制必须使用 `permissions`。
+- `primaryRole` 允许 `customer / staff / owner / system_admin`。`roles` 是累积角色：所有有效账号都包含 `customer`，店员和更高角色仍可使用顾客功能。
+- `systemRole` 允许 `user / system_admin`，用于明确系统级角色；业务页面仍应按 `primaryRole / permissions` 分流和控制能力。
+- `staffRole` 只在用户存在有效店员成员关系时返回，允许 `staff / owner`；纯系统管理员账号可以不返回该字段。
+- 权限定义如下：
+
+| 角色 | 权限 |
+| --- | --- |
+| `customer` | 无店员权限 |
+| `staff` | `staff:appointments:read`、`staff:appointments:write`、`staff:gallery:read`、`staff:gallery:write` |
+| `owner` | 普通店员权限 + `staff:booking-rules:read`、`staff:booking-rules:write`、`staff:manage` |
+| `system_admin` | 店主权限 + `staff:manage:owners`、`system:manage` |
+
 - 缺少、过期或已退出的 token 访问 `/api/v1/auth/me` 时返回 `401 + SESSION_UNAUTHORIZED`。
-- `role=staff` 由服务端根据 `STAFF_OPEN_IDS` 白名单判断。
-- Bearer session 每次请求都会复核关联用户仍为 `ACTIVE`，且当前角色与 session 角色一致；用户被禁用或改角色后，旧 token 立即失效。
+- 所有 ACTIVE 用户都有 `customer` 角色；`staff/owner` 来自 `staff_members`，`system_admin` 来自服务端可信引导和用户系统角色。
+- Bearer session 每次请求都会复核关联用户仍为 `ACTIVE`，并动态读取当前成员关系和权限；撤销成员后旧 token 仍可使用顾客能力，但立即失去店员权限。
 - 微信登录命中已禁用用户时返回 `401 + ACCOUNT_DISABLED`；登录不会自动把 `DISABLED` 账号恢复为 `ACTIVE`。
-- 请求已带 Bearer token 但 token 无效、过期或已失效时，不会再降级使用 develop 的 OpenID header；顾客 / 店员接口分别返回 `CUSTOMER_UNAUTHORIZED` / `STAFF_UNAUTHORIZED`。
+- 请求已带 Bearer token 但 token 无效、过期或已失效时，不会再降级使用 develop 的 OpenID header。
 - 体验版 / 正式版必须使用 Bearer token；OpenID header 只保留给 develop 环境联调。
+- `SYSTEM_ADMIN_OPEN_IDS` 只将可信 OpenID 首次引导为系统管理员；业务接口和邀请码都不能授予 `system_admin`。
+- `OWNER_OPEN_IDS` 只用于首位店主引导。旧配置 `STAFF_OPEN_IDS` 仅作为 `OWNER_OPEN_IDS` 的兼容来源，登录后幂等写入数据库，日常鉴权不会把它当作运行时白名单。
+
+### Errors
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| `400` | `WECHAT_LOGIN_CODE_MISSING` | 登录请求未提供有效 `code` |
+| `400` | `WECHAT_AUTH_NOT_CONFIGURED` | 服务端未配置微信 AppID / AppSecret |
+| `401` | `WECHAT_LOGIN_FAILED` | 微信 `jscode2session` 调用失败 |
+| `401` | `WECHAT_OPENID_MISSING` | 微信响应中缺少 OpenID |
+| `401` | `ACCOUNT_DISABLED` | OpenID 对应用户已停用 |
+| `401` | `SESSION_UNAUTHORIZED` | `/auth/me` 的 Bearer session 缺失、过期、已退出或关联用户失效 |
 
 ## 2. 顾客侧返图库
 
@@ -771,9 +831,9 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
-- 店员身份优先从 Bearer session 读取；develop 环境允许从 `X-Staff-OpenId` 兜底读取。
-- 本地 UAT 默认可使用 `staff-openid-demo`；`NODE_ENV=production` 时 demo 店员默认关闭，必须通过 `STAFF_OPEN_IDS` 显式配置。
-- 白名单外身份统一返回 `401 + STAFF_UNAUTHORIZED`。
+- 该接口要求 `staff:booking-rules:read`，仅店主和系统管理员拥有。
+- develop 环境的 `staff-openid-demo` 可作为店主引导身份；正式环境使用 Bearer session 和数据库角色。
+- 普通顾客返回 `401 + STAFF_UNAUTHORIZED`；已登录普通店员返回 `403 + PERMISSION_DENIED`。
 
 ## 10. 店员更新预约规则
 
@@ -834,6 +894,7 @@ V1 当前只允许以下接口对外使用：
 
 ### Notes
 
+- 该接口要求 `staff:booking-rules:write`，仅店主和系统管理员拥有。
 - `PUT /api/v1/staff/booking-rules` 属于当前冻结契约的必选写接口；若运行环境缺失该路由，店员规则保存直接判定为回归缺陷。
 - 保存成功后，顾客预约页再次请求 `GET /api/v1/availability` 时，应能看到未来日期窗口与时段结果随新规则生效。
 - `400` 错误码：`INVALID_BOOKING_RULE_PAYLOAD`、`INVALID_ADVANCE_OPEN_DAYS`、`INVALID_CLOSED_DATE`、`INVALID_SLOT`、`INVALID_WEEKLY_OPEN_DAYS`、`INVALID_SAME_DAY_CUTOFF_TIME`、`INVALID_MIN_ADVANCE_HOURS`、`INVALID_DATE_SLOT_OVERRIDES`。
@@ -1044,14 +1105,285 @@ V1 当前只允许以下接口对外使用：
 
 日志按 `createdAt desc` 返回，覆盖创建、顾客取消、店员状态更新与店员改期。不存在的预约返回 `404 + APPOINTMENT_NOT_FOUND`；缺少店员身份返回 `401 + STAFF_UNAUTHORIZED`。
 
-## 16. 店员端前端接入
+## 16. 店员成员管理
+
+成员管理接口均要求有效 Bearer session 和 `staff:manage` 权限，因此只有店主和系统管理员可访问。为避免本地 mock 身份绕过成员库，这组管理接口即使在 develop 环境也不接受 `X-Staff-OpenId` 兜底。
+
+### 16.1 获取成员列表
+
+#### Request
+
+- `GET /api/v1/staff/members`
+- Header：`Authorization: Bearer <token>`
+
+#### Response (`200`)
+
+```json
+{
+  "items": [
+    {
+      "id": "member-id",
+      "userId": "user-id",
+      "openId": "openid",
+      "displayName": "店员小林",
+      "phone": "13800000000",
+      "role": "staff",
+      "status": "active",
+      "createdAt": "2026-08-21T08:00:00.000Z",
+      "updatedAt": "2026-08-21T08:00:00.000Z",
+      "disabledAt": ""
+    }
+  ]
+}
+```
+
+- `role` 只会是 `staff / owner`；系统管理员是用户系统角色，不作为成员角色出现在这里。
+- `status` 为 `active / disabled`。列表保留已停用成员，前端不能把空 `disabledAt` 当成成员仍有效。
+- 当前接口返回全部店员和店主成员。店主可以查看店主记录，但不能移除店主；系统管理员可移除普通店员或店主。
+
+### 16.2 停用成员
+
+#### Request
+
+- `DELETE /api/v1/staff/members/:id`
+- Header：`Authorization: Bearer <token>`
+- `:id` 是成员列表中的成员 `id`，不是 `userId` 或 OpenID。
+
+#### Response (`200`)
+
+```json
+{
+  "item": {
+    "id": "member-id",
+    "userId": "user-id",
+    "openId": "openid",
+    "displayName": "店员小林",
+    "phone": "13800000000",
+    "role": "staff",
+    "status": "disabled",
+    "createdAt": "2026-08-21T08:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z",
+    "disabledAt": "2026-08-21T09:00:00.000Z"
+  }
+}
+```
+
+- 删除是软停用；重复停用已停用成员会幂等返回该成员。
+- 成员被停用后，其已有 token 不会被整体删除：后续请求会动态得到 `primaryRole=customer` 和空的店员权限，顾客功能仍可使用。
+- 任何角色都不能停用自己；店主只能停用普通店员；系统管理员可停用店主或普通店员；最后一位有效店主不能被停用。
+
+### 成员管理错误码
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| `401` | `STAFF_UNAUTHORIZED` | session 缺失/无效，或当前用户不是有效店员成员/系统管理员 |
+| `403` | `PERMISSION_DENIED` | 普通店员访问管理接口，或店主尝试停用店主 |
+| `404` | `STAFF_MEMBER_NOT_FOUND` | 成员 ID 不存在 |
+| `409` | `CANNOT_DISABLE_SELF` | 尝试停用当前账号自己 |
+| `409` | `LAST_ACTIVE_OWNER` | 尝试停用最后一位有效店主 |
+
+## 17. 店员邀请管理
+
+店主通过一次性邀请码添加普通店员；系统管理员还可邀请店主。客户端不能创建 `system_admin` 邀请。
+
+### 17.1 获取邀请列表
+
+#### Request
+
+- `GET /api/v1/staff/invitations`
+- Header：`Authorization: Bearer <token>`
+- 权限：`staff:manage`
+
+#### Response (`200`)
+
+```json
+{
+  "items": [
+    {
+      "id": "invitation-id",
+      "role": "staff",
+      "status": "pending",
+      "expiresAt": "2026-08-24T08:00:00.000Z",
+      "createdAt": "2026-08-21T08:00:00.000Z",
+      "updatedAt": "2026-08-21T08:00:00.000Z",
+      "redeemedAt": "",
+      "revokedAt": "",
+      "createdBy": {
+        "userId": "owner-user-id",
+        "openId": "owner-openid",
+        "displayName": "店主"
+      },
+      "redeemedBy": null
+    }
+  ]
+}
+```
+
+- `status` 为 `pending / redeemed / revoked / expired`。数据库中已到期但仍为 pending 的邀请，读取时会返回 `expired`。
+- 店主只能看到普通店员邀请；系统管理员可看到普通店员和店主邀请。
+- 列表永远不返回邀请码原文或哈希。
+
+### 17.2 创建邀请
+
+#### Request
+
+- `POST /api/v1/staff/invitations`
+- Header：`Authorization: Bearer <token>`
+- 权限：`staff:manage`
+
+```json
+{
+  "role": "staff",
+  "expiresInHours": 72
+}
+```
+
+- `role` 必填，只允许 `staff / owner`。店主只能传 `staff`，系统管理员可传二者。
+- `expiresInHours` 可选，必须是 `1-336` 的整数；缺省为 `72`。
+
+#### Response (`201`)
+
+```json
+{
+  "item": {
+    "id": "invitation-id",
+    "role": "staff",
+    "status": "pending",
+    "expiresAt": "2026-08-24T08:00:00.000Z",
+    "createdAt": "2026-08-21T08:00:00.000Z",
+    "updatedAt": "2026-08-21T08:00:00.000Z",
+    "redeemedAt": "",
+    "revokedAt": "",
+    "createdBy": {
+      "userId": "owner-user-id",
+      "openId": "owner-openid",
+      "displayName": "店主"
+    },
+    "redeemedBy": null
+  },
+  "invite": {
+    "code": "一次性邀请码原文",
+    "expiresAt": "2026-08-24T08:00:00.000Z"
+  }
+}
+```
+
+`invite.code` 只在创建成功响应中返回一次；服务端只保存 SHA-256 哈希，之后无法通过列表接口找回。前端应在本次响应中立即提供复制或微信分享，不应写入日志。
+
+### 17.3 撤销邀请
+
+#### Request
+
+- `DELETE /api/v1/staff/invitations/:id`
+- Header：`Authorization: Bearer <token>`
+- 权限：`staff:manage`
+- `:id` 是邀请列表中的邀请 `id`，不是邀请码。
+
+#### Response (`200`)
+
+```json
+{
+  "item": {
+    "id": "invitation-id",
+    "role": "staff",
+    "status": "revoked",
+    "expiresAt": "2026-08-24T08:00:00.000Z",
+    "createdAt": "2026-08-21T08:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z",
+    "redeemedAt": "",
+    "revokedAt": "2026-08-21T09:00:00.000Z",
+    "createdBy": {
+      "userId": "owner-user-id",
+      "openId": "owner-openid",
+      "displayName": "店主"
+    },
+    "redeemedBy": null
+  }
+}
+```
+
+店主只能撤销普通店员邀请；系统管理员可撤销普通店员或店主邀请。已兑换或已撤销邀请不能再次撤销。
+
+### 17.4 兑换邀请
+
+#### Request
+
+- `POST /api/v1/staff/invitations/redeem`
+- Header：体验版 / 正式版使用 `Authorization: Bearer <token>`；develop 可使用 `X-Customer-OpenId` 兜底
+- 权限：任意已登录且状态有效的用户
+
+```json
+{
+  "code": "一次性邀请码原文"
+}
+```
+
+#### Response (`201`)
+
+```json
+{
+  "item": {
+    "id": "member-id",
+    "userId": "user-id",
+    "openId": "openid",
+    "displayName": "店员小林",
+    "phone": "",
+    "role": "staff",
+    "status": "active",
+    "createdAt": "2026-08-21T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z",
+    "disabledAt": ""
+  },
+  "user": {
+    "id": "user-id",
+    "openId": "openid",
+    "role": "staff",
+    "primaryRole": "staff",
+    "roles": ["customer", "staff"],
+    "permissions": [
+      "staff:appointments:read",
+      "staff:appointments:write",
+      "staff:gallery:read",
+      "staff:gallery:write"
+    ],
+    "systemRole": "user",
+    "staffRole": "staff"
+  }
+}
+```
+
+- 兑换成功后邀请立即变成 `redeemed`，同一个码不能二次兑换；并发兑换只允许一个请求成功。
+- 已停用的成员可通过新的有效邀请重新激活；已有有效成员不能重复兑换。
+- 成功响应中的 `user` 是兑换后的最新身份，前端应立即覆盖本地 user，无需重新登录。
+
+### 邀请错误码
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| `400` | `INVALID_INVITATION_PAYLOAD` | 创建邀请请求体不是 JSON 对象 |
+| `400` | `INVALID_STAFF_ROLE` | 缺少角色，或角色不是 `staff / owner` |
+| `400` | `INVALID_INVITATION_EXPIRY` | 有效期不是 `1-336` 的整数 |
+| `400` | `INVALID_INVITATION_CODE` | 兑换码为空或长度超过 256 |
+| `401` | `STAFF_UNAUTHORIZED` | 邀请管理接口缺少有效店主/系统管理员身份 |
+| `401` | `CUSTOMER_UNAUTHORIZED` | 兑换接口缺少有效用户身份 |
+| `403` | `PERMISSION_DENIED` | 普通店员管理邀请，或店主创建/撤销店主邀请 |
+| `404` | `INVITATION_NOT_FOUND` | 邀请 ID 或邀请码不存在 |
+| `409` | `INVITATION_ALREADY_REDEEMED` | 邀请已兑换 |
+| `409` | `INVITATION_REVOKED` | 邀请已撤销 |
+| `409` | `INVITATION_EXPIRED` | 邀请已过期 |
+| `409` | `MEMBER_ALREADY_ACTIVE` | 兑换用户已经是有效店员成员 |
+
+## 18. 店员端前端接入
 
 - `apps/weapp/pages/staff/rules/index.js` 首次进入调用 `listStaffRules()`，保存时把 `form` 映射为 `updateStaffRules()` 的完整规则对象；页面直接消费响应 `item` 的 `weeklyOpenDays`、`sameDayCutoffTime`、`minAdvanceHours`、`dateSlotOverrides`，并根据 `400` 错误码保留表单错误状态。
 - `apps/weapp/pages/staff/gallery/index.js` 先调用 `uploadStaffGalleryImages(filePaths)` 获取图片 URL，再调用 `createStaffGallery()` 或 `updateStaffGallery(id, payload)` 保存元数据；列表使用 `listStaffGallery()`。详情/删除能力由 `getStaffGalleryDetail(id)` / `deleteStaffGallery(id)` 提供，ID 在 service 层 URI 编码；上传、保存、列表分别保留 loading / submitting / empty / error 状态。
 - `apps/weapp/pages/staff/appointments/index.js` 默认调用 `listStaffAppointments()` 获取全量数据并聚合月历；状态筛选、关键词/日期筛选通过同一 service 的 query 参数重新请求。详情可调用 `getStaffAppointmentDetail(id)`，审核使用 `reviewStaffAppointment(id, { status })`，改期使用 `rescheduleStaffAppointment(id, { appointmentDate, timeSlot, reviewNote })`，操作日志使用 `listStaffAppointmentAuditLogs(id)`；前端应把 `SLOT_OCCUPIED`、规则原因码、`APPOINTMENT_NOT_RESCHEDULABLE` 映射为可重试的业务提示。
-- 三个页面均使用 `auth: 'staff'`：正式环境由 Bearer session 提供身份，develop 才允许 `X-Staff-OpenId` 兜底；`STAFF_UNAUTHORIZED` 应进入 Unauthorized 状态，不应静默显示空列表。
+- `apps/weapp/pages/staff/members/index.js` 的管理模式并行调用成员列表和邀请列表；创建后只在本次响应中展示/分享邀请码，停用或撤销后重新拉取列表。兑换模式调用 `redeemStaffInvitation(code)`，成功后用响应 `user` 更新本地身份并进入店员工作台。
+- 启动页先完成微信登录，并以 `primaryRole` 分流；按钮与入口以 `permissions` 控制。前端隐藏按钮只是体验控制，服务端仍会逐请求校验权限。
+- 店员业务页面使用 `auth: 'staff'`：正式环境由 Bearer session 提供身份，develop 才允许 OpenID header 兜底。成员管理接口只接受 Bearer session。`STAFF_UNAUTHORIZED` / `CUSTOMER_UNAUTHORIZED` 应进入 Unauthorized 状态，`PERMISSION_DENIED` 应显示无权限状态，不应静默显示空列表。
+- request 层收到 `401` 时只重新微信登录并重试一次；`403` 不触发重登。成员被停用后，重新请求 `/auth/me` 或任何受保护接口即可得到当前权限，不使用登录时的旧 `role` 缓存做最终授权。
 
-## 17. 通用未授权返回
+## 19. 通用鉴权错误返回
 
 ### Staff Unauthorized
 
@@ -1068,6 +1400,15 @@ V1 当前只允许以下接口对外使用：
 {
   "error": "Customer unauthorized",
   "code": "CUSTOMER_UNAUTHORIZED"
+}
+```
+
+### Permission Denied
+
+```json
+{
+  "error": "Permission denied",
+  "code": "PERMISSION_DENIED"
 }
 ```
 

@@ -47,7 +47,8 @@ PORT=3100
 DATABASE_URL="mysql://miniapp:miniapp@127.0.0.1:3307/miniapp_api"
 WECHAT_APP_ID="小程序 AppID"
 WECHAT_APP_SECRET="小程序 AppSecret"
-STAFF_OPEN_IDS="店员 openid，多个用英文逗号分隔"
+SYSTEM_ADMIN_OPEN_IDS="系统管理员 OpenID，多个用英文逗号分隔"
+OWNER_OPEN_IDS="首位店主 OpenID，多个用英文逗号分隔"
 PUBLIC_BASE_URL="https://你的 API 域名"
 ```
 
@@ -58,6 +59,7 @@ NODE_ENV=development
 SESSION_EXPIRES_DAYS=30
 ALLOW_OPENID_HEADER_AUTH=1
 ALLOW_DEMO_STAFF_OPENID=1
+STAFF_OPEN_IDS="旧版店员 OpenID，仅用于兼容迁移为店主"
 UPLOAD_MAX_FILES=6
 UPLOAD_MAX_FILE_SIZE_BYTES=5242880
 ```
@@ -67,6 +69,9 @@ UPLOAD_MAX_FILE_SIZE_BYTES=5242880
 - `NODE_ENV=production` 时，OpenID header fallback 和 demo staff 默认关闭。
 - `ALLOW_OPENID_HEADER_AUTH=1` 仅建议用于本地 develop；体验版 / 正式版不要开启。
 - `ALLOW_DEMO_STAFF_OPENID=1` 仅建议用于本地 UAT。
+- `SYSTEM_ADMIN_OPEN_IDS` 只用于可信的系统管理员首次引导，客户端不能申请该角色。
+- `OWNER_OPEN_IDS` 只用于首位店主引导；后续店员通过店主创建的一次性邀请加入。
+- `STAFF_OPEN_IDS` 是旧部署兼容项，登录时按店主迁入数据库，不再作为运行时权限源。
 - `PUBLIC_BASE_URL` 用于生成上传图片 URL，体验版 / 正式版必须是 HTTPS 域名。
 - `UPLOAD_MAX_FILE_SIZE_BYTES` 默认 5MB。
 
@@ -107,4 +112,6 @@ npm run test:api
 - 体验版前必须确认 `trial / release` 不再请求局域网或 `127.0.0.1`。
 - 生产密钥只放环境变量，不写入仓库。
 - 上传图片目录需要持久化；正式商用前建议迁到对象存储或至少挂载云盘并配置备份。
-- 店员 OpenID 必须显式配置到 `STAFF_OPEN_IDS`。
+- 首次发布前必须配置 `SYSTEM_ADMIN_OPEN_IDS` 和至少一位 `OWNER_OPEN_IDS`。
+- 执行 `prisma:migrate:deploy` 后，确认旧 `STAFF` 用户已迁入 `staff_members` 且角色为 `OWNER`。
+- 店主创建店员邀请、店员兑换、移除后即时失权、最后一位店主保护必须完成真机 UAT。

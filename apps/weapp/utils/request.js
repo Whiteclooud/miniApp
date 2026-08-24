@@ -133,13 +133,31 @@ function isSessionUnauthorized(statusCode, payload) {
 // longer usable. Header-auth development requests must keep their local mock
 // identity, so only clear storage when the effective request header carries a
 // session token.
-function shouldClearBearerSession(statusCode, requestHeader) {
+function getBearerSessionToken(statusCode, requestHeader) {
   if (statusCode !== 401 || !requestHeader) {
-    return false;
+    return '';
   }
 
   const authorization = requestHeader.Authorization || requestHeader.authorization;
-  return typeof authorization === 'string' && /^Bearer\s+\S+/i.test(authorization);
+  const match = typeof authorization === 'string' && authorization.match(/^Bearer\s+(\S+)/i);
+  return match ? match[1] : '';
+}
+
+function clearBearerSessionIfCurrent(statusCode, requestHeader) {
+  const requestToken = getBearerSessionToken(statusCode, requestHeader);
+  if (requestToken && getSessionToken() === requestToken) {
+    clearAuthSession();
+  }
+  return requestToken;
+}
+
+function shouldRefreshBearerSession(error, didRefresh) {
+  return !didRefresh && !!(
+    error &&
+    error.usedBearerSession &&
+    error.statusCode === 401 &&
+    isWechatAuthEnabled()
+  );
 }
 
 function normalizeSuccessPayload(responseData) {
@@ -181,18 +199,15 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
         }
 
         const payload = normalizeSuccessPayload(res.data);
-        if (
-          isSessionUnauthorized(res.statusCode, payload) ||
-          shouldClearBearerSession(res.statusCode, requestHeader)
-        ) {
-          clearAuthSession();
-        }
+        const bearerSessionToken = clearBearerSessionIfCurrent(res.statusCode, requestHeader);
 
         reject(
           createRequestError(buildErrorMessage(payload, '请求失败'), {
             statusCode: res.statusCode,
             code: payload.code,
             payload,
+            usedBearerSession: !!bearerSessionToken,
+            sessionToken: bearerSessionToken,
             isUnauthorized: isUnauthorizedResponse(res.statusCode, payload),
             isConflict: res.statusCode === 409
           })
@@ -210,15 +225,28 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
     });
   });
 
+  const runWithSessionRefresh = (didRefresh = false) => runRequest().catch((error) => {
+    if (!shouldRefreshBearerSession(error, didRefresh)) {
+      return Promise.reject(error);
+    }
+
+    if (getSessionToken() && getSessionToken() !== error.sessionToken) {
+      return runWithSessionRefresh(true);
+    }
+
+    return ensureAuthSession({ force: true })
+      .then(() => runWithSessionRefresh(true));
+  });
+
   if (!shouldUseWechatAuth(auth) || getSessionToken() || !isWechatAuthEnabled()) {
-    return runRequest();
+    return runWithSessionRefresh();
   }
 
   return ensureAuthSession()
-    .then(() => runRequest())
+    .then(() => runWithSessionRefresh())
     .catch((error) => {
       if (isHeaderAuthFallbackEnabled()) {
-        return runRequest();
+        return runWithSessionRefresh();
       }
 
       return Promise.reject(error);
@@ -228,12 +256,13 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
 function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, header = {}, auth = 'none' }) {
   const app = getApp();
   const targets = (filePaths || []).filter((item) => typeof item === 'string' && item.trim());
+  let didRefreshSession = false;
 
   if (!targets.length) {
     return Promise.resolve({ items: [] });
   }
 
-  const uploadOne = (filePath) => new Promise((resolve, reject) => {
+  const uploadOneRequest = (filePath) => new Promise((resolve, reject) => {
     const authHeader = buildAuthHeader(auth);
     const requestHeader = {
       ...authHeader,
@@ -253,18 +282,15 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
           return;
         }
 
-        if (
-          isSessionUnauthorized(res.statusCode, payload) ||
-          shouldClearBearerSession(res.statusCode, requestHeader)
-        ) {
-          clearAuthSession();
-        }
+        const bearerSessionToken = clearBearerSessionIfCurrent(res.statusCode, requestHeader);
 
         reject(
           createRequestError(buildErrorMessage(payload, '上传失败'), {
             statusCode: res.statusCode,
             code: payload.code,
             payload,
+            usedBearerSession: !!bearerSessionToken,
+            sessionToken: bearerSessionToken,
             isUnauthorized: isUnauthorizedResponse(res.statusCode, payload),
             isConflict: res.statusCode === 409
           })
@@ -280,6 +306,20 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
         );
       }
     });
+  });
+
+  const uploadOne = (filePath) => uploadOneRequest(filePath).catch((error) => {
+    if (!shouldRefreshBearerSession(error, didRefreshSession)) {
+      return Promise.reject(error);
+    }
+
+    didRefreshSession = true;
+    if (getSessionToken() && getSessionToken() !== error.sessionToken) {
+      return uploadOneRequest(filePath);
+    }
+
+    return ensureAuthSession({ force: true })
+      .then(() => uploadOneRequest(filePath));
   });
 
   const runUploads = () => targets.reduce((chain, filePath) => chain.then(async (acc) => {
