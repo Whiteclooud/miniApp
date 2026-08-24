@@ -88,6 +88,13 @@ npm run start:dev
 
 默认监听：`http://127.0.0.1:3100`
 
+## 体验版部署
+
+单台云服务器的 Docker Compose 部署文件为
+`infra/compose/api-production.compose.yml`，完整步骤见仓库根目录的
+`docs/DEPLOYMENT_RUNBOOK.md`。生产容器通过环境变量读取配置，不把 `.env` 打入镜像；
+MySQL 只加入 Docker 内网，上传目录必须挂载持久化卷。
+
 ## 验证
 
 ```bash

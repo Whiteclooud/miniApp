@@ -109,6 +109,9 @@ npm run test:api
 
 ## 发布前提醒
 
+- 单台服务器的 Docker Compose 部署和 HTTPS 反向代理步骤见 `docs/DEPLOYMENT_RUNBOOK.md`。
+- 生产镜像基于 `node:22-alpine` 并安装 Prisma 所需的 OpenSSL；部署前应先在服务器执行一次完整的 migration、健康检查和图片访问验证。
+
 - 体验版前必须确认 `trial / release` 不再请求局域网或 `127.0.0.1`。
 - 生产密钥只放环境变量，不写入仓库。
 - 上传图片目录需要持久化；正式商用前建议迁到对象存储或至少挂载云盘并配置备份。

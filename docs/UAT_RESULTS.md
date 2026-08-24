@@ -195,3 +195,57 @@
 
 - 微信开发者工具当前 CLI 服务监听 `48750`，但未成功返回小程序自动化 WebSocket 端口；本轮尚未执行页面自动化。
 - `trial / release` 仍使用 `https://replace-with-your-api-domain.example.com`，不能生成可用体验版。
+
+## 本机候选版本验收（2026-08-24）
+
+### 自动化与 API
+
+- `npm run check:docs`：通过
+- `npm run check:weapp-contract`：通过
+- `npm run build:api`：通过
+- `npm run test:api`：通过
+- `npx prisma validate`：通过
+- `npm run prisma:migrate:deploy`：通过
+- MySQL 8.4 compose：健康
+
+### 页面级冒烟
+
+微信开发者工具 1.06.2504010、SDK 3.17.1，已通过自动化路由和截图检查：
+
+- 首页：返图封面和预约入口正常
+- 返图列表：多条返图、标签和说明正常
+- 返图详情：多图预览正常（3 张样例图）
+- 顾客预约：月历、日期状态和开发环境身份提示正常
+- 我的预约：顾客身份空态和未授权提示正常
+- 店员预约总览：mock 店员身份、统计卡片和工作台正常
+- 店员返图管理：列表和新建入口正常
+- 店员规则：规则摘要和结构化编辑控件正常
+- 成员管理：无成员管理权限时正确显示权限拦截
+
+### HTTP 业务闭环
+
+- 顾客创建预约：`201`
+- 顾客“我的预约”：`200`
+- 店员预约列表：`200`
+- 店员 `pending -> approved`：`200`
+- 通过后 availability 对应时段：`disabled`
+- 店员 `approved -> rejected`：`200`
+- 拒绝后 availability 对应时段：`active`
+- 顾客取消 pending：`200`
+- 无店员身份访问 staff 接口：`401`
+- mock 店员访问成员管理：`401`（成员管理必须使用 owner/system_admin Bearer session）
+
+### Docker 可部署性
+
+- 生产镜像构建：通过
+- `.dockerignore` 已排除 `.env`、`node_modules`、`dist` 和上传目录
+- Prisma OpenSSL 运行依赖已加入镜像
+- 全新 MySQL 8.4 + API 容器：migration 全部应用，`GET /health` 返回 `200`
+- 返图样例 seed：通过
+
+### 本机尚不能验收的外部项
+
+- 真实微信 `wx.login -> code2Session`：需要真实体验版 HTTPS API
+- 四类真实微信账号的角色分流、邀请兑换和即时撤权
+- 微信合法 request/uploadFile/downloadFile 域名
+- HTTPS 证书、云服务器备份恢复和公网网络质量

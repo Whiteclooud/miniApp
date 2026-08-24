@@ -56,6 +56,8 @@ npm run start:api
 
 默认监听：`http://127.0.0.1:3100`
 
+云服务器部署请参考 `docs/DEPLOYMENT_RUNBOOK.md`。体验版必须使用公网 HTTPS API，不能继续使用 `127.0.0.1` 或局域网地址。
+
 如需开发模式：
 
 ```bash
