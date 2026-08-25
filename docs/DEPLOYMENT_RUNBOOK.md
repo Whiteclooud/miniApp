@@ -49,9 +49,12 @@ MYSQL_ROOT_PASSWORD=change-this-root-password
 MYSQL_DATABASE=miniapp_api
 MYSQL_USER=miniapp
 MYSQL_PASSWORD=change-this-password
+NPM_REGISTRY=https://registry.npmmirror.com
 ```
 
 `DATABASE_URL` 中的主机必须是 `mysql`，不是 `127.0.0.1`。`SYSTEM_ADMIN_OPEN_IDS` 与 `OWNER_OPEN_IDS` 只填写真实微信账号对应的 OpenID；AppSecret 只保存在服务器环境变量中。
+
+中国大陆服务器可将 `NPM_REGISTRY` 设为 `https://registry.npmmirror.com`，仅影响 Docker 构建期间依赖下载；依赖版本和完整性仍由 `package-lock.json` 固定。
 
 ## 启动 API 与数据库
 

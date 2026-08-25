@@ -5,7 +5,10 @@ RUN apk add --no-cache openssl
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-RUN npm ci
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm config set registry "$NPM_REGISTRY" \
+  && sed -i "s#https://registry.npmjs.org/#${NPM_REGISTRY%/}/#g" package-lock.json \
+  && npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build
