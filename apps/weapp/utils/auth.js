@@ -231,6 +231,9 @@ function loginWithWxCode() {
   }
 
   const app = getApp();
+  console.log('[miniapp] wx.login start', {
+    apiBaseUrl: app && app.globalData && app.globalData.apiBaseUrl
+  });
   const loginPromise = new Promise((resolve, reject) => {
     wx.login({
       success: (loginResult) => {
@@ -252,6 +255,11 @@ function loginWithWxCode() {
             'content-type': 'application/json'
           },
           success: (res) => {
+            console.log('[miniapp] wechat-login response', {
+              statusCode: res.statusCode,
+              hasToken: !!(res.data && res.data.token),
+              code: res.data && res.data.code
+            });
             if (res.statusCode >= 200 && res.statusCode < 300 && res.data && res.data.token) {
               resolve(setStoredAuthSession(res.data));
               return;
@@ -262,6 +270,7 @@ function loginWithWxCode() {
             }));
           },
           fail: (error) => {
+            console.error('[miniapp] wechat-login request failed', error);
             reject(createAuthError(error, '网络异常，微信登录失败', {
               code: 'NETWORK_ERROR',
               isNetworkError: true
@@ -270,6 +279,7 @@ function loginWithWxCode() {
         });
       },
       fail: (error) => {
+        console.error('[miniapp] wx.login failed', error);
         reject(createAuthError(error, '微信登录失败', {
           code: 'WECHAT_LOGIN_FAILED'
         }));

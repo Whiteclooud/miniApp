@@ -196,6 +196,11 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
       timeout: REQUEST_TIMEOUT_MS,
       header: requestHeader,
       success: (res) => {
+        console.log('[miniapp] request response', {
+          url,
+          statusCode: res.statusCode,
+          auth: auth || 'none'
+        });
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data || {});
           return;
@@ -217,6 +222,11 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
         );
       },
       fail: (error) => {
+        console.error('[miniapp] request failed', {
+          url,
+          auth: auth || 'none',
+          error
+        });
         reject(
           createRequestError('网络异常，请确认本地服务是否已启动且已允许开发者工具访问。', {
             code: 'NETWORK_ERROR',

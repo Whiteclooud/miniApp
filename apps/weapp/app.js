@@ -106,6 +106,12 @@ App({
 
   refreshApiProfile() {
     const apiProfile = ensureApiProfile();
+    console.log('[miniapp] api profile', {
+      key: apiProfile.key,
+      baseUrl: apiProfile.baseUrl,
+      enableWechatAuth: apiProfile.enableWechatAuth,
+      envVersion: apiProfile.isDevelopEnv ? 'develop' : apiProfile.key
+    });
     this.globalData.apiProfile = apiProfile;
     this.globalData.apiBaseUrl = apiProfile.baseUrl;
     this.globalData.enableWechatAuth = !!apiProfile.enableWechatAuth;
@@ -134,6 +140,14 @@ App({
         this.globalData.authSession = authSession;
         this.refreshCustomerIdentity();
         return authSession;
+      })
+      .catch((error) => {
+        console.error('[miniapp] auth session failed', {
+          code: error && error.code,
+          statusCode: error && error.statusCode,
+          message: error && error.message
+        });
+        return Promise.reject(error);
       });
   },
 
