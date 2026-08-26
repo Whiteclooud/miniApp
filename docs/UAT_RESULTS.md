@@ -249,3 +249,13 @@
 - 四类真实微信账号的角色分流、邀请兑换和即时撤权
 - 微信合法 request/uploadFile/downloadFile 域名
 - HTTPS 证书、云服务器备份恢复和公网网络质量
+
+## 体验版部署记录（2026-08-26）
+
+- 服务器：阿里云 ECS `47.122.104.205`
+- API 域名：`https://api.whiteclooud.asia`
+- Caddy：Let's Encrypt 证书已签发并自动续期
+- 生产 API/MySQL：容器均为 healthy，API 仅绑定 `127.0.0.1:3100`
+- 小程序体验版上传：成功，版本 `0.1.0`
+- 当前体验版状态：等待真实店主 / 系统管理员首次登录后完成角色引导
+- 当前生产角色白名单：`OWNER_OPEN_IDS`、`SYSTEM_ADMIN_OPEN_IDS` 均为空，避免误授权
