@@ -303,12 +303,15 @@ staff-openid-demo
 ### 操作
 1. 分别使用顾客、普通店员、店主和系统管理员微信账号冷启动体验版
 2. 打开 Network 面板，检查 `/api/v1/auth/wechat-login` 和 `/api/v1/auth/me`
-3. 核对响应中的 `primaryRole / roles / permissions`
-4. 使用顾客账号直接请求任意 staff 接口
-5. 退出登录后，用旧 token 请求 `/api/v1/auth/me`
+3. 在首页勾选服务协议，点击手机号授权按钮，确认请求 body 只包含 `code` 和一次性 `phoneCode`
+4. 拒绝手机号授权后点击普通微信登录，确认仍可获得 Bearer session
+5. 核对响应中的 `primaryRole / roles / permissions / phone`
+6. 使用顾客账号直接请求任意 staff 接口
+7. 退出登录后，用旧 token 请求 `/api/v1/auth/me`
 
 ### 预期结果
 - 顾客 / 店员接口使用 `Authorization: Bearer <token>`
+- 手机号授权成功后服务端返回 `phone`，拒绝授权不阻断普通微信登录；客户端不提交或采信 OpenID、昵称、头像作为身份
 - 体验版不依赖 mock OpenID header
 - 顾客进入顾客首页；普通店员、店主和系统管理员进入店员预约工作台
 - 普通店员、店主和系统管理员的 `roles` 都包含 `customer`，仍可使用顾客功能

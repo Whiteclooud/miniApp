@@ -17,6 +17,23 @@ type WechatCodeSession = {
   errmsg?: string;
 };
 
+type WechatAccessTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+  errcode?: number;
+  errmsg?: string;
+};
+
+type WechatPhoneResponse = {
+  phone_info?: {
+    phoneNumber?: string;
+    purePhoneNumber?: string;
+    countryCode?: string;
+  };
+  errcode?: number;
+  errmsg?: string;
+};
+
 export const PERMISSIONS = {
   STAFF_APPOINTMENTS_READ: 'staff:appointments:read',
   STAFF_APPOINTMENTS_WRITE: 'staff:appointments:write',
@@ -34,6 +51,8 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export type AuthIdentity = {
   userId: string;
   openId: string;
+  displayName?: string;
+  phone?: string;
   role: UserRole;
   primaryRole: 'customer' | 'staff' | 'owner' | 'system_admin';
   roles: string[];
@@ -94,9 +113,11 @@ function identityRole(primaryRole: AuthIdentity['primaryRole']) {
 
 @Injectable()
 export class AuthService {
+  private wechatAccessToken: { value: string; expiresAt: number } | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async loginWithWechat(code?: string) {
+  async loginWithWechat(code?: string, phoneCode?: string) {
     const normalizedCode = `${code || ''}`.trim();
     if (!normalizedCode) {
       throw new BadRequestException({ error: 'Missing login code', code: 'WECHAT_LOGIN_CODE_MISSING' });
@@ -119,6 +140,15 @@ export class AuthService {
       update: {},
       create: { openId, role: UserRole.CUSTOMER, status: UserStatus.ACTIVE }
     });
+    const normalizedPhoneCode = `${phoneCode || ''}`.trim();
+    if (normalizedPhoneCode) {
+      const phoneNumber = await this.exchangePhoneCode(normalizedPhoneCode);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { phone: phoneNumber }
+      });
+      user.phone = phoneNumber;
+    }
     await this.applyBootstrapRoles(user.id, openId, user.systemRole);
     const access = await this.loadIdentityByUserId(user.id);
     if (!access) {
@@ -151,6 +181,8 @@ export class AuthService {
     return {
       id: identity.userId,
       openId: identity.openId,
+      displayName: identity.displayName || '',
+      phone: identity.phone || '',
       role: identity.role.toLowerCase(),
       primaryRole: identity.primaryRole,
       roles: identity.roles,
@@ -275,6 +307,8 @@ export class AuthService {
     return {
       userId: user.id,
       openId: user.openId,
+      displayName: user.displayName || undefined,
+      phone: user.phone || undefined,
       role: identityRole(primaryRole),
       primaryRole,
       roles,
@@ -297,5 +331,67 @@ export class AuthService {
       throw new UnauthorizedException({ error: 'Wechat login failed', code: 'WECHAT_LOGIN_FAILED', detail: payload.errmsg || `HTTP ${response.status}` });
     }
     return payload;
+  }
+
+  private async exchangePhoneCode(code: string): Promise<string> {
+    try {
+      const accessToken = await this.getWechatAccessToken();
+      const response = await fetch(
+        `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code })
+        }
+      );
+      const payload = (await response.json()) as WechatPhoneResponse;
+      const phoneNumber = `${payload.phone_info?.purePhoneNumber || payload.phone_info?.phoneNumber || ''}`.trim();
+      if (response.ok && !payload.errcode && phoneNumber) {
+        return phoneNumber;
+      }
+      throw new UnauthorizedException({
+        error: 'Wechat phone authorization failed',
+        code: 'WECHAT_PHONE_AUTH_FAILED',
+        detail: payload.errmsg || `HTTP ${response.status}`
+      });
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException({
+        error: 'Wechat phone authorization failed',
+        code: 'WECHAT_PHONE_AUTH_FAILED',
+        detail: `${error instanceof Error ? error.message : error || 'network error'}`
+      });
+    }
+  }
+
+  private async getWechatAccessToken(): Promise<string> {
+    if (this.wechatAccessToken && this.wechatAccessToken.expiresAt > Date.now() + 60_000) {
+      return this.wechatAccessToken.value;
+    }
+
+    const tokenParams = new URLSearchParams({
+      appid: `${process.env.WECHAT_APP_ID || ''}`,
+      secret: `${process.env.WECHAT_APP_SECRET || ''}`,
+      grant_type: 'client_credential'
+    });
+    const tokenResponse = await fetch(`https://api.weixin.qq.com/cgi-bin/token?${tokenParams.toString()}`);
+    const tokenPayload = (await tokenResponse.json()) as WechatAccessTokenResponse;
+    const accessToken = `${tokenPayload.access_token || ''}`.trim();
+    if (!tokenResponse.ok || tokenPayload.errcode || !accessToken) {
+      throw new UnauthorizedException({
+        error: 'Wechat phone authorization failed',
+        code: 'WECHAT_PHONE_AUTH_FAILED',
+        detail: tokenPayload.errmsg || `HTTP ${tokenResponse.status}`
+      });
+    }
+
+    const expiresInSeconds = Number(tokenPayload.expires_in || 7200);
+    this.wechatAccessToken = {
+      value: accessToken,
+      expiresAt: Date.now() + Math.max(60, expiresInSeconds - 60) * 1000
+    };
+    return accessToken;
   }
 }

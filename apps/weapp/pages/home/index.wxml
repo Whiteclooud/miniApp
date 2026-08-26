@@ -1,4 +1,33 @@
 <view class="container home-page">
+  <view wx:if="{{showAuthCard}}" class="card auth-card">
+    <view class="auth-header">
+      <view>
+        <view class="auth-title">微信登录</view>
+        <view class="auth-subtitle">{{isLoggedIn ? (phoneBound ? '已完成手机号绑定' : '登录成功，可按需绑定手机号') : '登录后即可管理预约和灵感'}}</view>
+      </view>
+      <button wx:if="{{isLoggedIn}}" class="button-plain auth-logout" bindtap="logout">退出登录</button>
+    </view>
+
+    <view wx:if="{{!isLoggedIn || !phoneBound}}" class="auth-consent">
+      <view wx:if="{{authMessage}}" class="auth-error">{{authMessage}}</view>
+      <checkbox-group bindchange="onAgreementChange">
+        <label class="agreement-label">
+          <checkbox value="service" checked="{{agreementChecked}}" color="#e8856c" />
+          <text>我已阅读并同意《服务协议》</text>
+        </label>
+      </checkbox-group>
+      <button
+        class="button-primary auth-button"
+        open-type="getPhoneNumber"
+        disabled="{{!agreementChecked || phoneLoginLoading}}"
+        bindgetphonenumber="handlePhoneLogin"
+      >{{phoneLoginLoading ? '正在授权…' : '手机号授权登录'}}</button>
+      <button class="button-secondary auth-button auth-secondary-button" bindtap="loginWithoutPhone">使用微信登录（不授权手机号）</button>
+    </view>
+
+    <view wx:if="{{isLoggedIn && phoneBound}}" class="auth-account">当前微信账号已登录</view>
+  </view>
+
   <view class="hero-card card">
     <view class="eyebrow">单店预约 · 审批制</view>
     <view class="hero-title">
@@ -29,7 +58,7 @@
     <view class="state-symbol">⚠</view>
     <view class="state-title">加载失败</view>
     <view class="state-desc">{{errorMessage || '返图内容暂时不可用，你也可以先直接去预约。'}}</view>
-    <button class="button-secondary state-button" bindtap="initializeLaunch">重新检查</button>
+    <button class="button-secondary state-button" bindtap="retryLaunch">重新检查</button>
   </view>
   <view wx:elif="{{galleryItems.length === 0}}" class="card state-card">
     <view class="state-symbol">⌁</view>

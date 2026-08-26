@@ -8,6 +8,7 @@
 wx.login
   -> POST /api/v1/auth/wechat-login
   -> 服务端 code2Session 获取可信 OpenID
+  -> （可选）服务端使用 wx.getPhoneNumber 的 phoneCode 调用 getuserphonenumber
   -> 查询 users / staff_members
   -> 返回业务 Bearer session 与当前角色
   -> 小程序按 primaryRole 自动分流
@@ -15,6 +16,11 @@ wx.login
 
 OpenID 只由服务端向微信换取。昵称、头像、手机号、页面参数和客户端提交的
 `role` 都不能作为授权依据。
+
+手机号授权是顾客侧的补充资料能力，不改变 OpenID 主身份。小程序应在用户主动
+勾选服务协议后使用 `open-type="getPhoneNumber"` 按钮获取一次性 `phoneCode`，由
+服务端调用微信接口换取手机号并写入 `users.phone`；用户拒绝时仍可走不绑定手机号
+的微信登录路径。
 
 `X-Customer-OpenId` / `X-Staff-OpenId` 仅保留给 develop 联调；体验版和正式版
 必须使用 Bearer session。

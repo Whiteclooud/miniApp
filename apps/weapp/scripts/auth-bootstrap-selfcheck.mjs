@@ -199,6 +199,26 @@ export async function runAuthBootstrapSelfcheck() {
   );
   assert.equal(loginCount, 1);
   assert.equal(protectedRequestCount, 2);
+
+  storage.clear();
+  globalThis.wx.login = (options) => options.success({ code: 'phone-login-code' });
+  globalThis.wx.request = (options) => {
+    assert.equal(options.url, 'https://api.example.test/api/v1/auth/wechat-login');
+    assert.equal(options.data.code, 'phone-login-code');
+    assert.equal(options.data.phoneCode, 'phone-authorize-code');
+    options.success({
+      statusCode: 200,
+      data: {
+        token: 'phone-token',
+        expiresAt,
+        user: { primaryRole: 'customer', roles: ['customer'], phone: '13800000000' }
+      }
+    });
+  };
+
+  const phoneSession = await auth.loginWithPhoneCode('phone-authorize-code');
+  assert.equal(phoneSession.token, 'phone-token');
+  assert.equal(phoneSession.user.phone, '13800000000');
 }
 
 const isDirectRun = process.argv[1] &&

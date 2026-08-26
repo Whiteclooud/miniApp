@@ -22,6 +22,9 @@
 
 默认首屏为 `pages/home`。应用启动时会完成微信登录、校验缓存 session，
 并按 `customer / staff / owner / system_admin` 自动进入顾客首页或店员预约工作台。
+体验版 / 正式版首页提供协议勾选后的手机号授权入口：按钮通过 `wx.getPhoneNumber`
+拿到一次性凭证，随 `wx.login` code 发送到服务端；拒绝手机号授权时仍可使用普通微信
+登录，手机号不是账号主键。
 
 ## 当前能力
 

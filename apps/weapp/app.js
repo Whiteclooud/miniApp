@@ -12,6 +12,7 @@ const {
 } = require('./utils/api-profile');
 const {
   ensureAuthSession,
+  loginWithPhoneCode,
   getStoredAuthSession,
   updateCurrentUser,
   logoutAuthSession,
@@ -156,6 +157,15 @@ App({
           message: error && error.message
         });
         return Promise.reject(error);
+      });
+  },
+
+  loginWithPhoneCode(phoneCode) {
+    return loginWithPhoneCode(phoneCode)
+      .then((authSession) => {
+        this.globalData.authSession = authSession;
+        this.refreshCustomerIdentity();
+        return authSession;
       });
   },
 

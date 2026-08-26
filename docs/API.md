@@ -8,7 +8,7 @@
 
 - `apps/api` 是当前唯一后端基线，开发环境默认地址为 `http://127.0.0.1:3100`。
 - 体验版 / 正式版必须切到 HTTPS API 域名，并在微信公众平台配置合法 request/uploadFile 域名。
-- 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`。
+- 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`；需要绑定手机号时，用户先勾选服务协议，再通过 `wx.getPhoneNumber` 把一次性 `phoneCode` 随登录请求提交，手机号只由服务端向微信换取。
 - 登录后由服务端返回 `primaryRole / roles / permissions`，小程序据此自动进入顾客首页或店员预约工作台。
 - 店员授权以数据库中的有效成员关系为准；`SYSTEM_ADMIN_OPEN_IDS`、`OWNER_OPEN_IDS` 只负责可信账号首次引导，不是日常请求白名单。
 - develop 环境允许 `X-Customer-OpenId` / `X-Staff-OpenId` 作为本地联调兜底；体验版 / 正式版不允许依赖 mock OpenID header。
@@ -122,7 +122,8 @@ V1 当前只允许以下接口对外使用：
 
 ```json
 {
-  "code": "wx.login 返回的临时 code"
+  "code": "wx.login 返回的临时 code",
+  "phoneCode": "wx.getPhoneNumber 返回的一次性 code（可选）"
 }
 ```
 
@@ -135,6 +136,8 @@ V1 当前只允许以下接口对外使用：
   "user": {
     "id": "user-id",
     "openId": "openid",
+    "displayName": "",
+    "phone": "13800000000",
     "role": "staff",
     "primaryRole": "owner",
     "roles": ["customer", "staff", "owner"],
@@ -167,6 +170,8 @@ V1 当前只允许以下接口对外使用：
   "user": {
     "id": "user-id",
     "openId": "openid",
+    "displayName": "",
+    "phone": "13800000000",
     "role": "staff",
     "primaryRole": "owner",
     "roles": ["customer", "staff", "owner"],
@@ -219,6 +224,7 @@ V1 当前只允许以下接口对外使用：
 - 所有 ACTIVE 用户都有 `customer` 角色；`staff/owner` 来自 `staff_members`，`system_admin` 来自服务端可信引导和用户系统角色。
 - Bearer session 每次请求都会复核关联用户仍为 `ACTIVE`，并动态读取当前成员关系和权限；撤销成员后旧 token 仍可使用顾客能力，但立即失去店员权限。
 - 微信登录命中已禁用用户时返回 `401 + ACCOUNT_DISABLED`；登录不会自动把 `DISABLED` 账号恢复为 `ACTIVE`。
+- `phoneCode` 只接受微信 `wx.getPhoneNumber` 返回的一次性凭证；服务端调用微信 `getuserphonenumber` 换取手机号并写入 `users.phone`，客户端提交的手机号、OpenID、昵称和头像不会作为身份依据。
 - 请求已带 Bearer token 但 token 无效、过期或已失效时，不会再降级使用 develop 的 OpenID header。
 - 体验版 / 正式版必须使用 Bearer token；OpenID header 只保留给 develop 环境联调。
 - `SYSTEM_ADMIN_OPEN_IDS` 只将可信 OpenID 首次引导为系统管理员；业务接口和邀请码都不能授予 `system_admin`。
@@ -232,6 +238,7 @@ V1 当前只允许以下接口对外使用：
 | `400` | `WECHAT_AUTH_NOT_CONFIGURED` | 服务端未配置微信 AppID / AppSecret |
 | `401` | `WECHAT_LOGIN_FAILED` | 微信 `jscode2session` 调用失败 |
 | `401` | `WECHAT_OPENID_MISSING` | 微信响应中缺少 OpenID |
+| `401` | `WECHAT_PHONE_AUTH_FAILED` | 微信手机号授权凭证无效、过期或服务端换取失败 |
 | `401` | `ACCOUNT_DISABLED` | OpenID 对应用户已停用 |
 | `401` | `SESSION_UNAUTHORIZED` | `/auth/me` 的 Bearer session 缺失、过期、已退出或关联用户失效 |
 

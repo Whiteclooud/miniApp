@@ -244,8 +244,13 @@ function mergeSessionResponse(session, payload) {
   return setStoredAuthSession(nextSession);
 }
 
-function loginWithWxCode() {
+function loginWithWxCode(phoneCode = '') {
   if (activeLoginPromise) {
+    if (phoneCode) {
+      return activeLoginPromise
+        .catch(() => undefined)
+        .then(() => loginWithWxCode(phoneCode));
+    }
     return activeLoginPromise;
   }
 
@@ -268,7 +273,8 @@ function loginWithWxCode() {
           method: 'POST',
           timeout: AUTH_REQUEST_TIMEOUT_MS,
           data: {
-            code: loginResult.code
+            code: loginResult.code,
+            ...(phoneCode ? { phoneCode } : {})
           },
           header: {
             'content-type': 'application/json'
@@ -320,6 +326,17 @@ function loginWithWxCode() {
     }
   );
   return activeLoginPromise;
+}
+
+function loginWithPhoneCode(phoneCode) {
+  const normalizedPhoneCode = `${phoneCode || ''}`.trim();
+  if (!normalizedPhoneCode) {
+    const error = createAuthError({}, '未获取到手机号授权凭证', {
+      code: 'WECHAT_PHONE_CODE_MISSING'
+    });
+    return Promise.reject(error);
+  }
+  return loginWithWxCode(normalizedPhoneCode);
 }
 
 function validateAuthSession(session) {
@@ -426,6 +443,7 @@ module.exports = {
   updateCurrentUser,
   validateAuthSession,
   ensureAuthSession,
+  loginWithPhoneCode,
   logoutAuthSession,
   clearAuthSession
 };

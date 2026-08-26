@@ -6,8 +6,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('wechat-login')
-  async loginWithWechat(@Body() payload: { code?: string } = {}) {
-    return this.authService.loginWithWechat(payload.code);
+  async loginWithWechat(@Body() payload: { code?: string; phoneCode?: string } = {}) {
+    return this.authService.loginWithWechat(payload.code, payload.phoneCode);
   }
 
   @Get('me')
