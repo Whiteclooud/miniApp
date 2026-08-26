@@ -7,6 +7,8 @@ const {
   isWechatAuthEnabled
 } = require('./auth');
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 function createRequestError(message, extra = {}) {
   const error = new Error(message || '请求失败');
   Object.keys(extra).forEach((key) => {
@@ -191,6 +193,7 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
       url: buildUrl(app.globalData.apiBaseUrl, url, params),
       method,
       data,
+      timeout: REQUEST_TIMEOUT_MS,
       header: requestHeader,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -274,6 +277,7 @@ function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, heade
       filePath,
       name,
       formData,
+      timeout: REQUEST_TIMEOUT_MS,
       header: requestHeader,
       success: (res) => {
         const payload = normalizeSuccessPayload(res.data);

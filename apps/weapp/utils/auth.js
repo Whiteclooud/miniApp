@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'miniapp.authSession';
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 let activeLoginPromise = null;
 
@@ -243,6 +244,7 @@ function loginWithWxCode() {
         wx.request({
           url: `${app.globalData.apiBaseUrl}/api/v1/auth/wechat-login`,
           method: 'POST',
+          timeout: AUTH_REQUEST_TIMEOUT_MS,
           data: {
             code: loginResult.code
           },
@@ -298,6 +300,7 @@ function validateAuthSession(session) {
     wx.request({
       url: `${app.globalData.apiBaseUrl}/api/v1/auth/me`,
       method: 'GET',
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
       header: {
         Authorization: `Bearer ${session.token}`
       },
@@ -366,6 +369,7 @@ function logoutAuthSession() {
     wx.request({
       url: `${app.globalData.apiBaseUrl}/api/v1/auth/logout`,
       method: 'POST',
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
       header: {
         Authorization: `Bearer ${token}`
       },

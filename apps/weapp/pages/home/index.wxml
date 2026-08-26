@@ -28,7 +28,8 @@
   <view wx:elif="{{hasError}}" class="card state-card state-card-error">
     <view class="state-symbol">⚠</view>
     <view class="state-title">加载失败</view>
-    <view class="state-desc">返图内容暂时不可用，你也可以先直接去预约。</view>
+    <view class="state-desc">{{errorMessage || '返图内容暂时不可用，你也可以先直接去预约。'}}</view>
+    <button class="button-secondary state-button" bindtap="initializeLaunch">重新检查</button>
   </view>
   <view wx:elif="{{galleryItems.length === 0}}" class="card state-card">
     <view class="state-symbol">⌁</view>

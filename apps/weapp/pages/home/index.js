@@ -23,7 +23,8 @@ Page({
     galleryItems: [],
     loading: true,
     hasError: false,
-    showStaffEntry: false
+    showStaffEntry: false,
+    errorMessage: ''
   },
 
   onLoad(options = {}) {
@@ -53,7 +54,10 @@ Page({
       this.setData({
         loading: false,
         hasError: true,
-        showStaffEntry: false
+        showStaffEntry: false,
+        errorMessage: _error && _error.code === 'LAUNCH_TIMEOUT'
+          ? '微信登录或服务器连接超时，请检查正式小程序服务器域名配置。'
+          : '登录失败，请重新打开小程序后重试。'
       });
     }
   },
@@ -76,7 +80,8 @@ Page({
       this.setData({
         galleryItems: [],
         loading: false,
-        hasError: true
+        hasError: true,
+        errorMessage: '返图加载失败，请检查网络和服务器域名配置。'
       });
       wx.showToast({
         title: '首页加载失败',
