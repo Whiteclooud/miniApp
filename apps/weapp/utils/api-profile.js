@@ -41,6 +41,17 @@ function getRuntimeEnvVersion() {
   }
 }
 
+function getRuntimePlatform() {
+  try {
+    const deviceInfo = typeof wx.getDeviceInfo === 'function'
+      ? wx.getDeviceInfo()
+      : wx.getSystemInfoSync();
+    return `${deviceInfo.platform || ''}`.trim().toLowerCase();
+  } catch (_error) {
+    return 'devtools';
+  }
+}
+
 function normalizeProfileKey(profileKey) {
   return PROFILE_MAP[profileKey] ? profileKey : DEFAULT_PROFILE;
 }
@@ -54,6 +65,12 @@ function resolveRuntimeProfileKey() {
 
   if (envVersion === 'release') {
     return 'release';
+  }
+
+  // Real-device debugging still reports envVersion=develop. Use the HTTPS
+  // profile there because 127.0.0.1 would point at the phone itself.
+  if (getRuntimePlatform() !== 'devtools') {
+    return 'trial';
   }
 
   return DEFAULT_PROFILE;

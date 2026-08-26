@@ -51,7 +51,7 @@ apps/weapp
 
 ## 说明
 
-- 当前后端基线为 `apps/api`；develop 默认请求 `http://127.0.0.1:3100`，trial/release 使用 `https://api.whiteclooud.asia`
+- 当前后端基线为 `apps/api`；开发者工具模拟器默认请求 `http://127.0.0.1:3100`，真机调试、trial/release 使用 `https://api.whiteclooud.asia`
 - 微信开发者工具出现 `net::ERR_CONNECTION_REFUSED` 时，先在仓库根目录执行 `npm run dev:api`，并确认 `http://127.0.0.1:3100/health` 返回 200
 - develop 环境的本地 HTTP 图片可能产生协议提示；体验版和正式版必须配置真实 HTTPS API 域名，不能使用 `127.0.0.1` 或占位域名
 - 真实 `AppID`、合法域名、真机联调配置详见 `docs/ENV.md`

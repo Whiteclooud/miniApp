@@ -27,6 +27,7 @@
 - `enableWechatAuth=false`
 - `allowHeaderAuthFallback=true`
 - 可继续使用 `customer-openid-demo` / `staff-openid-demo` 做本地联调
+- 开发者工具的真机调试会自动使用 `https://api.whiteclooud.asia` 并启用微信登录；手机上的 `127.0.0.1` 指向手机自身，不能用于访问电脑 API
 
 微信开发者工具中联调本地接口时，需要勾选“不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书”。
 
