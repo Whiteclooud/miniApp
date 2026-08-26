@@ -15,7 +15,8 @@ const {
   getStoredAuthSession,
   updateCurrentUser,
   logoutAuthSession,
-  clearAuthSession
+  clearAuthSession,
+  setAppContext
 } = require('./utils/auth');
 const { resolveLaunchTarget } = require('./utils/launch');
 
@@ -54,11 +55,18 @@ App({
   },
 
   onLaunch(options) {
+    setAppContext(this);
     this.refreshApiProfile();
     this.refreshCustomerIdentity();
     this.refreshAuthSession();
     this.globalData.launchOptions = options || null;
-    this.ensureLaunchReady().catch(() => {});
+
+    // getApp() is not guaranteed to resolve during the synchronous onLaunch
+    // callback. Let the first page (or this deferred task) start auth after
+    // the App instance has been registered by the runtime.
+    setTimeout(() => {
+      this.ensureLaunchReady().catch(() => {});
+    }, 0);
   },
 
   ensureLaunchReady(pageOptions = {}) {

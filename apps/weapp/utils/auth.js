@@ -2,6 +2,14 @@ const STORAGE_KEY = 'miniapp.authSession';
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 let activeLoginPromise = null;
+let runtimeApp = null;
+
+function setAppContext(app) {
+  if (app && app.globalData) {
+    runtimeApp = app;
+  }
+  return runtimeApp;
+}
 
 function normalizeRole(role) {
   return `${role || ''}`
@@ -85,7 +93,7 @@ function hasPermission(user, permission) {
 
 function syncGlobalAuthSession(session) {
   try {
-    const app = getApp();
+    const app = runtimeApp || (typeof getApp === 'function' ? getApp() : null);
     if (app && app.globalData) {
       app.globalData.authSession = session || null;
     }
@@ -180,8 +188,19 @@ function clearAuthSession() {
 }
 
 function isWechatAuthEnabled() {
-  const app = getApp();
+  const app = runtimeApp || (typeof getApp === 'function' ? getApp() : null);
   return !!(app && app.globalData && app.globalData.enableWechatAuth);
+}
+
+function getAppContext() {
+  const app = runtimeApp || (typeof getApp === 'function' ? getApp() : null);
+  if (!app || !app.globalData) {
+    const error = new Error('小程序正在初始化，请稍后重试');
+    error.code = 'APP_NOT_READY';
+    error.isNetworkError = true;
+    throw error;
+  }
+  return app;
 }
 
 function getSessionToken() {
@@ -230,7 +249,7 @@ function loginWithWxCode() {
     return activeLoginPromise;
   }
 
-  const app = getApp();
+  const app = getAppContext();
   console.log('[miniapp] wx.login start', {
     apiBaseUrl: app && app.globalData && app.globalData.apiBaseUrl
   });
@@ -304,7 +323,7 @@ function loginWithWxCode() {
 }
 
 function validateAuthSession(session) {
-  const app = getApp();
+  const app = getAppContext();
 
   return new Promise((resolve, reject) => {
     wx.request({
@@ -367,7 +386,7 @@ function ensureAuthSession(options = {}) {
 }
 
 function logoutAuthSession() {
-  const app = getApp();
+  const app = getAppContext();
   const token = getSessionToken();
 
   if (!token) {
@@ -393,6 +412,8 @@ function logoutAuthSession() {
 
 module.exports = {
   STORAGE_KEY,
+  setAppContext,
+  getAppContext,
   normalizeRole,
   getUserRoles,
   getPrimaryRole,

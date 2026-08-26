@@ -100,7 +100,10 @@ export async function runAuthBootstrapSelfcheck() {
     '/pages/home/index'
   );
 
-  const { storage } = createRuntime();
+  const runtime = createRuntime();
+  auth.setAppContext(runtime.app);
+  assert.equal(auth.getAppContext(), runtime.app);
+  const { storage } = runtime;
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   storage.set(auth.STORAGE_KEY, {
     token: 'cached-token',

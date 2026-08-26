@@ -4,7 +4,8 @@ const {
   ensureAuthSession,
   getSessionToken,
   clearAuthSession,
-  isWechatAuthEnabled
+  isWechatAuthEnabled,
+  getAppContext
 } = require('./auth');
 
 const REQUEST_TIMEOUT_MS = 15000;
@@ -92,8 +93,16 @@ function shouldUseWechatAuth(auth) {
 }
 
 function isHeaderAuthFallbackEnabled() {
-  const app = getApp();
+  const app = getAppContextSafe();
   return !!(app && app.globalData && app.globalData.allowHeaderAuthFallback);
+}
+
+function getAppContextSafe() {
+  try {
+    return getAppContext();
+  } catch (_error) {
+    return null;
+  }
 }
 
 function buildUrl(baseUrl, path, params) {
@@ -179,7 +188,13 @@ function normalizeSuccessPayload(responseData) {
 }
 
 function request({ url, method = 'GET', data, header = {}, auth = 'none', params }) {
-  const app = getApp();
+  const app = getAppContextSafe();
+  if (!app || !app.globalData || !app.globalData.apiBaseUrl) {
+    return Promise.reject(createRequestError('小程序正在初始化，请稍后重试。', {
+      code: 'APP_NOT_READY',
+      isNetworkError: true
+    }));
+  }
 
   const runRequest = () => new Promise((resolve, reject) => {
     const authHeader = buildAuthHeader(auth);
@@ -267,7 +282,13 @@ function request({ url, method = 'GET', data, header = {}, auth = 'none', params
 }
 
 function uploadFiles({ url, filePaths = [], name = 'files', formData = {}, header = {}, auth = 'none' }) {
-  const app = getApp();
+  const app = getAppContextSafe();
+  if (!app || !app.globalData || !app.globalData.apiBaseUrl) {
+    return Promise.reject(createRequestError('小程序正在初始化，请稍后重试。', {
+      code: 'APP_NOT_READY',
+      isNetworkError: true
+    }));
+  }
   const targets = (filePaths || []).filter((item) => typeof item === 'string' && item.trim());
   let didRefreshSession = false;
 
