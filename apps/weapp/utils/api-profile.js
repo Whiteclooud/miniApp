@@ -16,7 +16,7 @@ const PROFILE_MAP = {
     key: 'trial',
     label: '体验版 · HTTPS API',
     shortLabel: 'trial',
-    baseUrl: 'https://replace-with-your-api-domain.example.com',
+    baseUrl: 'https://api.whiteclooud.asia',
     enableWechatAuth: true,
     allowHeaderAuthFallback: false,
     requiresConfiguration: true
@@ -25,7 +25,7 @@ const PROFILE_MAP = {
     key: 'release',
     label: '正式版 · HTTPS API',
     shortLabel: 'release',
-    baseUrl: 'https://replace-with-your-api-domain.example.com',
+    baseUrl: 'https://api.whiteclooud.asia',
     enableWechatAuth: true,
     allowHeaderAuthFallback: false,
     requiresConfiguration: true

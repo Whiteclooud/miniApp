@@ -19,7 +19,7 @@
 - 合法 uploadFile / downloadFile 域名
 - HTTPS 证书有效
 - 微信登录可用，服务端配置了 `WECHAT_APP_ID` 与 `WECHAT_APP_SECRET`
-- `apps/weapp/utils/api-profile.js` 中 `trial / release` 的 HTTPS API 域名已替换为真实域名
+- `apps/weapp/utils/api-profile.js` 中 `trial / release` 已配置为 `https://api.whiteclooud.asia`
 
 ### develop
 
