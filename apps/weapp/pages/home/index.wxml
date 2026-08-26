@@ -56,6 +56,6 @@
     <view class="note-title">预约说明</view>
     <view class="note-text">当前为提交申请模式，预约提交后需等待店员审核通过。</view>
     <button class="button-plain staff-entry" bindtap="goMyInspirations">查看我的灵感</button>
-    <button class="button-plain staff-entry" bindtap="goStaffRules">店员入口</button>
+    <button wx:if="{{showStaffEntry}}" class="button-plain staff-entry" bindtap="goStaffRules">店员入口</button>
   </view>
 </view>

@@ -1,11 +1,29 @@
 const { listGallery } = require('../../services/appointment');
 const { normalizeGalleryItems } = require('../../utils/gallery');
+const { hasUserRole } = require('../../utils/auth');
+
+const LAUNCH_TIMEOUT_MS = 15000;
+
+function withLaunchTimeout(promise) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error('微信登录或服务器连接超时');
+      error.code = 'LAUNCH_TIMEOUT';
+      error.isNetworkError = true;
+      reject(error);
+    }, LAUNCH_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 Page({
   data: {
     galleryItems: [],
     loading: true,
-    hasError: false
+    hasError: false,
+    showStaffEntry: false
   },
 
   onLoad(options = {}) {
@@ -16,8 +34,15 @@ Page({
     const app = getApp();
     try {
       const launch = app.ensureLaunchReady
-        ? await app.ensureLaunchReady(options)
+        ? await withLaunchTimeout(app.ensureLaunchReady(options))
         : { target: '/pages/home/index' };
+      const user = launch.session && launch.session.user;
+      this.setData({
+        showStaffEntry: !!(
+          hasUserRole(user, 'staff') ||
+          (app.globalData && app.globalData.allowHeaderAuthFallback)
+        )
+      });
       const targetPath = `${launch.target || ''}`.split('?')[0];
       if (targetPath && targetPath !== '/pages/home/index') {
         wx.reLaunch({ url: launch.target });
@@ -27,7 +52,8 @@ Page({
     } catch (_error) {
       this.setData({
         loading: false,
-        hasError: true
+        hasError: true,
+        showStaffEntry: false
       });
     }
   },
