@@ -12,6 +12,7 @@ const {
 } = require('./utils/api-profile');
 const {
   ensureAuthSession,
+  restoreAuthSession,
   loginWithPhoneCode,
   getStoredAuthSession,
   updateCurrentUser,
@@ -62,12 +63,8 @@ App({
     this.refreshAuthSession();
     this.globalData.launchOptions = options || null;
 
-    // getApp() is not guaranteed to resolve during the synchronous onLaunch
-    // callback. Let the first page (or this deferred task) start auth after
-    // the App instance has been registered by the runtime.
-    setTimeout(() => {
-      this.ensureLaunchReady().catch(() => {});
-    }, 0);
+    // Public pages remain usable for visitors. Explicit login is initiated
+    // only from pages and actions that require an account.
   },
 
   ensureLaunchReady(pageOptions = {}) {
@@ -81,10 +78,8 @@ App({
     this.launchPromise = (async () => {
       const profile = this.getApiProfile();
       let session = null;
-      if (!profile.enableWechatAuth) {
-        this.clearAuthSession();
-      } else {
-        session = await this.ensureAuthSession({ validate: true });
+      if (profile.enableWechatAuth) {
+        session = await this.restoreAuthSession({ validate: true });
       }
 
       const target = resolveLaunchTarget({
@@ -155,6 +150,22 @@ App({
           code: error && error.code,
           statusCode: error && error.statusCode,
           message: error && error.message
+        });
+        return Promise.reject(error);
+      });
+  },
+
+  restoreAuthSession(options) {
+    return restoreAuthSession(options)
+      .then((authSession) => {
+        this.globalData.authSession = authSession;
+        this.refreshCustomerIdentity();
+        return authSession;
+      })
+      .catch((error) => {
+        console.error('[miniapp] auth session restore failed', {
+          code: error && error.code,
+          statusCode: error && error.statusCode
         });
         return Promise.reject(error);
       });

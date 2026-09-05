@@ -1,5 +1,6 @@
 const { getGalleryDetail, createMyInspiration } = require('../../services/appointment');
 const { normalizeGalleryItem } = require('../../utils/gallery');
+const { isLoginRequiredError, promptForLogin } = require('../../utils/login-guard');
 
 Page({
   data: {
@@ -115,6 +116,13 @@ Page({
       return;
     }
 
+    const canContinue = await promptForLogin({
+      content: '保存返图到我的灵感需要使用微信登录。'
+    });
+    if (!canContinue) {
+      return;
+    }
+
     this.setData({ inspirationState: 'saving' });
     try {
       const response = await createMyInspiration({
@@ -130,7 +138,7 @@ Page({
       this.setData({ inspirationState: 'idle' });
       const message = error && error.code === 'GALLERY_ITEM_NOT_AVAILABLE'
         ? '这条返图已下线，暂时不能保存。'
-        : error && error.isUnauthorized
+        : isLoginRequiredError(error) || error && error.isUnauthorized
           ? '请先完成顾客登录后再保存。'
           : '保存失败，请稍后重试。';
       wx.showToast({ title: message, icon: 'none' });
@@ -146,8 +154,9 @@ Page({
       `galleryTitle=${encodeURIComponent(title)}`,
       `referenceImageUrl=${encodeURIComponent(referenceImageUrl)}`
     ].join('&');
-    wx.navigateTo({
-      url: `/pages/booking/index?${query}`
+    promptForLogin({
+      redirect: `/pages/booking/index?${query}`,
+      content: '预约同款需要使用微信登录。'
     });
   }
 });

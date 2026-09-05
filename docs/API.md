@@ -8,8 +8,9 @@
 
 - `apps/api` 是当前唯一后端基线，开发环境默认地址为 `http://127.0.0.1:3100`。
 - 体验版 / 正式版必须切到 HTTPS API 域名，并在微信公众平台配置合法 request/uploadFile 域名。
-- 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`；需要绑定手机号时，用户先勾选服务协议，再通过 `wx.getPhoneNumber` 把一次性 `phoneCode` 随登录请求提交，手机号只由服务端向微信换取。
-- 登录后由服务端返回 `primaryRole / roles / permissions`，小程序据此自动进入顾客首页或店员预约工作台。
+- 当前身份主线为 `wx.login -> /api/v1/auth/wechat-login -> Authorization: Bearer <token>`；手机号绑定为可选能力，后续页面如启用 `wx.getPhoneNumber`，只允许把一次性 `phoneCode` 随登录请求提交，手机号只由服务端向微信换取。
+- 体验版 / 正式版的登录和 `/auth/me` 响应不返回原始 OpenID；小程序只使用 Bearer session 和角色字段完成身份及权限判断。develop 环境仍保留 OpenID 以支持本地 mock 联调。
+- 登录后由服务端返回 `primaryRole / roles / permissions`。小程序始终从顾客首页开始；具备 `staff` 角色的账号仅在“我的”页面看到后台管理入口。
 - 店员授权以数据库中的有效成员关系为准；`SYSTEM_ADMIN_OPEN_IDS`、`OWNER_OPEN_IDS` 只负责可信账号首次引导，不是日常请求白名单。
 - develop 环境允许 `X-Customer-OpenId` / `X-Staff-OpenId` 作为本地联调兜底；体验版 / 正式版不允许依赖 mock OpenID header。
 - `GET /api/v1/availability` 已承载规则窗口日期、月历日期状态与当前日期全部时段。
@@ -135,7 +136,6 @@ V1 当前只允许以下接口对外使用：
   "expiresAt": "2026-07-05T12:00:00.000Z",
   "user": {
     "id": "user-id",
-    "openId": "openid",
     "displayName": "",
     "phone": "13800000000",
     "role": "staff",
@@ -169,7 +169,6 @@ V1 当前只允许以下接口对外使用：
 {
   "user": {
     "id": "user-id",
-    "openId": "openid",
     "displayName": "",
     "phone": "13800000000",
     "role": "staff",
@@ -711,7 +710,7 @@ V1 当前只允许以下接口对外使用：
 - `customerOpenId` 不允许作为 body 主身份字段；即使 body 中出现，也以服务端解析到的 session/header 身份为准。
 - 必填：`appointmentDate`, `timeSlot`
 - 选填字段：`customerName`, `phone`, `note`, `referenceImageUrls`
-- `referenceImageUrls` 必须是 HTTP(S) URL 字符串数组，最多 6 个；省略时保存为空数组。
+- `referenceImageUrls` 必须是 HTTP(S) URL 字符串数组，最多 6 个；省略时保存为空数组。若 URL 指向顾客上传路径 `/api/v1/uploads/images/`，其文件名必须携带当前顾客的单向散列归属前缀，否则服务端返回 `REFERENCE_IMAGE_FORBIDDEN`。
 - 不再要求 `serviceId`、`serviceName`、`artistId`、`artistName`。
 - 当前服务端兼容读取历史请求里的 `date` 字段，并统一落库到预约日期字段。
 
@@ -743,6 +742,8 @@ V1 当前只允许以下接口对外使用：
 
 - `400 + INVALID_REFERENCE_IMAGE_URLS`：字段不是数组、存在空值、非字符串或非 HTTP(S) URL。
 - `400 + REFERENCE_IMAGE_COUNT_EXCEEDED`：数组超过 6 个 URL。
+- `400 + REFERENCE_IMAGE_FORBIDDEN`：引用了不属于当前顾客的 `/api/v1/uploads/images/` 图片。
+- `400 + INVALID_CUSTOMER_NAME` / `INVALID_PHONE` / `INVALID_NOTE`：联系人、手机号或备注类型、长度、格式不符合预约规则。
 
 ### 前端接入顺序
 
@@ -1386,9 +1387,9 @@ V1 当前只允许以下接口对外使用：
 - `apps/weapp/pages/staff/gallery/index.js` 先调用 `uploadStaffGalleryImages(filePaths)` 获取图片 URL，再调用 `createStaffGallery()` 或 `updateStaffGallery(id, payload)` 保存元数据；列表使用 `listStaffGallery()`。详情/删除能力由 `getStaffGalleryDetail(id)` / `deleteStaffGallery(id)` 提供，ID 在 service 层 URI 编码；上传、保存、列表分别保留 loading / submitting / empty / error 状态。
 - `apps/weapp/pages/staff/appointments/index.js` 默认调用 `listStaffAppointments()` 获取全量数据并聚合月历；状态筛选、关键词/日期筛选通过同一 service 的 query 参数重新请求。详情可调用 `getStaffAppointmentDetail(id)`，审核使用 `reviewStaffAppointment(id, { status })`，改期使用 `rescheduleStaffAppointment(id, { appointmentDate, timeSlot, reviewNote })`，操作日志使用 `listStaffAppointmentAuditLogs(id)`；前端应把 `SLOT_OCCUPIED`、规则原因码、`APPOINTMENT_NOT_RESCHEDULABLE` 映射为可重试的业务提示。
 - `apps/weapp/pages/staff/members/index.js` 的管理模式并行调用成员列表和邀请列表；创建后只在本次响应中展示/分享邀请码，停用或撤销后重新拉取列表。兑换模式调用 `redeemStaffInvitation(code)`，成功后用响应 `user` 更新本地身份并进入店员工作台。
-- 启动页先完成微信登录，并以 `primaryRole` 分流；按钮与入口以 `permissions` 控制。前端隐藏按钮只是体验控制，服务端仍会逐请求校验权限。
+- 游客启动时不调用微信登录，可浏览返图与可预约时段。预约、保存灵感、上传参考图、我的预约和后台管理等受保护操作会先跳转独立登录页；按钮与入口以 `permissions` 控制。前端隐藏按钮只是体验控制，服务端仍会逐请求校验权限。
 - 店员业务页面使用 `auth: 'staff'`：正式环境由 Bearer session 提供身份，develop 才允许 OpenID header 兜底。成员管理接口只接受 Bearer session。`STAFF_UNAUTHORIZED` / `CUSTOMER_UNAUTHORIZED` 应进入 Unauthorized 状态，`PERMISSION_DENIED` 应显示无权限状态，不应静默显示空列表。
-- request 层收到 `401` 时只重新微信登录并重试一次；`403` 不触发重登。成员被停用后，重新请求 `/auth/me` 或任何受保护接口即可得到当前权限，不使用登录时的旧 `role` 缓存做最终授权。
+- request 层收到失效 Bearer session 时清除本地会话并返回 `LOGIN_REQUIRED`，不会静默调用微信登录或重试。成员被停用后，重新请求 `/auth/me` 或任何受保护接口即可得到当前权限，不使用登录时的旧 `role` 缓存做最终授权。
 
 ## 19. 通用鉴权错误返回
 

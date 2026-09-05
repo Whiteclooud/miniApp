@@ -7,7 +7,8 @@ export class AuthController {
 
   @Post('wechat-login')
   async loginWithWechat(@Body() payload: { code?: string; phoneCode?: string } = {}) {
-    return this.authService.loginWithWechat(payload.code, payload.phoneCode);
+    const body = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+    return this.authService.loginWithWechat(body.code, body.phoneCode);
   }
 
   @Get('me')

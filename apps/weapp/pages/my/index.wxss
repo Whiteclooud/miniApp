@@ -1,0 +1,125 @@
+@import '../../app.wxss';
+
+.my-page {
+  min-height: 100vh;
+  padding-bottom: 144rpx;
+  background: #fffaf8;
+}
+
+.my-content {
+  padding-top: 32rpx;
+}
+
+.guest-login-card,
+.profile-card {
+  padding: 56rpx 40rpx 40rpx;
+  border-radius: 40rpx;
+  text-align: center;
+}
+
+.guest-avatar,
+.profile-avatar {
+  width: 112rpx;
+  height: 112rpx;
+  margin: 0 auto 32rpx;
+  border-radius: 50%;
+  background: #fff0eb;
+}
+
+.guest-title,
+.profile-name {
+  color: #3d2c2c;
+  font-size: 38rpx;
+  font-weight: 700;
+  line-height: 52rpx;
+}
+
+.guest-desc,
+.profile-role {
+  margin-top: 12rpx;
+  color: #6b5555;
+  font-size: 26rpx;
+  line-height: 38rpx;
+}
+
+.login-button,
+.logout-button {
+  width: 100%;
+  height: 92rpx;
+  margin: 36rpx 0 0;
+  border-radius: 46rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 92rpx;
+}
+
+.login-button {
+  background: #e8856c;
+}
+
+.logout-button {
+  background: #fff6f2;
+  color: #e8856c;
+}
+
+.menu-title {
+  margin: 48rpx 0 20rpx;
+  color: #3d2c2c;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 42rpx;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 112rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
+  border: 0;
+  border-radius: 28rpx;
+  background: #ffffff;
+  color: #3d2c2c;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 42rpx;
+  text-align: left;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.menu-item > view {
+  min-width: 0;
+  text-align: left;
+}
+
+.menu-item::after {
+  border: 0;
+}
+
+.menu-item-admin {
+  border: 1rpx solid #f0e6e6;
+  background: #fff6f2;
+  color: #e8856c;
+}
+
+.menu-role {
+  margin-left: 20rpx;
+  color: #a08578;
+  font-size: 22rpx;
+  font-weight: 400;
+}
+
+.menu-arrow {
+  color: #a08578;
+  font-size: 42rpx;
+  font-weight: 400;
+  line-height: 1;
+}

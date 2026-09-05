@@ -1,4 +1,5 @@
 import { AppointmentStatus } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -18,6 +19,13 @@ import { ApiAppointmentItem, toApiAppointmentItem } from './appointment-response
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 
 const MAX_REFERENCE_IMAGE_COUNT = 6;
+const MAX_REFERENCE_IMAGE_URL_LENGTH = 2048;
+const MAX_CUSTOMER_NAME_LENGTH = 30;
+const MAX_PHONE_LENGTH = 32;
+const MAX_NOTE_LENGTH = 200;
+const CUSTOMER_UPLOAD_PATH_PREFIX = '/api/v1/uploads/images/';
+const CUSTOMER_UPLOAD_FILENAME_PATTERN =
+  /^customer-([a-f0-9]{64})-(\d{10,16})-([a-f0-9]{24})\.(?:jpg|png|webp)$/;
 
 @Injectable()
 export class AppointmentsService {
@@ -46,7 +54,17 @@ export class AppointmentsService {
     const customerOpenId = this.assertCustomerAuthorized(customerOpenIdHeader);
     const appointmentDate = this.resolveAppointmentDate(payload);
     const timeSlot = `${payload.timeSlot || ''}`.trim();
-    const referenceImageUrls = this.normalizeReferenceImageUrls(payload.referenceImageUrls);
+    const referenceImageUrls = this.normalizeReferenceImageUrls(
+      payload.referenceImageUrls,
+      customerOpenId
+    );
+    const customerName = this.normalizeText(payload.customerName, MAX_CUSTOMER_NAME_LENGTH, 'INVALID_CUSTOMER_NAME');
+    const phone = this.normalizeText(payload.phone, MAX_PHONE_LENGTH, 'INVALID_PHONE');
+    const note = this.normalizeText(payload.note, MAX_NOTE_LENGTH, 'INVALID_NOTE');
+
+    if (phone && !/^1\d{10}$/.test(phone)) {
+      throw new BadRequestException({ error: 'Invalid phone', code: 'INVALID_PHONE' });
+    }
 
     if (!isDateText(appointmentDate)) {
       throw new BadRequestException({
@@ -126,12 +144,12 @@ export class AppointmentsService {
       const appointment = await tx.appointment.create({
         data: {
           customerOpenId,
-          customerName: `${payload.customerName || ''}`.trim() || null,
-          phone: `${payload.phone || ''}`.trim() || null,
+          customerName: customerName || null,
+          phone: phone || null,
           date: appointmentDate,
           timeSlot,
           approvedSlotKey: null,
-          note: `${payload.note || ''}`.trim() || null,
+          note: note || null,
           referenceImageUrlsJson: JSON.stringify(referenceImageUrls),
           status: AppointmentStatus.PENDING,
           reviewedAt: null,
@@ -169,7 +187,21 @@ export class AppointmentsService {
     return `${payload.appointmentDate || payload.date || ''}`.trim();
   }
 
-  private normalizeReferenceImageUrls(value: unknown): string[] {
+  private normalizeText(value: unknown, maxLength: number, code: string) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    if (typeof value !== 'string') {
+      throw new BadRequestException({ error: 'Invalid appointment payload', code });
+    }
+    const normalized = value.trim();
+    if (normalized.length > maxLength) {
+      throw new BadRequestException({ error: 'Invalid appointment payload', code });
+    }
+    return normalized;
+  }
+
+  private normalizeReferenceImageUrls(value: unknown, customerOpenId: string): string[] {
     if (value === undefined) {
       return [];
     }
@@ -188,7 +220,7 @@ export class AppointmentsService {
       });
     }
 
-    return value.map((item) => {
+    const urls = value.map((item) => {
       if (typeof item !== 'string' || !item.trim()) {
         throw new BadRequestException({
           error: 'Invalid reference image URLs',
@@ -197,6 +229,12 @@ export class AppointmentsService {
       }
 
       const normalizedUrl = item.trim();
+      if (normalizedUrl.length > MAX_REFERENCE_IMAGE_URL_LENGTH) {
+        throw new BadRequestException({
+          error: 'Invalid reference image URLs',
+          code: 'INVALID_REFERENCE_IMAGE_URLS'
+        });
+      }
 
       try {
         const parsedUrl = new URL(normalizedUrl);
@@ -210,7 +248,40 @@ export class AppointmentsService {
         });
       }
 
+      this.assertCustomerOwnedUpload(normalizedUrl, customerOpenId);
+
       return normalizedUrl;
     });
+
+    return [...new Set(urls)];
+  }
+
+  private assertCustomerOwnedUpload(imageUrl: string, customerOpenId: string) {
+    let pathname = '';
+    try {
+      pathname = new URL(imageUrl).pathname;
+    } catch (_error) {
+      return;
+    }
+
+    if (!pathname.startsWith(CUSTOMER_UPLOAD_PATH_PREFIX)) {
+      return;
+    }
+
+    const encodedFilename = pathname.slice(CUSTOMER_UPLOAD_PATH_PREFIX.length);
+    let filename = '';
+    try {
+      filename = decodeURIComponent(encodedFilename);
+    } catch (_error) {
+      filename = '';
+    }
+    const match = filename.match(CUSTOMER_UPLOAD_FILENAME_PATTERN);
+    const ownerHash = createHash('sha256').update(customerOpenId).digest('hex');
+    if (!match || match[1] !== ownerHash) {
+      throw new BadRequestException({
+        error: 'Reference image is not owned by current customer',
+        code: 'REFERENCE_IMAGE_FORBIDDEN'
+      });
+    }
   }
 }

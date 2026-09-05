@@ -1,0 +1,32 @@
+<view class="my-page">
+  <view wx:if="{{!isLoggedIn}}" class="container my-content">
+    <view class="card guest-login-card">
+      <view class="guest-avatar"></view>
+      <view class="guest-title">登录后查看你的预约</view>
+      <view class="guest-desc">授权后即可保存返图灵感与提交预约。</view>
+      <button class="button-primary login-button" bindtap="goLogin">微信登录</button>
+    </view>
+  </view>
+
+  <view wx:else class="container my-content">
+    <view class="card profile-card">
+      <view class="profile-avatar"></view>
+      <view class="profile-name">{{userName}}</view>
+      <view class="profile-role">{{roleLabel}}</view>
+      <button class="button-secondary logout-button" bindtap="logout">退出登录</button>
+    </view>
+
+    <view class="menu-title">常用服务</view>
+    <view class="menu-list">
+      <button class="menu-item" bindtap="goMyBookings">
+        <text>我的预约</text><text class="menu-arrow">›</text>
+      </button>
+      <button class="menu-item" bindtap="goMyInspirations">
+        <text>我的灵感</text><text class="menu-arrow">›</text>
+      </button>
+      <button wx:if="{{showAdminEntry}}" class="menu-item menu-item-admin" bindtap="goAdmin">
+        <view><text>后台管理</text><text class="menu-role">店员 / 管理员</text></view><text class="menu-arrow">›</text>
+      </button>
+    </view>
+  </view>
+</view>

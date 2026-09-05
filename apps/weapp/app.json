@@ -1,6 +1,8 @@
 {
   "pages": [
     "pages/home/index",
+    "pages/my/index",
+    "pages/login/index",
     "pages/gallery-list/index",
     "pages/gallery-detail/index",
     "pages/booking/index",
@@ -17,6 +19,23 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#fffaf8",
     "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#6b5555",
+    "selectedColor": "#e8856c",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/my/index",
+        "text": "我的"
+      }
+    ]
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",

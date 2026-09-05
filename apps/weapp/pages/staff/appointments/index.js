@@ -13,6 +13,7 @@ const {
 const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
 const { getCurrentUser, hasPermission } = require('../../../utils/auth');
+const { isLoginRequiredError, requireStaff } = require('../../../utils/login-guard');
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const DETAIL_FILTER_DEFINITIONS = [
@@ -516,10 +517,16 @@ Page({
   },
 
   onLoad() {
+    if (!requireStaff({ redirect: '/pages/staff/appointments/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
   },
 
   onShow() {
+    if (!requireStaff({ redirect: '/pages/staff/appointments/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
     this.loadData();
   },
@@ -869,6 +876,9 @@ Page({
   },
 
   async loadData() {
+    if (!requireStaff({ redirect: '/pages/staff/appointments/index' })) {
+      return;
+    }
     const staffIdentity = getStaffIdentityMeta();
     if (!staffIdentity.canUse) {
       this.setData({
@@ -924,6 +934,10 @@ Page({
         historyAppointments: statusLists.historyAppointments
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        requireStaff({ redirect: '/pages/staff/appointments/index' });
+        return;
+      }
       this.setData({
         reviewStateMap: {},
         reviewMessage: '',

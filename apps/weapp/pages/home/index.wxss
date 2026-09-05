@@ -3,6 +3,7 @@
 .home-page {
   min-height: 100vh;
   box-sizing: border-box;
+  padding-bottom: 144rpx;
   background: #fffaf8;
 }
 
@@ -151,6 +152,15 @@
   margin-top: 24rpx;
   background: #fff6f2;
   color: #e8856c;
+}
+
+.home-page .availability-button {
+  width: 100%;
+  margin: 16rpx 0 0;
+  padding: 0;
+  color: #a45f67;
+  font-size: 24rpx;
+  line-height: 40rpx;
 }
 
 .section-header {

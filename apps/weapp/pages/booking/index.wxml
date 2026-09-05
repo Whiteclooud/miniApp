@@ -1,5 +1,5 @@
 <view class="container booking-page">
-  <view wx:if="{{pageState !== 'unauthorized' && submitState !== 'success'}}" class="card identity-card">
+  <view wx:if="{{customerIdentity.isDevelopEnv && pageState !== 'unauthorized' && submitState !== 'success'}}" class="card identity-card">
     <view class="identity-label">顾客身份主键</view>
     <view class="identity-value">{{customerIdentity.openId || customerIdentity.label}}</view>
     <view class="helper-text identity-helper">{{customerIdentity.sourceText}}</view>

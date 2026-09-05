@@ -58,6 +58,7 @@ PUBLIC_BASE_URL="https://你的 API 域名"
 ```env
 NODE_ENV=development
 SESSION_EXPIRES_DAYS=30
+MAX_ACTIVE_SESSIONS_PER_USER=5
 ALLOW_OPENID_HEADER_AUTH=1
 ALLOW_DEMO_STAFF_OPENID=1
 STAFF_OPEN_IDS="旧版店员 OpenID，仅用于兼容迁移为店主"
@@ -75,6 +76,7 @@ UPLOAD_MAX_FILE_SIZE_BYTES=5242880
 - `STAFF_OPEN_IDS` 是旧部署兼容项，登录时按店主迁入数据库，不再作为运行时权限源。
 - `PUBLIC_BASE_URL` 用于生成上传图片 URL，体验版 / 正式版必须是 HTTPS 域名。
 - `UPLOAD_MAX_FILE_SIZE_BYTES` 默认 5MB。
+- `MAX_ACTIVE_SESSIONS_PER_USER` 默认 5，服务端会清理该用户更早的有效会话；取值限制为 `1-20`。
 
 ## 本地启动
 

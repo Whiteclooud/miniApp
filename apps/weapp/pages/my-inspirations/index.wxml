@@ -1,6 +1,6 @@
 <view class="inspirations-page">
   <view class="container">
-    <view class="card identity-card">
+    <view wx:if="{{customerIdentity.isDevelopEnv}}" class="card identity-card">
       <view class="identity-label">当前顾客身份</view>
       <view class="identity-value">{{customerIdentity.openId || customerIdentity.label}}</view>
       <view class="helper-text">{{customerIdentity.sourceText}}</view>

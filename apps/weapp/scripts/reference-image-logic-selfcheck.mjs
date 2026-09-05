@@ -166,9 +166,11 @@ async function testAppointmentImageService() {
 async function testBookingReferenceImageLogic() {
   const requestModulePath = require.resolve('../utils/request.js');
   const serviceModulePath = require.resolve('../services/appointment.js');
+  const loginGuardModulePath = require.resolve('../utils/login-guard.js');
   const bookingModulePath = require.resolve('../pages/booking/index.js');
   const originalRequestModule = require.cache[requestModulePath];
   const originalServiceModule = require.cache[serviceModulePath];
+  const originalLoginGuardModule = require.cache[loginGuardModulePath];
   const originalBookingModule = require.cache[bookingModulePath];
   const previousPage = globalThis.Page;
   const previousWx = globalThis.wx;
@@ -203,6 +205,11 @@ async function testBookingReferenceImageLogic() {
         deleteCalls.push(imageUrl);
         return deleteImplementation(imageUrl);
       }
+    });
+    installModuleMock(loginGuardModulePath, {
+      hasCustomerAccess: () => true,
+      isLoginRequiredError: () => false,
+      promptForLogin: async () => true
     });
 
     globalThis.Page = (definition) => {
@@ -365,6 +372,7 @@ async function testBookingReferenceImageLogic() {
     delete require.cache[bookingModulePath];
     restoreModule(bookingModulePath, originalBookingModule);
     restoreModule(serviceModulePath, originalServiceModule);
+    restoreModule(loginGuardModulePath, originalLoginGuardModule);
     restoreModule(requestModulePath, originalRequestModule);
     globalThis.Page = previousPage;
     globalThis.wx = previousWx;

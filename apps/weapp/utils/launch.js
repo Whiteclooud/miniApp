@@ -6,6 +6,8 @@ const STAFF_HOME = '/pages/staff/appointments/index';
 
 const CUSTOMER_PATHS = new Set([
   'pages/home/index',
+  'pages/my/index',
+  'pages/login/index',
   'pages/gallery-list/index',
   'pages/gallery-detail/index',
   'pages/booking/index',
@@ -95,7 +97,9 @@ function isInvitationRedeemTarget(route) {
 }
 
 function resolveDefaultHome(user) {
-  return hasUserRole(user, 'staff') ? STAFF_HOME : CUSTOMER_HOME;
+  // Staff tools are reached through the role-gated entry in "My", never
+  // through an automatic redirect at application launch.
+  return CUSTOMER_HOME;
 }
 
 function appendSceneContext(url, launchOptions = {}, pageOptions = {}) {

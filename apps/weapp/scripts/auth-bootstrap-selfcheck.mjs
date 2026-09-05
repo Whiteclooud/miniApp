@@ -46,7 +46,7 @@ export async function runAuthBootstrapSelfcheck() {
   );
   assert.equal(
     bootstrap.resolveLaunchTarget({ user: { primaryRole: 'owner' } }),
-    '/pages/staff/appointments/index'
+    '/pages/home/index'
   );
   assert.equal(
     bootstrap.resolveLaunchTarget({
@@ -76,7 +76,7 @@ export async function runAuthBootstrapSelfcheck() {
       user: { primaryRole: 'system_admin' },
       pageOptions: { redirect: 'https://invalid.example.test' }
     }),
-    '/pages/staff/appointments/index'
+    '/pages/home/index'
   );
   assert.equal(
     bootstrap.resolveLaunchTarget({
@@ -153,11 +153,10 @@ export async function runAuthBootstrapSelfcheck() {
   assert.equal(customerSession.user.staffRole, undefined);
   assert.equal(customerSession.user.systemRole, 'user');
 
-  let token = 'expired-token';
   let protectedRequestCount = 0;
   let loginCount = 0;
   storage.set(auth.STORAGE_KEY, {
-    token,
+    token: 'expired-token',
     expiresAt,
     user: { primaryRole: 'customer', roles: ['customer'] }
   });
@@ -166,41 +165,29 @@ export async function runAuthBootstrapSelfcheck() {
     options.success({ code: 'fresh-code' });
   };
   globalThis.wx.request = (options) => {
-    if (options.url.endsWith('/api/v1/auth/wechat-login')) {
-      token = 'fresh-token';
-      options.success({
-        statusCode: 200,
-        data: {
-          token,
-          expiresAt,
-          user: { primaryRole: 'customer', roles: ['customer'] }
-        }
-      });
-      return;
-    }
-
     protectedRequestCount += 1;
-    if (protectedRequestCount === 1) {
-      assert.equal(options.header.Authorization, 'Bearer expired-token');
-      options.success({
-        statusCode: 401,
-        data: { code: 'SESSION_UNAUTHORIZED', error: 'Session unauthorized' }
-      });
-      return;
-    }
-
-    assert.equal(options.header.Authorization, 'Bearer fresh-token');
-    options.success({ statusCode: 200, data: { ok: true } });
+    assert.equal(options.header.Authorization, 'Bearer expired-token');
+    options.success({
+      statusCode: 401,
+      data: { code: 'SESSION_UNAUTHORIZED', error: 'Session unauthorized' }
+    });
   };
 
-  assert.deepEqual(
-    await requestUtils.request({ url: '/protected', auth: 'customer' }),
-    { ok: true }
+  await assert.rejects(
+    requestUtils.request({ url: '/protected', auth: 'customer' }),
+    (error) => error && error.code === 'LOGIN_REQUIRED' && error.isLoginRequired
   );
-  assert.equal(loginCount, 1);
-  assert.equal(protectedRequestCount, 2);
+  assert.equal(loginCount, 0);
+  assert.equal(protectedRequestCount, 1);
+  assert.equal(storage.has(auth.STORAGE_KEY), false, 'expired bearer must be cleared without relogin');
 
   storage.clear();
+  await assert.rejects(
+    requestUtils.request({ url: '/protected', auth: 'customer' }),
+    (error) => error && error.code === 'LOGIN_REQUIRED' && error.isLoginRequired
+  );
+  assert.equal(protectedRequestCount, 1, 'missing session must not issue a protected request');
+
   globalThis.wx.login = (options) => options.success({ code: 'phone-login-code' });
   globalThis.wx.request = (options) => {
     assert.equal(options.url, 'https://api.example.test/api/v1/auth/wechat-login');

@@ -7,6 +7,7 @@ const {
 } = require('../../../utils/staff');
 const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
+const { isLoginRequiredError, requireStaff } = require('../../../utils/login-guard');
 
 const ADVANCE_OPEN_DAY_OPTIONS = [0, 1, 3, 5, 7, 14, 21, 30];
 const WEEKDAY_OPTIONS = [
@@ -397,10 +398,16 @@ Page({
   },
 
   onLoad() {
+    if (!requireStaff({ redirect: '/pages/staff/rules/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
   },
 
   onShow() {
+    if (!requireStaff({ redirect: '/pages/staff/rules/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
     this.loadData();
   },
@@ -704,6 +711,9 @@ Page({
   },
 
   async loadData() {
+    if (!requireStaff({ redirect: '/pages/staff/rules/index' })) {
+      return;
+    }
     const staffIdentity = getStaffIdentityMeta();
     if (!staffIdentity.canUse) {
       this.setData({
@@ -732,6 +742,10 @@ Page({
         stateMessage: hasRulesContent(rules) ? '' : '当前还没有店员规则配置。'
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        requireStaff({ redirect: '/pages/staff/rules/index' });
+        return;
+      }
       this.applyViewState({ form: getDefaultForm(), updatedAt: '' });
       this.setData({
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',

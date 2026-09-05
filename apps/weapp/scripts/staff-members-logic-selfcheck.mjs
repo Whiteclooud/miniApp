@@ -35,11 +35,13 @@ function createPageInstance(definition) {
 export async function runStaffMembersLogicSelfcheck() {
   const requestPath = require.resolve('../utils/request.js');
   const authPath = require.resolve('../utils/auth.js');
+  const loginGuardPath = require.resolve('../utils/login-guard.js');
   const servicePath = require.resolve('../services/staff-management.js');
   const pagePath = require.resolve('../pages/staff/members/index.js');
   const originals = new Map([
     [requestPath, require.cache[requestPath]],
     [authPath, require.cache[authPath]],
+    [loginGuardPath, require.cache[loginGuardPath]],
     [servicePath, require.cache[servicePath]],
     [pagePath, require.cache[pagePath]]
   ]);
@@ -69,6 +71,12 @@ export async function runStaffMembersLogicSelfcheck() {
         updatedUser = user;
         currentUser = user;
       }
+    });
+    installModuleMock(loginGuardPath, {
+      hasCustomerAccess: () => true,
+      isLoginRequiredError: () => false,
+      redirectToLogin: () => false,
+      requireStaff: () => true
     });
     installModuleMock(servicePath, {
       listStaffMembers: async () => {

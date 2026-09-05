@@ -1,4 +1,5 @@
 import { PrismaClient, AppointmentStatus } from '@prisma/client';
+import { createHash } from 'node:crypto';
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:3100';
@@ -50,7 +51,7 @@ async function main() {
   const cleanupCustomerPrefix = `cust-${runId}`;
   const referenceCustomerOpenId = `${cleanupCustomerPrefix}-reference-images`;
   const referenceImageUrls = [
-    `${BASE_URL}/api/v1/uploads/images/reference-${runId}.jpg`,
+    `https://example.com/reference-${runId}.jpg`,
     `https://example.com/reference-${runId}.webp`
   ];
   let referenceAppointmentId = '';
@@ -158,6 +159,31 @@ async function main() {
         result.json?.code === 'REFERENCE_IMAGE_COUNT_EXCEEDED',
         'expected REFERENCE_IMAGE_COUNT_EXCEEDED'
       );
+      return result.json;
+    });
+
+    await runCase('create rejects another customer upload URL', async () => {
+      const ownerOpenId = `${cleanupCustomerPrefix}-reference-owner`;
+      const otherOwnerHash = createHash('sha256')
+        .update(`${cleanupCustomerPrefix}-another-customer`)
+        .digest('hex');
+      const result = await request('/api/v1/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Customer-OpenId': ownerOpenId
+        },
+        body: JSON.stringify({
+          appointmentDate: openDate,
+          timeSlot: sharedTimeSlot,
+          referenceImageUrls: [
+            `${BASE_URL}/api/v1/uploads/images/customer-${otherOwnerHash}-1700000000000-aabbccddeeffaabbccddeeff.jpg`
+          ]
+        })
+      });
+
+      assert(result.status === 400, `expected 400, got ${result.status}`);
+      assert(result.json?.code === 'REFERENCE_IMAGE_FORBIDDEN', 'expected REFERENCE_IMAGE_FORBIDDEN');
       return result.json;
     });
 

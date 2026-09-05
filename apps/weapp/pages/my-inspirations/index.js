@@ -6,6 +6,7 @@ const {
 } = require('../../services/appointment');
 const { getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
+const { hasCustomerAccess, isLoginRequiredError, redirectToLogin } = require('../../utils/login-guard');
 
 const PAGE_LIMIT = 20;
 
@@ -137,6 +138,9 @@ Page({
     this._listLoaded = false;
     this._listRequestInFlight = false;
     this.setData({ mode: this.inspirationId ? 'detail' : 'list' });
+    if (!this.ensureAccess()) {
+      return;
+    }
     this.refreshCustomerIdentity();
     if (this.inspirationId) {
       this.loadDetail();
@@ -147,6 +151,9 @@ Page({
   },
 
   onShow() {
+    if (!this.ensureAccess()) {
+      return;
+    }
     this.refreshCustomerIdentity();
     // Refresh the list when returning from a detail/gallery page so edits and
     // deletes made there are reflected without changing the WXML contract.
@@ -191,6 +198,19 @@ Page({
     });
   },
 
+  ensureAccess() {
+    if (hasCustomerAccess()) {
+      this.redirectingToLogin = false;
+      return true;
+    }
+    if (!this.redirectingToLogin) {
+      this.redirectingToLogin = true;
+      const suffix = this.inspirationId ? `?id=${encodeURIComponent(this.inspirationId)}` : '';
+      redirectToLogin({ redirect: `/pages/my-inspirations/index${suffix}` });
+    }
+    return false;
+  },
+
   onCustomerOpenIdInput(event) {
     this.setData({ customerOpenIdInput: event.detail.value });
   },
@@ -228,6 +248,9 @@ Page({
   },
 
   async loadData(options = {}) {
+    if (!this.ensureAccess()) {
+      return;
+    }
     const append = !!(options && options.append === true);
     if (!append && this._listRequestInFlight) {
       return;
@@ -285,6 +308,11 @@ Page({
         stateMessage: items.length ? '' : '还没有保存的返图灵感，先去返图灵感页收藏喜欢的款式吧。'
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        this.redirectingToLogin = false;
+        this.ensureAccess();
+        return;
+      }
       if (append && error && error.isUnauthorized) {
         this.setData({
           customerIdentity,
@@ -320,6 +348,9 @@ Page({
   },
 
   async loadDetail() {
+    if (!this.ensureAccess()) {
+      return;
+    }
     const customerIdentity = getIdentityMeta();
     if (!customerIdentity.canUse) {
       this.setData({
@@ -353,6 +384,11 @@ Page({
         detailMessage: ''
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        this.redirectingToLogin = false;
+        this.ensureAccess();
+        return;
+      }
       this.setData({
         detailState: error && error.isUnauthorized
           ? 'unauthorized'

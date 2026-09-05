@@ -16,11 +16,12 @@ export class AppointmentsController {
     @Headers('x-customer-openid') customerOpenId?: string,
     @Body() payload: CreateAppointmentDto = {}
   ) {
+    const body = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
     const resolvedCustomerOpenId = await this.authService.resolveCustomerOpenId(
       authorization,
       customerOpenId
     );
-    const item = await this.appointmentsService.createAppointment(resolvedCustomerOpenId, payload);
+    const item = await this.appointmentsService.createAppointment(resolvedCustomerOpenId, body);
     return { item };
   }
 }

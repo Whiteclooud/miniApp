@@ -1,6 +1,7 @@
 const { cancelMyAppointment, listMyAppointments } = require('../../services/appointment');
 const { getErrorKind, getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
+const { hasCustomerAccess, isLoginRequiredError, redirectToLogin } = require('../../utils/login-guard');
 
 function formatStatus(status) {
   const map = {
@@ -113,10 +114,16 @@ Page({
   },
 
   onLoad() {
+    if (!this.ensureAccess()) {
+      return;
+    }
     this.refreshCustomerIdentity();
   },
 
   onShow() {
+    if (!this.ensureAccess()) {
+      return;
+    }
     this.refreshCustomerIdentity();
     this.loadData();
   },
@@ -133,6 +140,18 @@ Page({
       customerIdentity,
       customerOpenIdInput: customerIdentity.openId || this.data.customerOpenIdInput || ''
     });
+  },
+
+  ensureAccess() {
+    if (hasCustomerAccess()) {
+      this.redirectingToLogin = false;
+      return true;
+    }
+    if (!this.redirectingToLogin) {
+      this.redirectingToLogin = true;
+      redirectToLogin({ redirect: '/pages/my-bookings/index' });
+    }
+    return false;
   },
 
   onCustomerOpenIdInput(event) {
@@ -173,6 +192,9 @@ Page({
   },
 
   async loadData() {
+    if (!this.ensureAccess()) {
+      return;
+    }
     const customerIdentity = getIdentityMeta();
     if (!customerIdentity.canUse) {
       this.setData({
@@ -201,6 +223,11 @@ Page({
         stateMessage: appointments.length ? '' : '当前顾客 OpenID 下暂无预约记录。'
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        this.redirectingToLogin = false;
+        this.ensureAccess();
+        return;
+      }
       this.setData({
         appointments: [],
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',

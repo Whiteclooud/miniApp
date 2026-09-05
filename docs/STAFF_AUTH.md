@@ -11,16 +11,15 @@ wx.login
   -> （可选）服务端使用 wx.getPhoneNumber 的 phoneCode 调用 getuserphonenumber
   -> 查询 users / staff_members
   -> 返回业务 Bearer session 与当前角色
-  -> 小程序按 primaryRole 自动分流
+  -> 小程序保持顾客首页，按 primaryRole / permissions 在“我的”显示后台入口
 ```
 
 OpenID 只由服务端向微信换取。昵称、头像、手机号、页面参数和客户端提交的
 `role` 都不能作为授权依据。
 
-手机号授权是顾客侧的补充资料能力，不改变 OpenID 主身份。小程序应在用户主动
-勾选服务协议后使用 `open-type="getPhoneNumber"` 按钮获取一次性 `phoneCode`，由
-服务端调用微信接口换取手机号并写入 `users.phone`；用户拒绝时仍可走不绑定手机号
-的微信登录路径。
+手机号授权是顾客侧的可选补充资料能力，不改变 OpenID 主身份。后续如在页面提供
+`open-type="getPhoneNumber"` 按钮，应在用户主动授权后将一次性 `phoneCode` 交给
+服务端调用微信接口换取手机号并写入 `users.phone`；用户拒绝时仍可使用普通微信登录。
 
 `X-Customer-OpenId` / `X-Staff-OpenId` 仅保留给 develop 联调；体验版和正式版
 必须使用 Bearer session。
@@ -32,9 +31,9 @@ OpenID 只由服务端向微信换取。昵称、头像、手机号、页面参�
 | 角色 | 默认进入 | 权限 |
 | --- | --- | --- |
 | `customer` | 顾客首页 | 返图、灵感、预约、我的预约、顾客图片 |
-| `staff` | 店员预约工作台 | 顾客权限 + 预约查看/审核/改期 + 返图管理 |
-| `owner` | 店员预约工作台 | 店员权限 + 预约规则 + 店员邀请、查看和移除 |
-| `system_admin` | 店员预约工作台 | 店主权限 + 邀请/移除店主 + 系统维护权限 |
+| `staff` | 顾客首页；“我的”显示后台入口 | 顾客权限 + 预约查看/审核/改期 + 返图管理 |
+| `owner` | 顾客首页；“我的”显示后台入口 | 店员权限 + 预约规则 + 店员邀请、查看和移除 |
+| `system_admin` | 顾客首页；“我的”显示后台入口 | 店主权限 + 邀请/移除店主 + 系统维护权限 |
 
 店主不能：
 
@@ -109,13 +108,12 @@ OpenID 从 `SYSTEM_ADMIN_OPEN_IDS` 移除，再通过受控数据库管理工具
 
 ## 会话与撤权
 
-登录响应同时保留兼容字段和多角色字段：
+登录响应保留兼容字段和多角色字段。生产响应不包含原始 OpenID；以下开发环境示例省略该字段：
 
 ```json
 {
   "user": {
     "id": "user-id",
-    "openId": "openid",
     "role": "staff",
     "primaryRole": "owner",
     "roles": ["customer", "staff", "owner"],

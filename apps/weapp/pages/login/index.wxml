@@ -1,0 +1,11 @@
+<view class="login-page">
+  <view class="login-card card">
+    <view class="login-eyebrow">安全登录</view>
+    <view class="login-title">登录后再继续</view>
+    <view class="login-desc">使用微信账号登录后，可提交预约、保存返图灵感，并查看你的预约信息。</view>
+    <button class="button-primary login-primary" loading="{{loading}}" disabled="{{loading}}" bindtap="login">微信一键登录</button>
+    <view wx:if="{{message}}" class="login-message">{{message}}</view>
+    <view class="login-agreement">继续即表示你同意《服务协议》和《隐私政策》</view>
+  </view>
+  <button class="button-plain login-cancel" bindtap="cancel">暂不登录，继续浏览</button>
+</view>

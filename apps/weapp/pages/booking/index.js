@@ -7,6 +7,11 @@ const {
 const { getErrorKind, getErrorMessage } = require('../../utils/request');
 const { DEFAULT_DEVELOP_CUSTOMER_OPENID } = require('../../utils/customer');
 const { isCustomerReferenceImageUrl } = require('../../utils/reference-images');
+const {
+  hasCustomerAccess,
+  isLoginRequiredError,
+  promptForLogin
+} = require('../../utils/login-guard');
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const CALENDAR_LEGEND = [
@@ -489,6 +494,12 @@ Page({
   },
 
   async addReferenceImages() {
+    if (!hasCustomerAccess()) {
+      const canContinue = await promptForLogin({ content: '上传预约参考图需要使用微信登录。' });
+      if (!canContinue) {
+        return;
+      }
+    }
     const remainingCount = MAX_REFERENCE_IMAGE_COUNT - this.data.referenceImageUrls.length;
     if (
       remainingCount <= 0 ||
@@ -553,6 +564,12 @@ Page({
   },
 
   async removeReferenceImage(event) {
+    if (!hasCustomerAccess()) {
+      const canContinue = await promptForLogin({ content: '管理预约参考图需要使用微信登录。' });
+      if (!canContinue) {
+        return;
+      }
+    }
     if (
       this.data.submitState !== 'idle' ||
       this.data.referenceImageState !== 'idle'
@@ -624,6 +641,13 @@ Page({
   },
 
   goMyBookings() {
+    if (!hasCustomerAccess()) {
+      promptForLogin({
+        redirect: '/pages/my-bookings/index',
+        content: '查看我的预约需要使用微信登录。'
+      });
+      return;
+    }
     wx.redirectTo({
       url: '/pages/my-bookings/index?created=1'
     });
@@ -685,40 +709,13 @@ Page({
 
   async loadPage() {
     const customerIdentity = getIdentityMeta();
-    if (!customerIdentity.canUse) {
-      this.setData({
-        customerIdentity,
-        pageState: 'unauthorized',
-        stateMessage: customerIdentity.isDevelopEnv
-          ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
-          : '未获取到顾客 OpenID，当前环境不能提交预约。',
-        timeSlotStateMessage: '',
-        availabilityNoticeText: '',
-        selectedTimeSlotValue: ''
-      });
-      return;
-    }
-
+    this.setData({ customerIdentity });
     const selectedDate = this.data.availability.selectedDate || getTodayDateValue();
     await this.loadAvailability(selectedDate);
   },
 
   async loadAvailability(requestedDate) {
     const customerIdentity = getIdentityMeta();
-    if (!customerIdentity.canUse) {
-      this.setData({
-        customerIdentity,
-        pageState: 'unauthorized',
-        stateMessage: customerIdentity.isDevelopEnv
-          ? '未获取到顾客 OpenID。开发环境请先填写或生成模拟顾客 OpenID，再继续预约。'
-          : '未获取到顾客 OpenID，当前环境不能提交预约。',
-        timeSlotStateMessage: '',
-        availabilityNoticeText: '',
-        selectedTimeSlotValue: ''
-      });
-      return;
-    }
-
     const date = requestedDate || getTodayDateValue();
     this.setData({
       customerIdentity,
@@ -805,6 +802,13 @@ Page({
       return;
     }
 
+    if (!hasCustomerAccess()) {
+      const canContinue = await promptForLogin({ content: '提交预约需要使用微信登录。' });
+      if (!canContinue) {
+        return;
+      }
+    }
+
     if (!customerIdentity.canUse) {
       this.setData({
         pageState: 'unauthorized',
@@ -881,6 +885,10 @@ Page({
         }
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        promptForLogin({ content: '登录状态已失效，请重新登录后提交预约。' });
+        return;
+      }
       if (error.isUnauthorized) {
         this.setData({
           pageState: 'unauthorized',

@@ -6,6 +6,8 @@
 
 ### 顾客端
 - `pages/home`
+- `pages/my`
+- `pages/login`
 - `pages/gallery-list`
 - `pages/gallery-detail`
 - `pages/booking`
@@ -20,11 +22,13 @@
 - `pages/staff/appointments`
 - `pages/staff/members`
 
-默认首屏为 `pages/home`。应用启动时会完成微信登录、校验缓存 session，
-并按 `customer / staff / owner / system_admin` 自动进入顾客首页或店员预约工作台。
-体验版 / 正式版首页提供协议勾选后的手机号授权入口：按钮通过 `wx.getPhoneNumber`
-拿到一次性凭证，随 `wx.login` code 发送到服务端；拒绝手机号授权时仍可使用普通微信
-登录，手机号不是账号主键。
+默认首屏为 `pages/home`，游客可直接浏览返图和可预约日期 / 时段。小程序不会在启动、
+公开接口请求或 Bearer session 失效时静默调用 `wx.login`。预约提交、参考图上传、保存灵感、
+我的预约和后台管理等操作会先说明需要登录，用户确认后进入 `pages/login` 主动完成微信登录。
+
+底部导航仅保留“首页”和“我的”，并将“首页”置于中间位置。后台管理不作为底部标签：
+只有当前 Bearer 会话具备 `staff` 角色时，“我的”页面才显示后台管理入口。前端隐藏仅用于体验，
+服务端仍按每个接口的实时权限校验访问。
 
 ## 当前能力
 

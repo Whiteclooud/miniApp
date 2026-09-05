@@ -134,6 +134,14 @@ const requestText = readText(requestPath);
 expectIncludes(requestText, "'X-Customer-OpenId'", requestPath);
 expectIncludes(requestText, "'X-Staff-OpenId'", requestPath);
 expectIncludes(requestText, 'getCustomerIdentityOrThrow', requestPath);
+expectIncludes(requestText, 'LOGIN_REQUIRED', requestPath);
+expectExcludes(requestText, 'ensureAuthSession', requestPath);
+
+const loginGuardPath = 'apps/weapp/utils/login-guard.js';
+const loginGuardText = readText(loginGuardPath);
+expectIncludes(loginGuardText, 'promptForLogin', loginGuardPath);
+expectIncludes(loginGuardText, 'requireStaff', loginGuardPath);
+expectIncludes(loginGuardText, 'finishLoginRedirect', loginGuardPath);
 
 const appointmentServicePath = 'apps/weapp/services/appointment.js';
 const appointmentServiceText = readText(appointmentServicePath);
@@ -698,6 +706,8 @@ const appJsonPath = 'apps/weapp/app.json';
 const appJson = JSON.parse(readText(appJsonPath) || '{}');
 const requiredPages = [
   'pages/home/index',
+  'pages/my/index',
+  'pages/login/index',
   'pages/gallery-list/index',
   'pages/gallery-detail/index',
   'pages/booking/index',
@@ -713,6 +723,35 @@ requiredPages.forEach((page) => {
     issues.push(`${appJsonPath}: missing required page ${page}`);
   }
 });
+
+if (!appJson.tabBar || appJson.tabBar.custom !== true) {
+  issues.push(`${appJsonPath}: custom tabBar is required for the centered home entry`);
+}
+const tabPages = appJson.tabBar && appJson.tabBar.list || [];
+if (!tabPages.some((item) => item.pagePath === 'pages/home/index') ||
+  !tabPages.some((item) => item.pagePath === 'pages/my/index')) {
+  issues.push(`${appJsonPath}: tabBar must contain home and my pages`);
+}
+
+const customTabBarPath = 'apps/weapp/custom-tab-bar/index.wxml';
+const customTabBarText = readText(customTabBarPath);
+expectIncludes(customTabBarText, 'tabbar-home', customTabBarPath);
+expectIncludes(customTabBarText, 'tabbar-my', customTabBarPath);
+expectExcludes(customTabBarText, '后台管理', customTabBarPath);
+
+const myPagePath = 'apps/weapp/pages/my/index.js';
+const myPageText = readText(myPagePath);
+const myPageWxmlPath = 'apps/weapp/pages/my/index.wxml';
+const myPageWxmlText = readText(myPageWxmlPath);
+expectIncludes(myPageText, 'hasStaffAccess', myPagePath);
+expectIncludes(myPageText, 'restoreAuthSession', myPagePath);
+expectIncludes(myPageWxmlText, 'showAdminEntry', myPageWxmlPath);
+expectIncludes(myPageWxmlText, '后台管理', myPageWxmlPath);
+
+const loginPagePath = 'apps/weapp/pages/login/index.js';
+const loginPageText = readText(loginPagePath);
+expectIncludes(loginPageText, 'ensureAuthSession({ force: true })', loginPagePath);
+expectIncludes(loginPageText, 'finishLoginRedirect', loginPagePath);
 
 [
   'project.config.json',

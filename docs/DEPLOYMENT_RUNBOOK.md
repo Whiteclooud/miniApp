@@ -114,6 +114,7 @@ OWNER_OPEN_IDS=<可为空>
 ALLOW_OPENID_HEADER_AUTH=0
 ALLOW_DEMO_STAFF_OPENID=0
 SESSION_EXPIRES_DAYS=30
+MAX_ACTIVE_SESSIONS_PER_USER=5
 UPLOAD_MAX_FILES=6
 UPLOAD_MAX_FILE_SIZE_BYTES=5242880
 
@@ -271,7 +272,7 @@ curl -v https://api.whiteclooud.asia/health
 | --- | --- |
 | `ERR_CONNECTION_REFUSED` 指向 127.0.0.1 | 真机不能访问电脑本地 API；确认使用 HTTPS trial 配置 |
 | `ERR_CONNECTION_RESET` 且 Caddy 无日志 | ICP 备案、安全组 443、DNS、运营商链路 |
-| Network 没有 `auth/wechat-login` | 旧版本、启动 JS 异常或请求前崩溃 |
+| 受保护操作后 Network 没有 `auth/wechat-login` | 旧版本、登录页 JS 异常或请求前崩溃；游客打开首页时没有该请求是正常行为 |
 | `WECHAT_LOGIN_FAILED` | 正式 AppID/AppSecret 不匹配 |
 | 401 | session 无效或账号未获得对应成员权限 |
 | 图片 404 | 图片卷丢失或 `PUBLIC_BASE_URL` 错误 |
@@ -340,5 +341,7 @@ downloadFile 合法域名：https://api.whiteclooud.asia
 - 服务器域名绑定的是正式小程序 AppID，不是测试号。
 - 体验版使用最新上传版本。
 - Network 请求地址为 HTTPS API。
+- 首次以游客进入首页时不应出现 `auth/wechat-login`；仅确认登录、预约、保存灵感、上传参考图或查看个人记录后才发起登录。
+- 普通顾客“我的”页不显示后台管理入口；店员、店主和系统管理员登录后才显示该入口，且服务端接口仍返回正确的权限结果。
 - 生产环境不出现 `X-Customer-OpenId` 或 `X-Staff-OpenId`。
 - 四类角色和成员撤权 UAT 已完成。

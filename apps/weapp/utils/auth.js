@@ -370,6 +370,26 @@ function validateAuthSession(session) {
   });
 }
 
+function restoreAuthSession(options = {}) {
+  const { validate = false } = options;
+  const stored = getStoredAuthSession();
+  if (!stored) {
+    return Promise.resolve(null);
+  }
+
+  if (!validate) {
+    return Promise.resolve(stored);
+  }
+
+  return validateAuthSession(stored).catch((error) => {
+    if (error && error.statusCode === 401) {
+      clearAuthSession();
+      return null;
+    }
+    return Promise.reject(error);
+  });
+}
+
 function ensureAuthSession(options = {}) {
   const { force = false, validate = false } = options;
 
@@ -438,6 +458,7 @@ module.exports = {
   hasPermission,
   isWechatAuthEnabled,
   getStoredAuthSession,
+  restoreAuthSession,
   getSessionToken,
   getCurrentUser,
   updateCurrentUser,

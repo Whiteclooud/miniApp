@@ -8,6 +8,7 @@ const {
 } = require('../../../services/staff-management');
 const auth = require('../../../utils/auth');
 const { getErrorMessage } = require('../../../utils/request');
+const { hasCustomerAccess, isLoginRequiredError, redirectToLogin, requireStaff } = require('../../../utils/login-guard');
 
 const INVITATION_ROLE_OPTIONS = [
   { value: 'staff', label: '店员' },
@@ -233,7 +234,16 @@ Page({
 
     this.setData({ mode, inviteCode });
     if (mode === 'redeem') {
+      if (!hasCustomerAccess()) {
+        redirectToLogin({
+          redirect: `/pages/staff/members/index?mode=redeem&code=${encodeURIComponent(inviteCode)}`
+        });
+        return;
+      }
       this.setData({ pageState: 'ready' });
+      return;
+    }
+    if (!requireStaff({ redirect: '/pages/staff/members/index' })) {
       return;
     }
     await this.loadData();
@@ -285,6 +295,9 @@ Page({
   },
 
   async loadData() {
+    if (!requireStaff({ redirect: '/pages/staff/members/index' })) {
+      return;
+    }
     const access = this.refreshAccess();
     if (!access.canManageStaff) {
       this.setData({
@@ -314,6 +327,10 @@ Page({
         stateMessage: ''
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        requireStaff({ redirect: '/pages/staff/members/index' });
+        return;
+      }
       this.setData({
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',
         stateMessage: invitationErrorMessage(error, '成员资料加载失败，请稍后重试。'),
@@ -474,6 +491,12 @@ Page({
   },
 
   async redeemInvitation() {
+    if (!hasCustomerAccess()) {
+      redirectToLogin({
+        redirect: `/pages/staff/members/index?mode=redeem&code=${encodeURIComponent(this.data.inviteCode || '')}`
+      });
+      return;
+    }
     const code = `${this.data.inviteCode || ''}`.trim();
     if (!code) {
       this.setData({ redeemState: 'error', redeemMessage: '请输入邀请码。' });

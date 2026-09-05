@@ -13,6 +13,7 @@ const {
 const { normalizeGalleryItems } = require('../../../utils/gallery');
 const { getErrorKind, getErrorMessage } = require('../../../utils/request');
 const { isDevelopEnv } = require('../../../utils/customer');
+const { isLoginRequiredError, requireStaff } = require('../../../utils/login-guard');
 
 function getNowParts() {
   const date = new Date();
@@ -187,10 +188,16 @@ Page({
   },
 
   onLoad() {
+    if (!requireStaff({ redirect: '/pages/staff/gallery/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
   },
 
   onShow() {
+    if (!requireStaff({ redirect: '/pages/staff/gallery/index' })) {
+      return;
+    }
     this.refreshStaffIdentity();
     this.loadData();
   },
@@ -412,6 +419,9 @@ Page({
   },
 
   async loadData() {
+    if (!requireStaff({ redirect: '/pages/staff/gallery/index' })) {
+      return;
+    }
     const staffIdentity = getStaffIdentityMeta();
     if (!staffIdentity.canUse) {
       this.setData({
@@ -442,6 +452,10 @@ Page({
         stateMessage: items.length ? '' : '当前还没有返图内容，先创建第一条灵感内容吧。'
       });
     } catch (error) {
+      if (isLoginRequiredError(error)) {
+        requireStaff({ redirect: '/pages/staff/gallery/index' });
+        return;
+      }
       this.setData({
         pageState: error.isUnauthorized ? 'unauthorized' : 'error',
         stateMessage: formatPageErrorMessage(error, '返图管理页加载失败，请稍后重试。'),
