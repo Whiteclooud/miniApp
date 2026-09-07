@@ -10,5 +10,8 @@
     "test:api": "npm --prefix apps/api run test",
     "check:docs": "node tools/check-docs.mjs",
     "check:weapp-contract": "node apps/weapp/scripts/contract-selfcheck.mjs"
+  },
+  "dependencies": {
+    "miniprogram-automator": "0.12.1"
   }
 }
