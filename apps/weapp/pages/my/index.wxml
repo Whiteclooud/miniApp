@@ -18,15 +18,15 @@
 
     <view class="menu-title">常用服务</view>
     <view class="menu-list">
-      <button class="menu-item" bindtap="goMyBookings">
+      <view class="menu-item" bindtap="goMyBookings" role="button">
         <text>我的预约</text><text class="menu-arrow">›</text>
-      </button>
-      <button class="menu-item" bindtap="goMyInspirations">
+      </view>
+      <view class="menu-item" bindtap="goMyInspirations" role="button">
         <text>我的灵感</text><text class="menu-arrow">›</text>
-      </button>
-      <button wx:if="{{showAdminEntry}}" class="menu-item menu-item-admin" bindtap="goAdmin">
+      </view>
+      <view wx:if="{{showAdminEntry}}" class="menu-item menu-item-admin" bindtap="goAdmin" role="button">
         <view><text>后台管理</text><text class="menu-role">店员 / 管理员</text></view><text class="menu-arrow">›</text>
-      </button>
+      </view>
     </view>
   </view>
 </view>
