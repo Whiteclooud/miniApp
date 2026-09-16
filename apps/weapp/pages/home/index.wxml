@@ -9,7 +9,6 @@
     <view class="hero-actions">
       <button class="button-primary hero-button" bindtap="goBooking">立即预约</button>
       <button class="button-secondary hero-button secondary" bindtap="goMyBookings">查看我的预约</button>
-      <button class="button-plain availability-button" bindtap="viewAvailability">查看可预约时间</button>
     </view>
   </view>
 

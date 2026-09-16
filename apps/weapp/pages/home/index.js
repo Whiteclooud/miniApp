@@ -71,21 +71,25 @@ Page({
     wx.navigateTo({ url: '/pages/gallery-list/index' });
   },
 
-  viewAvailability() {
-    wx.navigateTo({ url: '/pages/booking/index' });
-  },
-
-  goBooking() {
-    promptForLogin({
+  async goBooking() {
+    const canContinue = await promptForLogin({
       redirect: '/pages/booking/index',
       content: '提交预约需要使用微信登录。'
     });
+    if (!canContinue) {
+      return;
+    }
+    wx.navigateTo({ url: '/pages/booking/index' });
   },
 
-  goMyBookings() {
-    promptForLogin({
+  async goMyBookings() {
+    const canContinue = await promptForLogin({
       redirect: '/pages/my-bookings/index',
       content: '查看我的预约需要使用微信登录。'
     });
+    if (!canContinue) {
+      return;
+    }
+    wx.navigateTo({ url: '/pages/my-bookings/index' });
   }
 });

@@ -145,7 +145,7 @@ Page({
     }
   },
 
-  goBooking() {
+  async goBooking() {
     const item = this.data.item || {};
     const title = item.title || '';
     const referenceImageUrl = this.data.activeImageUrl || item.imageUrl || '';
@@ -154,9 +154,13 @@ Page({
       `galleryTitle=${encodeURIComponent(title)}`,
       `referenceImageUrl=${encodeURIComponent(referenceImageUrl)}`
     ].join('&');
-    promptForLogin({
+    const canContinue = await promptForLogin({
       redirect: `/pages/booking/index?${query}`,
       content: '预约同款需要使用微信登录。'
     });
+    if (!canContinue) {
+      return;
+    }
+    wx.navigateTo({ url: `/pages/booking/index?${query}` });
   }
 });

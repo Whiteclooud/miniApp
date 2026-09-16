@@ -154,15 +154,6 @@
   color: #e8856c;
 }
 
-.home-page .availability-button {
-  width: 100%;
-  margin: 16rpx 0 0;
-  padding: 0;
-  color: #a45f67;
-  font-size: 24rpx;
-  line-height: 40rpx;
-}
-
 .section-header {
   margin: 32rpx 0 24rpx;
 }
